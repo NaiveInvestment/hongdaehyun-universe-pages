@@ -401,8 +401,13 @@ function columnValue(stock, column) {
   }
 }
 
-// 2026-08-25 확정 #2: 섹터 페이지에서는 그 섹터 전원이 결측인 열을 숨긴다.
+// 2026-08-25 확정 #2: 섹터 페이지에서는 그 섹터 전원이 비어 있는 열을 숨긴다.
 // 홈 통합표는 비교 정렬을 위해 열을 그대로 두고 "-"로 표시한다.
+//
+// 비어 있는 이유는 두 가지이고 화면은 둘을 구분하지 않는다. 어느 쪽이든 표시할 값이 없기 때문이다.
+//   - 산업상 해당 없음: 은행지주·보험의 매출액처럼 그 업종에 개념이 없는 항목
+//   - 커버리지 없음: 애널리스트가 안 보는 종목의 목표주가·배당
+// 둘 다 보간하지 않는다. 커버리지가 개시되면 다음 ConsenDB Refresh에서 코드 수정 없이 채워진다.
 function hiddenColumnsForSector() {
   if (state.sector === "all") return new Map();
   const stocks = (state.snapshot?.stocks || []).filter((stock) => stock.sector === state.sector);
@@ -1040,7 +1045,7 @@ function tableHtml() {
   // 안내에는 지금 켜져 있는 열그룹만 적는다. 접혀 있는 열까지 적으면 무엇이 사라졌는지 흐려진다.
   const hiddenActive = [...hidden.values()].filter((column) => !column.group || state.columnGroups.has(column.group));
   const hiddenNote = hiddenActive.length
-    ? `<p class="hidden-columns">${escapeHtml(state.sector)} 전원 결측이라 숨긴 열: ${hiddenActive.map(({ label }) => escapeHtml(label)).join(" · ")}</p>`
+    ? `<p class="hidden-columns">${escapeHtml(state.sector)} 전 종목에 값이 없어 숨긴 열: ${hiddenActive.map(({ label }) => escapeHtml(label)).join(" · ")}</p>`
     : '<p class="hidden-columns"></p>';
   const pendingNote = PENDING_COLUMNS.length
     ? `<p class="pending-columns" id="pendingColumns">원천 연결 대기 열: ${PENDING_COLUMNS.map(({ label, pending }) => `${escapeHtml(label)} - ${escapeHtml(pending)}`).join(" · ")}</p>`
