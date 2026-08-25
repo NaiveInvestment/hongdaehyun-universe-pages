@@ -245,14 +245,17 @@ function sourceStatus(source, key = null) {
   if (source.status === "partial") return { label: "일부", className: "partial" };
   if (source.stale) return { label: "STALE", className: "stale" };
   if (source.delayed) return { label: "지연", className: "stale" };
+  // 토스는 실시간이지만 KRX 정규장이 아니라 통합시세다. LIVE로 뭉뚱그리지 않는다.
+  if (key === "quote" && String(source.source || "").toLowerCase() === "toss") return { label: "통합시세", className: "ok" };
   if (key === "quote") return { label: "LIVE", className: "ok" };
   return { label: "정상", className: "ok" };
 }
 
 function sourceDisplayName(key, sourceName) {
   const source = String(sourceName || "").trim();
-  if (key === "quote" && source.toLowerCase() === "kiwoom") return "Kiwoom 주원천";
-  if (key === "quote" && source.toLowerCase() === "naver") return "Naver 보조";
+  if (key === "quote" && source.toLowerCase() === "kiwoom") return "Kiwoom KRX 실시간";
+  if (key === "quote" && source.toLowerCase() === "toss") return "토스 통합시세(KRX+NXT)";
+  if (key === "quote" && source.toLowerCase() === "naver") return "Naver KRX 지연";
   return source || "미적재";
 }
 
@@ -1035,9 +1038,12 @@ function viewHtml() {
   const fixtureNote = state.snapshot?.mode === "fixture"
     ? "고정 fixture 검증 모드입니다. 실제 투자 판단에 사용할 수 없습니다."
     : "행을 클릭하면 오른쪽에 종목 상세가 열립니다.";
+  const quoteSource = String(state.snapshot?.sources?.quote?.source || "").toLowerCase();
   const cadence = RUNTIME.staticMode
     ? "지연 스냅샷 · 실시간 아님"
-    : "현재가·1D·시총·P/E·P/B 실시간";
+    : quoteSource === "toss"
+      ? "현재가·시총 토스 통합시세(KRX+NXT)"
+      : "현재가·1D·시총·P/E·P/B 실시간";
   return `<div class="topbar"><h2 id="viewTitle">${escapeHtml(title)}</h2>
       <div class="meta"><span>${cadence}</span><span>컨센·실적 08:00 · 12:00 · 18:00</span>
         <span>단위: 원 · 억원 · % · 배</span></div></div>
