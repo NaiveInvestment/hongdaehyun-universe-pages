@@ -1,0 +1,52 @@
+# 배포용 public 저장소에 복사해 넣을 워크플로 (.github/workflows/pages-deploy.yml).
+# 이 저장소(private)에서는 실행되지 않는다 — 산출물 저장소에만 둔다.
+#
+# 하는 일: PC가 밀어 올린 빌드 산출물을 GitHub Pages로 올린다. 비밀값을 쓰지 않는다.
+# 데이터 수집·빌드는 PC가 한다(컨센서스 정본 ConsenDB.xlsx가 PC에만 있기 때문 — deploy/STATIC-PAGES.md 참조).
+name: Deploy static snapshot to Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sanity check the published bundle
+        run: |
+          set -euo pipefail
+          test -f index.html
+          test -f data/snapshot.json
+          test -f data/meta.json
+          test -f robots.txt
+          grep -q 'noindex' index.html
+          grep -q 'mode=static' index.html
+          # fixture 데이터가 공개로 새어 나가지 않게 한 번 더 막는다.
+          if grep -q '"mode": "fixture"' data/meta.json; then
+            echo "fixture 산출물은 공개할 수 없습니다." >&2
+            exit 1
+          fi
+          echo "stocks: $(ls data/stocks | wc -l)"
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4
