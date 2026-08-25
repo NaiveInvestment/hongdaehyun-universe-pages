@@ -35,6 +35,7 @@ const RETURN_HEAT_CAPS = {
   d20: { positive: 50, negative: 25 },
   ytd: { positive: 200, negative: 100 },
   y1: { positive: 200, negative: 100 },
+  targetGap: { positive: 50, negative: 25 },
 };
 const THEME_STORAGE_KEY = "hongdaehyun-universe:theme-v1";
 const KPI_COLLAPSE_STORAGE_KEY = "hongdaehyun-universe:kpi-summary-collapsed-v2";
@@ -302,7 +303,7 @@ const COLUMN_SECTIONS = [
       { key: "price", label: "현재가", sort: "quote.price", className: "base-col price-col", kind: "price" },
       { key: "d1", label: "1D", sort: "performance.d1", className: "base-col return-col", kind: "return", period: "d1" },
       { key: "marketCap", label: "시총", sort: "quote.marketCap", className: "base-col market-cap-col", kind: "marketCap", field: "marketCap" },
-      { key: "tradingValue", label: "거래대금", className: "base-col market-cap-col", kind: "marketCap", field: "tradingValue", pending: "Kiwoom 거래대금 필드 연결 필요" },
+      { key: "tradingValue", label: "거래대금", sort: "quote.tradingValue", className: "base-col market-cap-col", kind: "marketCap", field: "tradingValue" },
     ],
   },
   {
@@ -343,8 +344,8 @@ const COLUMN_SECTIONS = [
     label: "컨센 상세",
     columns: [
       { key: "contributors", label: "참여사", sort: "annual.2026.contributors", className: "metric-col", kind: "count", period: "2026", group: "consensusDetail" },
-      { key: "dividendYield", label: "배당수익률", className: "metric-col", kind: "percent", group: "consensusDetail", pending: "배당 컨센서스 원천 필요" },
-      { key: "targetGap", label: "목표가 괴리", className: "metric-col", kind: "percent", group: "consensusDetail", pending: "목표주가 원천 필요" },
+      { key: "dividendYield", label: "배당수익률", sort: "computed.dividendYield", className: "metric-col", kind: "computed", compute: "dividendYield", signed: false, group: "consensusDetail" },
+      { key: "targetGap", label: "목표가 괴리", sort: "computed.targetGap", className: "metric-col revision-col", kind: "computed", compute: "targetGap", heat: "targetGap", group: "consensusDetail" },
     ],
   },
 ];
@@ -363,6 +364,23 @@ function consensusRevision(stock, period, metric) {
   return ((recent / base) - 1) * 100;
 }
 
+// 배당수익률·목표가 괴리는 컨센서스(연 1회 갱신)와 현재가(실시간)를 함께 써야 나온다.
+// 서버가 미리 계산해 두면 시세가 움직일 때마다 어긋나므로 화면에서 그때그때 만든다.
+const COMPUTED = {
+  dividendYield: (stock) => {
+    const dps = stock.annual?.["2026"]?.dividendPerShare;
+    const price = stock.quote?.price;
+    if (!Number.isFinite(dps) || !Number.isFinite(price) || price <= 0) return null;
+    return (dps / price) * 100;
+  },
+  targetGap: (stock) => {
+    const target = stock.annual?.["2026"]?.targetPrice;
+    const price = stock.quote?.price;
+    if (!Number.isFinite(target) || !Number.isFinite(price) || price <= 0) return null;
+    return ((target / price) - 1) * 100;
+  },
+};
+
 // 결측 판정용 원시값. 섹터 페이지에서 "전원이 결측인 열"을 숨길 때 쓴다.
 function columnValue(stock, column) {
   switch (column.kind) {
@@ -376,6 +394,7 @@ function columnValue(stock, column) {
       return result && result.status === "ok" ? result.value : null;
     }
     case "count": return stock.annual?.[column.period]?.contributors ?? null;
+    case "computed": return COMPUTED[column.compute]?.(stock) ?? null;
     default: return null;
   }
 }
@@ -922,6 +941,22 @@ function revisionCell(stock, period, metric, extraClass = "") {
   return `<td data-revision-field="annual.${period}.${metric}" class="${numberClass(value)} ${extraClass}">${formatPercent(value)}</td>`;
 }
 
+// 배당수익률은 등락이 아니라 수준값이다. 부호와 상승·하락 색을 붙이지 않는다.
+function formatLevelPercent(value, digits = 1) {
+  if (value == null || !Number.isFinite(value)) return "-";
+  return `${Number(value).toFixed(digits)}%`;
+}
+
+function computedCell(stock, column, extraClass = "") {
+  const value = COMPUTED[column.compute]?.(stock) ?? null;
+  if (column.signed === false) {
+    return `<td data-computed-field="${column.compute}" class="${value == null ? "na" : ""} ${extraClass}">${formatLevelPercent(value)}</td>`;
+  }
+  const heat = column.heat ? returnHeatMeta(value, column.heat) : { className: "", weight: 0, bucket: 0 };
+  const attributes = heat.weight ? ` data-heat-value="${value}" data-heat-strength="${heat.weight}" data-heat-bucket="${heat.bucket}"` : "";
+  return `<td data-computed-field="${column.compute}" class="${numberClass(value)} ${heat.className} ${extraClass}"${attributes}>${formatPercent(value)}</td>`;
+}
+
 function bodyCell(stock, column, extraClass = "") {
   switch (column.kind) {
     case "sector": return `<td class="${extraClass}">${escapeHtml(stock.sector)}</td>`;
@@ -933,11 +968,13 @@ function bodyCell(stock, column, extraClass = "") {
     case "revision": return revisionCell(stock, column.period, column.metric, extraClass);
     case "ratio": return `<td data-live-field="valuation.${column.period}.${column.ratio}" class="${extraClass}">${formatRatio(stock.valuation?.[column.period]?.[column.ratio], column.ratio)}</td>`;
     case "count": return `<td class="${extraClass}">${formatNumber(stock.annual?.[column.period]?.contributors)}</td>`;
+    case "computed": return computedCell(stock, column, extraClass);
     default: return `<td class="na ${extraClass}">-</td>`;
   }
 }
 
 function sortValue(stock, key) {
+  if (key.startsWith("computed.")) return COMPUTED[key.slice("computed.".length)]?.(stock) ?? null;
   if (key.startsWith("revision.annual.")) {
     const [, , period, metric] = key.split(".");
     return consensusRevision(stock, period, metric);
@@ -1126,6 +1163,7 @@ function drawerConsensusTable(stock) {
       <tr><td class="l">· 영업이익 1M / 최고</td>${horizonRow("operatingIncome")}</tr>
       <tr><td class="l">참여 증권사</td>${ANNUALS.map(([period]) => `<td>${formatNumber(stock.annual?.[period]?.contributors)}</td>`).join("")}</tr>
       <tr><td class="l">지배주주지분</td>${ANNUALS.map(([period]) => `<td class="${stock.annual?.[period]?.kind === "estimate" ? "est" : ""}">${formatFinancial(stock.annual?.[period]?.parentEquity)}</td>`).join("")}</tr>
+      <tr><td class="l">주당배당금 (원)</td>${ANNUALS.map(([period]) => `<td class="${stock.annual?.[period]?.kind === "estimate" ? "est" : ""}">${formatPrice(stock.annual?.[period]?.dividendPerShare)}</td>`).join("")}</tr>
     </tbody></table></div>`;
 }
 
@@ -1192,7 +1230,8 @@ function drawerHtml(stock) {
       <div><dt>OP 26E 1M변화</dt><dd class="${numberClass(opRevision)}">${formatPercent(opRevision)}</dd><small>1M ÷ 3M − 1</small></div>
       <div><dt>YTD</dt><dd class="${numberClass(ytd)}" data-performance="ytd">${formatPercent(ytd)}</dd><small>vs KOSPI ${formatPercent(relative, 1)}</small></div>
       <div><dt>52주高比</dt><dd class="${numberClass(stock.performance?.drawdown52w)}" data-performance="drawdown52w">${formatPercent(stock.performance?.drawdown52w)}</dd><small>1Y ${formatPercent(stock.performance?.y1, 1)}</small></div>
-      <div><dt>5D / 20D</dt><dd class="compact"><span class="${numberClass(stock.performance?.d5)}" data-performance="d5">${formatPercent(stock.performance?.d5)}</span> · <span class="${numberClass(stock.performance?.d20)}" data-performance="d20">${formatPercent(stock.performance?.d20)}</span></dd><small>거래일 기준</small></div>
+      <div><dt>목표가 괴리</dt><dd class="${numberClass(COMPUTED.targetGap(stock))}">${formatPercent(COMPUTED.targetGap(stock))}</dd>
+        <small>TP ${formatPrice(stock.annual?.["2026"]?.targetPrice)} · 배당 ${formatLevelPercent(COMPUTED.dividendYield(stock))}</small></div>
     </dl>
     <section class="panel"><div class="panel-head"><h3>주가 vs 섹터 · 벤치마크</h3>
         <span class="tools">${rangeButtons()}</span></div>
@@ -1294,6 +1333,20 @@ function updateLiveRow(stock) {
   if (price) price.textContent = formatPrice(stock.quote?.price);
   if (marketCap) marketCap.textContent = formatNumber(stock.quote?.marketCap);
   for (const key of ["d1", "d5", "d20", "ytd", "y1", "drawdown52w"]) updateReturnCell(row, key, stock.performance?.[key]);
+  for (const [compute, calculate] of Object.entries(COMPUTED)) {
+    const cell = row.querySelector(`[data-computed-field="${compute}"]`);
+    if (!cell) continue;
+    const value = calculate(stock);
+    const sectionStart = cell.classList.contains("section-start") ? "section-start" : "";
+    if (compute === "dividendYield") {
+      cell.textContent = formatLevelPercent(value);
+      cell.className = `${value == null ? "na" : ""} ${sectionStart}`;
+      continue;
+    }
+    cell.textContent = formatPercent(value);
+    const heat = returnHeatMeta(value, "targetGap");
+    cell.className = `${numberClass(value)} ${heat.className} ${sectionStart}`;
+  }
   for (const period of ["2026", "2027"]) {
     for (const kind of ["pe", "pb", "roe"]) {
       const cell = row.querySelector(`[data-live-field="valuation.${period}.${kind}"]`);
