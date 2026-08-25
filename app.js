@@ -244,6 +244,8 @@ function sourceStatus(source, key = null) {
   if (source.status === "not_configured") return { label: "미설정", className: "not_configured" };
   if (source.status === "error") return { label: "오류", className: "error" };
   if (source.status === "partial") return { label: "일부", className: "partial" };
+  // 장이 닫혀 있으면 시세가 안 움직이는 게 정상이다. 오래됐다고 겁줄 일이 아니다.
+  if (key === "quote" && source.marketOpen === false && !source.stale) return { label: "장마감", className: "closed" };
   if (source.stale) return { label: "STALE", className: "stale" };
   if (source.delayed) return { label: "지연", className: "stale" };
   // 토스는 실시간이지만 KRX 정규장이 아니라 통합시세다. LIVE로 뭉뚱그리지 않는다.
