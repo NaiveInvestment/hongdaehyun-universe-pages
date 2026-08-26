@@ -1,25 +1,25 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-08-25T11:29:02.619Z",
+  "builtAt": "2026-08-26T00:00:02.090Z",
   "mode": "live",
-  "generatedAt": "2026-08-25T11:29:02.460Z",
+  "generatedAt": "2026-08-26T00:00:01.860Z",
   "stockCount": 76,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
   "sources": {
     "quote": {
       "source": "naver",
-      "updatedAt": "2026-08-25T11:28:27.171Z",
+      "updatedAt": "2026-08-25T22:53:24.342Z",
       "status": "ok"
     },
     "actuals": {
       "source": "OpenDART",
-      "updatedAt": "2026-08-25T11:28:34.228445Z",
+      "updatedAt": "2026-08-25T22:02:04.118316Z",
       "status": "ok"
     },
     "consensus": {
       "source": "ConsenDB.xlsx",
-      "updatedAt": "2026-08-25T11:28:28.732139Z",
+      "updatedAt": "2026-08-25T23:00:03.548821Z",
       "status": "partial"
     }
   },
