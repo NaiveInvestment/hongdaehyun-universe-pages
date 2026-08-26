@@ -1,25 +1,25 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-08-26T01:30:02.457Z",
+  "builtAt": "2026-08-26T01:31:40.030Z",
   "mode": "live",
-  "generatedAt": "2026-08-26T01:30:02.205Z",
+  "generatedAt": "2026-08-26T01:31:39.872Z",
   "stockCount": 76,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
   "sources": {
     "quote": {
       "source": "kiwoom",
-      "updatedAt": "2026-08-26T01:28:03.902Z",
+      "updatedAt": "2026-08-26T01:31:21.959Z",
       "status": "ok"
     },
     "actuals": {
       "source": "OpenDART",
-      "updatedAt": "2026-08-26T01:27:55.941371Z",
+      "updatedAt": "2026-08-26T01:31:11.640914Z",
       "status": "ok"
     },
     "consensus": {
       "source": "ConsenDB.xlsx",
-      "updatedAt": "2026-08-26T01:27:48.013744Z",
+      "updatedAt": "2026-08-26T01:31:06.075147Z",
       "status": "partial"
     }
   },
