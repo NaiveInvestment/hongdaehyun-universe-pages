@@ -24,7 +24,10 @@ const HOME_GROUPS = [
   { label: "희토류", short: "희토류", sectors: ["희토류"] },
 ];
 const KOSDAQ_CODES = new Set(["093320", "067160", "124500", "030520", "042000", "078020", "127120"]);
-const ANNUALS = [["2025", "2025"], ["2026", "2026E"], ["2027", "2027E"]];
+// 2026-08-26 확정: 연간 컨센서스는 3개(26E·27E·28E)까지 보여준다. 2025는 확정 실적 비교용이다.
+const ANNUALS = [["2025", "2025"], ["2026", "2026E"], ["2027", "2027E"], ["2028", "2028E"]];
+// 분기는 확정 실적 8개 + 추정 4개.
+const QUARTER_ESTIMATE_COUNT = 4;
 const SOURCE_LABELS = { quote: "시세", actuals: "공시", consensus: "컨센서스" };
 const HORIZON_LABELS = { oneMonth: "1M 평균", threeMonth: "3M 평균", highest: "3M 최고" };
 const RANGES = [[62, "3M"], [124, "6M"], [0, "1Y"]];
@@ -1135,7 +1138,7 @@ function quarterSeriesOf(stock) {
   const estimates = Object.keys(consensus)
     .filter((period) => period > lastActual && consensus[period]?.threeMonth)
     .sort()
-    .slice(0, 2)
+    .slice(0, QUARTER_ESTIMATE_COUNT)
     .map((period) => ({ period, kind: "estimate", ...consensus[period].threeMonth }));
   return [...actuals, ...estimates].map((row) => ({
     period: row.period,
@@ -1212,7 +1215,7 @@ function drawerHtml(stock) {
     ? lineChart({ series: [...series, ...benchmarkSeriesFor(dates)], labels: dates, width: 430, height: 220 })
     : '<p class="empty-state">주가 이력이 아직 없습니다.</p>';
   const quarters = quarterSeriesOf(stock);
-  const recent = quarters.slice(-6);
+  const recent = quarters.slice(-8);
   const kospiYtd = benchmarkOf("KOSPI")?.ytd ?? null;
   const ytd = stock.performance?.ytd;
   const relative = Number.isFinite(ytd) && Number.isFinite(kospiYtd) ? ytd - kospiYtd : null;
