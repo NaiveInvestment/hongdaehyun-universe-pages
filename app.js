@@ -247,7 +247,13 @@ function sourceStatus(source, key = null) {
   if (source.status === "not_configured") return { label: "미설정", className: "not_configured" };
   if (source.status === "error") return { label: "오류", className: "error" };
   if (source.status === "partial") return { label: "일부", className: "partial" };
-  // 장이 닫혀 있으면 시세가 안 움직이는 게 정상이다. 오래됐다고 겁줄 일이 아니다.
+  // KRX가 닫혀 있어도 NXT는 08~20시에 돈다. 체결이 계속 들어오면 "NXT 시간외", 아니면 "장마감"이다.
+  if (key === "quote" && source.krxSession === false && !source.stale) {
+    const age = Date.now() - (Date.parse(source.updatedAt || 0) || 0);
+    return age < 5 * 60 * 1000
+      ? { label: "NXT 시간외", className: "nxt" }
+      : { label: "장마감", className: "closed" };
+  }
   if (key === "quote" && source.marketOpen === false && !source.stale) return { label: "장마감", className: "closed" };
   if (source.stale) return { label: "STALE", className: "stale" };
   if (source.delayed) return { label: "지연", className: "stale" };
@@ -1098,7 +1104,7 @@ function viewHtml() {
     ${middle}
     ${breadthHtml()}
     ${tableHtml()}
-    <p class="foot-note" id="footNote">자료: Kiwoom(시세) · ConsenDB 3M(컨센서스) · OpenDART(확정 실적). 결측은 보간 없이 빈칸입니다. ${escapeHtml(fixtureNote)}</p>`;
+    <p class="foot-note" id="footNote">자료: Kiwoom(시세) · ConsenDB 3M(컨센서스) · OpenDART(확정 실적). 가격·수익률은 KRX 정규장 기준이고 08~09시·15:30 이후에는 NXT 체결을 띄웁니다. 거래대금은 KRX+NXT 통합입니다. 결측은 보간 없이 빈칸입니다. ${escapeHtml(fixtureNote)}</p>`;
 }
 
 function renderView({ preserveScroll = false } = {}) {

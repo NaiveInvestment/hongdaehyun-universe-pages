@@ -70,6 +70,7 @@ ul { padding: 0; list-style: none; }
 .status.offline::before { background: var(--up); }
 .status.delayed::before { background: var(--accent); }
 .status.closed::before { background: var(--muted); }
+.status.nxt::before { background: var(--series-4); }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--surface-2); font-size: 12px; font-weight: 700; white-space: nowrap; }
 .btn:hover { background: var(--surface-3); }
 .btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
