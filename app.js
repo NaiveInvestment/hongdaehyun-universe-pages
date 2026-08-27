@@ -8,6 +8,9 @@ const RUNTIME = (() => {
   return {
     staticMode,
     snapshotUrl: staticMode ? "data/snapshot.json" : "/api/snapshot",
+    // 2026-08-27: 공개 정적본은 시세만 담긴 가벼운 델타를 자주 읽고, 무거운 스냅샷은 바뀔 때만 다시 받는다.
+    // 전체 산출물 6.8MB 중 시세로 바뀌는 부분은 94KB뿐이라 매번 전부 받을 이유가 없다.
+    quotesUrl: staticMode ? "data/quotes.json" : null,
     stockUrl: (code) => (staticMode ? `data/stocks/${code}.json` : `/api/stocks/${code}`),
   };
 })();
@@ -1653,16 +1656,70 @@ async function initialize() {
   setInterval(async () => {
     if (document.hidden) return;
     try {
+      if (RUNTIME.staticMode) {
+        await refreshStaticQuotes();
+        return;
+      }
       const next = await fetch(RUNTIME.snapshotUrl, { cache: "no-store" });
       if (!next.ok) return;
       state.liveUpdates.clear();
       state.snapshot = await next.json();
       renderSidebar();
       renderView({ preserveScroll: true });
-      if (RUNTIME.staticMode) connectQuoteSocket();
       if (state.detailCode) loadDetail(state.detailCode);
     } catch { /* WebSocket 재연결 표시가 주 신호다. */ }
   }, 60_000);
+}
+
+// 정적 배포본 갱신. 가벼운 시세 델타만 읽어 스냅샷 위에 덮어쓴다.
+// 델타가 다른 전체 스냅샷을 가리키면(컨센·실적이 갱신됐다는 뜻) 그때만 스냅샷을 통째로 다시 받는다.
+async function refreshStaticQuotes() {
+  const response = await fetch(RUNTIME.quotesUrl, { cache: "no-store" });
+  if (!response.ok) return;
+  const quotes = await response.json();
+  if (quotes.snapshotGeneratedAt && quotes.snapshotGeneratedAt !== state.snapshot?.generatedAt) {
+    const next = await fetch(RUNTIME.snapshotUrl, { cache: "no-store" });
+    if (next.ok) {
+      state.liveUpdates.clear();
+      state.snapshot = await next.json();
+      renderSidebar();
+      renderView({ preserveScroll: true });
+      if (state.detailCode) loadDetail(state.detailCode);
+      return;
+    }
+  }
+  applyQuotesDelta(quotes);
+}
+
+// 시세 델타를 스냅샷에 병합한다. WebSocket 경로가 종목 하나씩 하는 일을 한 번에 하는 것이다.
+function mergeQuotesDelta(snapshot, quotes) {
+  if (!snapshot?.stocks || !Array.isArray(quotes?.stocks)) return snapshot;
+  const byCode = new Map(snapshot.stocks.map((stock) => [stock.code, stock]));
+  for (const incoming of quotes.stocks) {
+    const stock = byCode.get(incoming.code);
+    if (!stock) continue;
+    if (incoming.quote) stock.quote = { ...stock.quote, ...incoming.quote };
+    if (incoming.performance) stock.performance = incoming.performance;
+    if (incoming.valuation) stock.valuation = incoming.valuation;
+  }
+  if (quotes.sources?.quote) snapshot.sources = { ...snapshot.sources, quote: quotes.sources.quote };
+  if (quotes.marketBreadth) snapshot.marketBreadth = quotes.marketBreadth;
+  if (quotes.generatedAt) snapshot.generatedAt = quotes.generatedAt;
+  return snapshot;
+}
+
+// 브라우저 QA가 시세 델타 병합을 직접 검사할 수 있게 열어 둔다.
+// 60초 주기를 기다리지 않고 합성 델타를 넣어 표가 실제로 갱신되는지 본다.
+if (RUNTIME.staticMode) window.__hduTest = { mergeQuotesDelta: (quotes) => applyQuotesDelta(quotes) };
+
+function applyQuotesDelta(quotes) {
+  if (!state.snapshot) return;
+  mergeQuotesDelta(state.snapshot, quotes);
+  state.liveUpdates.clear();
+  renderSidebar();
+  renderView({ preserveScroll: true });
+  const fixture = state.snapshot?.mode === "fixture" ? "Fixture 검증 모드 · " : "";
+  setConnection("delayed", `${fixture}지연 스냅샷 · ${formatTimestamp(state.snapshot?.generatedAt)} 기준`);
 }
 
 initialize().catch((error) => {
