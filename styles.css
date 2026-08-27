@@ -305,6 +305,13 @@ table.fin { width: 100%; border-collapse: collapse; font-size: 11.5px; font-vari
 .fin th.l, .fin td.l { text-align: left; }
 .fin .est { color: var(--muted); }
 .fin .focus { color: var(--accent); font-weight: 800; }
+/* 한 칸에 두 값(1M·최고)을 세로로 쌓는다. 나란히 두면 드로어 폭을 넘어 가로 스크롤이 생긴다.
+   행 라벨이 "1M / 최고"라 위·아래 순서가 그대로 읽힌다. */
+.fin td.stack { line-height: 1.25; }
+.fin td.stack span { display: block; }
+.fin td.stack span + span { color: var(--faint); }
+/* 분기 표는 열이 13개라 스크롤이 정상이다. 스크롤 가능하다는 것을 가장자리 그림자로 알린다. */
+.fin-wrap { overflow-x: auto; scrollbar-width: thin; }
 .events li { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
 .tag { display: inline-block; padding: 0 5px; border: 1px solid var(--line-strong); border-radius: 2px; color: var(--muted); font-size: 10.5px; font-weight: 800; }
 .note { margin-top: 6px; color: var(--faint); font-size: 10.5px; }
@@ -313,7 +320,14 @@ table.fin { width: 100%; border-collapse: collapse; font-size: 11.5px; font-vari
 
 /* ---- responsive ---- */
 .main.has-drawer .tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.main.has-drawer .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* 2026-08-27: 드로어를 열면 KPI가 3+3 두 행으로 접혔다. 확정 #1은 "KPI 6칸"이고,
+   두 행이 되면 그 아래 차트·표가 통째로 밀려 드로어를 여닫을 때마다 화면이 출렁인다.
+   한 행을 유지하고 대신 글자·여백만 줄인다. */
+.main.has-drawer .kpi { padding: 7px 8px; }
+.main.has-drawer .kpi dd { font-size: 15px; }
+.main.has-drawer .kpi dd.compact { font-size: 11.5px; }
+.main.has-drawer .kpi dt { font-size: 10px; }
+.main.has-drawer .kpi small { font-size: 10px; }
 .main.has-drawer .ind { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 1600px) {
   /* 드로어가 열리면 본문이 좁아진다. 섹터 지수 차트를 한 단으로 펴야 축 글자가 읽힌다. */

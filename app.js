@@ -1225,10 +1225,13 @@ function drawerConsensusTable(stock) {
     ["영업이익", "operatingIncome"],
     ["지배순이익", "parentNetIncome"],
   ];
+  // 한 칸에 1M·최고 두 값이 나란히 들어가면 그 행 때문에 표 전체가 드로어(460px)를 넘어
+  // 가로 스크롤이 생겼다(2026-08-27 실측 472px vs 408px). 세로로 쌓아 칸 너비를 숫자 하나로 맞춘다.
   const horizonRow = (metric) => ANNUALS.map(([period]) => {
     const compare = stock.consensusComparison?.annual?.[period];
     if (!compare) return '<td class="est">-</td>';
-    return `<td class="est">${formatFinancial(compare.oneMonth?.[metric])} / ${formatFinancial(compare.highest?.[metric])}</td>`;
+    return `<td class="est stack"><span>${formatFinancial(compare.oneMonth?.[metric])}</span>`
+      + `<span>${formatFinancial(compare.highest?.[metric])}</span></td>`;
   }).join("");
   return `<div class="fin-wrap"><table class="fin" id="drawerConsensus">
     <thead><tr><th class="l"></th>${ANNUALS.map(([period, label]) => `<th class="${period === "2025" ? "" : "est"}">${label}</th>`).join("")}</tr></thead>
