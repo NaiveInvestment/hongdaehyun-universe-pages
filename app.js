@@ -33,7 +33,9 @@ const ANNUALS = [["2025", "2025"], ["2026", "2026E"], ["2027", "2027E"], ["2028"
 const QUARTER_ESTIMATE_COUNT = 4;
 const SOURCE_LABELS = { quote: "시세", actuals: "공시", consensus: "컨센서스" };
 const HORIZON_LABELS = { oneMonth: "1M 평균", threeMonth: "3M 평균", highest: "3M 최고" };
-const RANGES = [[62, "3M"], [124, "6M"], [0, "1Y"]];
+// 2026-08-27 사용자 결정: 섹터 지수는 YTD 기준으로 본다. 원래 3M·6M·1Y뿐이라 YTD가 아예 없었다.
+// "ytd"는 거래일 개수가 아니라 날짜로 자르므로 windowSlice가 따로 처리한다.
+const RANGES = [["ytd", "YTD"], [62, "3M"], [124, "6M"], [0, "1Y"]];
 const BENCHMARK_MODES = [["KOSPI", "KOSPI"], ["KOSDAQ", "KOSDAQ"], ["both", "둘 다"]];
 const RETURN_HEAT_CAPS = {
   d1: { positive: 10, negative: 5 },
@@ -120,7 +122,7 @@ const state = {
   detailLoading: false,
   kpiCollapsed: true,
   columnGroups: new Set(),
-  range: 0,
+  range: "ytd",
   bench: "both",
   theme: "dark",
   liveUpdates: new Map(),
@@ -552,16 +554,40 @@ function alignHistory(history = [], dates = []) {
 }
 
 function windowSlice(values = [], range = state.range) {
-  if (!range || range <= 0 || range >= values.length) return values;
-  return values.slice(-range);
+  const length = range === "ytd" ? ytdWindowLength() : range;
+  if (!length || length <= 0 || length >= values.length) return values;
+  return values.slice(-length);
 }
 
 // ---------------------------------------------------------------------------
 // 차트
 // ---------------------------------------------------------------------------
 // 좁은 화면에서 가로로 긴 viewBox를 그대로 쓰면 축 글자가 4px 아래로 줄어 읽히지 않는다.
-function chartBox(wide, narrow) {
-  return typeof window !== "undefined" && window.matchMedia("(max-width: 640px)").matches ? narrow : wide;
+// 2026-08-27 — 차트가 화면 폭에 비례해 세로로 커지던 것을 막는다.
+//
+// `svg.chart`는 `width:100%; height:auto`이고 viewBox가 900×260 고정이라, 비율이 유지되면서
+// 폭이 넓어지면 높이도 같이 늘어났다. 실측: 1440폭에서 326px, 1890폭에서 456px, 2560폭에서 649px.
+// 그래서 모니터가 클수록 종목표가 접힘선 아래로 밀렸다(1890폭 3행, 2560폭 0행).
+// "모니터 워크스테이션형"이 확정안인데 정반대로 동작하고 있었다.
+//
+// 고침: viewBox 폭을 실제 컨테이너 픽셀 폭에 맞춘다. 1:1로 대응하므로 높이는 지정한 값에 고정된다.
+// 컨테이너는 렌더 직전에도 살아 있는 `.content`라 innerHTML을 갈아 끼우기 전에 잴 수 있다.
+const CHART_PADDING = 24;              // .card 좌우 패딩 합
+const SECTOR_CHART_RATIO = 2.2 / 3.0;  // .sec-grid 첫 열(2.2fr / 2.2fr+0.8fr)
+
+function measuredChartWidth({ ratio = 1, fallback = 900 } = {}) {
+  if (typeof document === "undefined") return fallback;
+  const content = document.querySelector(".content");
+  const available = content?.clientWidth;
+  if (!Number.isFinite(available) || available <= 0) return fallback;
+  const width = Math.round(available * ratio) - CHART_PADDING;
+  // 너무 좁으면 축·끝점 라벨이 겹친다. 아래로는 막고, 위로는 열어 둔다.
+  return Math.max(360, width);
+}
+
+function chartBox(wide, narrow, { ratio = 1 } = {}) {
+  if (typeof window !== "undefined" && window.matchMedia("(max-width: 640px)").matches) return narrow;
+  return { ...wide, width: measuredChartWidth({ ratio, fallback: wide.width }) };
 }
 
 function lineChart({ series, labels, width = 820, height = 250, rebase = true }) {
@@ -825,7 +851,22 @@ function renderBreadthValues() {
 // 홈 · 섹터 화면 블록
 // ---------------------------------------------------------------------------
 function rangeButtons() {
-  return RANGES.map(([value, label]) => `<button class="btn tiny" type="button" data-range="${value}" aria-pressed="${state.range === value}">${label}</button>`).join("");
+  return RANGES.map(([value, label]) => `<button class="btn tiny" type="button" data-range="${value}" aria-pressed="${String(state.range) === String(value)}">${label}</button>`).join("");
+}
+
+// YTD 창 길이. 기준일을 "전년 마지막 거래일"로 잡아야 차트의 100이 표의 YTD 0%와 같아진다
+// (Decisions: YTD는 전년 마지막 거래일 종가 대비). 올해 첫 거래일부터 자르면 1월 첫날 등락이 사라진다.
+function parseRangeValue(raw) {
+  return raw === "ytd" ? "ytd" : Number(raw);
+}
+
+function ytdWindowLength(dates = indexDates()) {
+  if (!dates.length) return 0;
+  const year = dates.at(-1).slice(0, 4);
+  for (let index = dates.length - 1; index >= 0; index -= 1) {
+    if (dates[index].slice(0, 4) < year) return dates.length - index;
+  }
+  return dates.length;
 }
 
 function benchButtons() {
@@ -854,7 +895,7 @@ function homeGroupChart() {
       ? { name: group.label, short: group.short, values: windowSlice(entry.values), cls: `s-${index + 1}`, members: entry.members }
       : null;
   }).filter(Boolean);
-  const box = chartBox({ width: 900, height: 260 }, { width: 430, height: 300 });
+  const box = chartBox({ width: 900, height: 300 }, { width: 430, height: 300 });
   const chart = lineChart({ series: [...series, ...benchmarkSeriesFor(dates)], labels: dates, ...box });
   return `<div class="card" id="homeGroupChart">
     <div class="card-head"><h3>4그룹 상대주가 vs 벤치마크</h3>
@@ -891,21 +932,24 @@ function sectorExceptions(stocks) {
   const item = (stock, value) => `<li><span><a href="#/stock/${stock.code}">${escapeHtml(stock.name)}</a>`
     + `<small>${formatNumber(stock.quote?.marketCap)}억</small></span>`
     + `<span class="num ${numberClass(value)}">${formatPercent(value, 1)}</span></li>`;
-  const block = (label, rows) => `<li class="eyebrow">${label}</li>`
-    + (rows.length ? rows.join("") : '<li><span class="na">해당 없음</span><span class="num na">-</span></li>');
-  return `<ul class="exc">
+  // 2026-08-27: 네 묶음을 한 줄로 세우면 카드가 368px가 되고, .sec-grid 높이를 이쪽이 결정해
+  // 차트를 줄여도 종목표가 올라오지 않는다. 2×2로 접어 절반 높이로 만든다.
+  const block = (label, rows) => `<section class="exc-block"><h4>${label}</h4><ul class="exc">`
+    + (rows.length ? rows.join("") : '<li><span class="na">해당 없음</span><span class="num na">-</span></li>')
+    + "</ul></section>";
+  return `<div class="exc-grid">
     ${block("1D 상승 상위", byReturn.slice(0, 2).map((stock) => item(stock, stock.performance.d1)))}
     ${block("1D 하락 상위", byReturn.slice(-2).reverse().map((stock) => item(stock, stock.performance.d1)))}
     ${block("OP 26E 컨센 1M 상향", byRevision.slice(0, 2).map(({ stock, value }) => item(stock, value)))}
     ${block("OP 26E 컨센 1M 하향", byRevision.slice(-2).reverse().map(({ stock, value }) => item(stock, value)))}
-  </ul>`;
+  </div>`;
 }
 
 function sectorTrend(sector, stocks) {
   const dates = windowSlice(indexDates());
   const entry = sectorSeries(sector);
   const series = entry && entry.values.length ? [{ name: sector, values: windowSlice(entry.values), cls: "s-main" }] : [];
-  const box = chartBox({ width: 820, height: 250 }, { width: 430, height: 300 });
+  const box = chartBox({ width: 820, height: 220 }, { width: 430, height: 300 }, { ratio: SECTOR_CHART_RATIO });
   const chart = dates.length >= 2 && series.length
     ? lineChart({ series: [...series, ...benchmarkSeriesFor(dates)], labels: dates, ...box })
     : '<p class="empty-state">섹터 지수를 만들 일봉이 아직 없습니다.</p>';
@@ -1563,7 +1607,7 @@ function bindEvents() {
     const chip = event.target.closest("[data-column-group]");
     if (chip) return toggleColumnGroup(chip.dataset.columnGroup);
     const range = event.target.closest("[data-range]");
-    if (range) { state.range = Number(range.dataset.range); return renderView({ preserveScroll: true }); }
+    if (range) { state.range = parseRangeValue(range.dataset.range); return renderView({ preserveScroll: true }); }
     const bench = event.target.closest("[data-bench]");
     if (bench) { state.bench = bench.dataset.bench; return renderView({ preserveScroll: true }); }
     if (event.target.closest("#kpiSummaryToggle")) return toggleKpiDetails();
@@ -1584,7 +1628,7 @@ function bindEvents() {
     }
     const range = event.target.closest("[data-range]");
     if (range) {
-      state.range = Number(range.dataset.range);
+      state.range = parseRangeValue(range.dataset.range);
       renderDrawer();
       renderView({ preserveScroll: true });
     }
@@ -1596,6 +1640,20 @@ function bindEvents() {
     }
   });
   window.addEventListener("hashchange", route);
+
+  // 차트 폭을 실제 컨테이너에서 재므로 창 크기가 바뀌면 다시 그려야 한다.
+  // 드래그 중에 매번 그리면 무거워서 멈춘 뒤 한 번만 그린다.
+  let resizeTimer = null;
+  let lastWidth = window.innerWidth;
+  window.addEventListener("resize", () => {
+    if (window.innerWidth === lastWidth) return;   // 세로만 바뀌면 차트 폭은 그대로다
+    lastWidth = window.innerWidth;
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      renderView({ preserveScroll: true });
+      if (state.detailCode) renderDrawer();
+    }, 150);
+  });
 }
 
 function setConnection(className, text) {

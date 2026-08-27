@@ -141,9 +141,12 @@ ul { padding: 0; list-style: none; }
 .tile svg path { fill: none; stroke: var(--brand); stroke-width: 1.5; }
 .sec-grid { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(240px, .8fr); gap: 10px; margin-bottom: 10px; }
 .home-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin-bottom: 10px; }
-.exc li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: baseline; padding: 5px 0; border-top: 1px solid var(--line); font-size: 12px; }
+/* 네 묶음을 2×2로 접는다. 한 줄로 세우면 카드가 368px가 되어 .sec-grid 높이를 이쪽이 결정하고,
+   차트를 줄여도 종목표가 접힘선 아래에 그대로 남는다(2026-08-27). */
+.exc-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 14px; }
+.exc-block h4 { color: var(--muted); font-size: 10.5px; font-weight: 800; letter-spacing: .06em; }
+.exc li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: baseline; padding: 4px 0; border-top: 1px solid var(--line); font-size: 12px; }
 .exc li.eyebrow { display: block; padding: 7px 0 3px; border-top: 0; color: var(--muted); font-size: 10.5px; font-weight: 800; letter-spacing: .06em; }
-.exc li:first-child { padding-top: 0; }
 .exc a { font-weight: 750; }
 .exc small { margin-left: 5px; color: var(--faint); font-weight: 600; }
 .exc .num { font-weight: 800; }
