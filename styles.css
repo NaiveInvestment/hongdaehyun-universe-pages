@@ -159,6 +159,27 @@ ul { padding: 0; list-style: none; }
 .ind li .state { display: inline-block; margin-top: 3px; padding: 0 5px; border: 1px solid var(--line-strong); border-radius: 2px; font-size: 10px; font-weight: 800; }
 .ind li .state.paid { color: var(--accent); border-color: var(--accent); }
 
+/* 원천이 확정돼 값이 실린 지표. 대기 카드(점선)와 달리 실선 타일로 띄운다.
+   섹터 타일(.tile)과 같은 문법을 쓴다 — 이름 + 값 + 변화 + 스파크라인. */
+.ind li.is-live { border-style: solid; border-color: var(--line); color: var(--ink); }
+.ind li.is-live:hover { border-color: var(--line-strong); }
+.ind li.is-live > b { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; margin-bottom: 2px; }
+.ind li.is-live > b u { color: var(--faint); font-size: 10px; font-weight: 700; text-decoration: none; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ind li.is-live .ind-line { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr); align-items: baseline; column-gap: 6px; margin-top: 3px; font-variant-numeric: tabular-nums; }
+.ind li.is-live .ind-line em { grid-column: 1 / -1; overflow: hidden; color: var(--muted); font-size: 10px; font-style: normal; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.ind li.is-live .ind-line b { display: block; font-size: 15px; font-weight: 800; line-height: 1.15; letter-spacing: -.02em; white-space: nowrap; }
+.ind li.is-live .ind-line b u { margin-left: 1px; color: var(--muted); font-size: 10px; font-weight: 700; text-decoration: none; }
+.ind li.is-live .ind-line > span { overflow: hidden; font-size: 10.5px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.ind li.is-live .ind-line > span.na { color: var(--faint); }
+.ind li.is-live .ind-spark { grid-column: 1 / -1; }
+.ind li.is-live .ind-spark svg { display: block; width: 100%; height: 20px; margin-top: 2px; }
+.ind li.is-live .ind-spark svg path { fill: none; stroke: var(--brand); stroke-width: 1.5; }
+/* 한 지표에 계열이 둘일 때(예대금리차 신규·잔액, 연체율 기업·가계) 둘째 줄은 다른 색으로 구분한다. */
+.ind li.is-live .ind-line + .ind-line { padding-top: 3px; border-top: 1px solid var(--line); }
+.ind li.is-live .ind-line + .ind-line .ind-spark svg path { stroke: var(--series-2); }
+/* 확정 원천은 통계표·항목 코드까지 밝힌다. 한 줄에 안 들어가면 두 줄까지 접는다. */
+.ind li.is-live > i { display: -webkit-box; margin-top: 4px; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; }
+
 /* ---- toolbar + table ---- */
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; }
 .toolbar .spacer { flex: 1; }

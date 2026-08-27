@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-08-27T01:10:02.424Z",
+  "builtAt": "2026-08-27T01:20:02.338Z",
   "mode": "live",
-  "generatedAt": "2026-08-27T01:10:02.198Z",
+  "generatedAt": "2026-08-27T01:20:02.133Z",
   "stockCount": 76,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
@@ -21,6 +21,11 @@
       "source": "ConsenDB.xlsx",
       "updatedAt": "2026-08-26T03:00:01.583152Z",
       "status": "partial"
+    },
+    "indicators": {
+      "source": "한국은행 ECOS",
+      "updatedAt": null,
+      "status": "not_configured"
     }
   },
   "sectorIndices": {
@@ -29,5 +34,10 @@
       "KOSPI",
       "KOSDAQ"
     ]
+  },
+  "indicators": {
+    "sectors": [],
+    "tiles": 0,
+    "sampleKey": false
   }
 }

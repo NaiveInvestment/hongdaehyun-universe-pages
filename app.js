@@ -47,12 +47,13 @@ const COLUMN_GROUP_STORAGE_KEY = "hongdaehyun-universe:column-groups-v1";
 // 섹터별 트래킹 지표 — 2026-08-23 실접속으로 확인한 원천 "후보"다. 정본은 docs/indicator-sources.md.
 // 원천이 확정되기 전까지는 값을 만들지 않고 대기 카드로만 노출한다(예시 수치 금지).
 const INDICATOR_CATALOG = {
+  // 금융은 2026-08-27에 원천이 확정됐다(전부 ECOS). 값이 실려 오면 아래 대기 카드 대신 실제 타일이 뜬다.
   "금융": [
-    { name: "국고채 3년", source: "한은 ECOS 817Y002", cycle: "일", state: "auto" },
-    { name: "은행채 AAA 1년", source: "한국자산평가 민평", cycle: "일", state: "auto" },
-    { name: "예대금리차", source: "ECOS 121Y002 / 121Y006", cycle: "월", state: "auto" },
-    { name: "가계·기업 대출잔액", source: "ECOS 104Y016", cycle: "월", state: "auto" },
-    { name: "기준금리", source: "ECOS 722Y001", cycle: "수시", state: "auto" },
+    { name: "국고채 3년", source: "한은 ECOS 817Y002", cycle: "일", state: "fixed" },
+    { name: "기준금리", source: "ECOS 722Y001", cycle: "일", state: "fixed" },
+    { name: "예대금리차", source: "ECOS 121Y006·121Y002 / 121Y015·121Y013", cycle: "월", state: "fixed" },
+    { name: "은행 연체율", source: "ECOS 901Y054", cycle: "월", state: "fixed" },
+    { name: "산금채 1년", source: "ECOS 817Y002", cycle: "일", state: "fixed" },
   ],
   "보험": [
     { name: "K-ICS 비율 (사별)", source: "FISIS", cycle: "분기", state: "auto" },
@@ -919,15 +920,73 @@ function sectorTrend(sector, stocks) {
   </div>`;
 }
 
+// 지표 변화량. 금리·비율은 bp, 수준값은 %, 그 밖에는 원 단위 그대로.
+function formatIndicatorChange(value, changeMode) {
+  if (value == null || !Number.isFinite(value)) return "-";
+  const sign = value > 0 ? "+" : "";
+  if (changeMode === "bp") return `${sign}${formatNumber(value, 1)}bp`;
+  if (changeMode === "pct") return formatPercent(value, 2);
+  return `${sign}${formatNumber(value, 2)}`;
+}
+
+// 기간 라벨. 일별은 날짜, 월별은 YYYY-MM 그대로 읽힌다.
+function indicatorPeriodLabel(tile) {
+  const dates = tile.lines.map((line) => line.latestDate).filter(Boolean).sort();
+  const latest = dates.at(-1);
+  if (!latest) return "-";
+  return tile.cycle === "D" ? latest.slice(5).replace("-", ".") : latest;
+}
+
+// 확정 원천이 붙은 지표 하나. 최신값 · 직전 대비 변화 · 스파크라인.
+// 한 지표가 두 계열을 가질 수 있다(예대금리차 신규·잔액, 연체율 기업·가계).
+function indicatorTile(tile) {
+  const rows = tile.lines.map((line) => `<div class="ind-line">
+    ${line.label ? `<em>${escapeHtml(line.label)}</em>` : ""}
+    <b>${line.latest == null ? "-" : formatNumber(line.latest, tile.cycle === "D" ? 3 : 2)}<u>${escapeHtml(tile.unit)}</u></b>
+    <span class="${numberClass(line.change)}">${formatIndicatorChange(line.change, tile.changeMode)}</span>
+    <span class="ind-spark">${sparkline(line.spark, 84, 20)}</span>
+  </div>`).join("");
+  const title = `${tile.name} ${tile.lines.map((line) => `${line.label ? `${line.label} ` : ""}${line.latest ?? "-"}${tile.unit}`).join(", ")}`;
+  return `<li class="is-live" data-indicator="${escapeHtml(tile.key)}" title="${escapeHtml(title)}">
+    <b>${escapeHtml(tile.name)}<u>${escapeHtml(indicatorPeriodLabel(tile))}</u></b>
+    ${rows}
+    <i>${escapeHtml(tile.sources.join(" · "))}${tile.note ? ` · ${escapeHtml(tile.note)}` : ""}</i>
+  </li>`;
+}
+
 function indicatorTiles(sector) {
+  const live = state.snapshot?.indicators?.sectors?.[sector] || [];
   const items = INDICATOR_CATALOG[sector] || [];
-  if (!items.length) return "";
+  if (!live.length && !items.length) return "";
+  const source = state.snapshot?.sources?.indicators || {};
+  if (live.length) {
+    // 확정된 지표는 실제 타일로, 아직 원천이 없는 지표는 같은 줄에 대기 카드로 남는다.
+    const liveKeys = new Set(live.map((tile) => tile.name));
+    const pending = items.filter((item) => !liveKeys.has(item.name));
+    const note = state.snapshot?.indicators?.sampleKey
+      ? "한국은행 ECOS · 공개 sample 키(요청당 10행 제한)"
+      : "한국은행 ECOS";
+    return `<div class="ind-head"><h3>${escapeHtml(sector)} 트래킹 지표</h3>
+        <span>${escapeHtml(note)} · 기준 ${escapeHtml(formatTimestamp(source.updatedAt || state.snapshot?.indicators?.loadedAt))}${source.stale ? " · 갱신 지연" : ""}</span></div>
+      <ul class="ind" id="indicatorTiles">${live.map(indicatorTile).join("")}${pending.map(pendingIndicatorTile).join("")}</ul>`;
+  }
   return `<div class="ind-head"><h3>${escapeHtml(sector)} 트래킹 지표</h3>
-      <span>원천 확정 전 · 값 연동 대기 (2026-08-23 실접속 검증한 후보)</span></div>
-    <ul class="ind" id="indicatorTiles">${items.map((item) => `<li>
-      <b>${escapeHtml(item.name)}</b><i>${escapeHtml(item.source)} · ${escapeHtml(item.cycle)}</i>
-      <span class="state ${item.state === "paid" ? "paid" : ""}">${item.state === "paid" ? "유료·수기 검토" : "자동 수집 후보"}</span>
-    </li>`).join("")}</ul>`;
+      <span>${escapeHtml(indicatorWaitingNote(source))}</span></div>
+    <ul class="ind" id="indicatorTiles">${items.map(pendingIndicatorTile).join("")}</ul>`;
+}
+
+function indicatorWaitingNote(source) {
+  if (source.status === "not_configured") return "원천 확정 · ECOS 인증키 등록 대기 (값을 만들지 않습니다)";
+  if (source.status === "error") return `원천 수집 실패 · ${source.note || "다음 갱신에 재시도"}`;
+  return "원천 확정 전 · 값 연동 대기 (2026-08-23 실접속 검증한 후보)";
+}
+
+function pendingIndicatorTile(item) {
+  const label = item.state === "paid" ? "유료·수기 검토" : item.state === "fixed" ? "원천 확정 · 연동 대기" : "자동 수집 후보";
+  return `<li>
+    <b>${escapeHtml(item.name)}</b><i>${escapeHtml(item.source)} · ${escapeHtml(item.cycle)}</i>
+    <span class="state ${item.state === "paid" ? "paid" : ""}">${label}</span>
+  </li>`;
 }
 
 // ---------------------------------------------------------------------------
