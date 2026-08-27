@@ -202,10 +202,13 @@ ul { padding: 0; list-style: none; }
 .hidden-columns { margin: 4px 0 0; color: var(--faint); font-size: 10.5px; }
 .hidden-columns:empty { display: none; }
 
+/* 좁은 화면에서는 표가 화면보다 넓어서 자체 스크롤이 필요하다. 이게 기본값이다. */
 .table-region { min-width: 0; min-height: 320px; max-height: calc(100vh - 210px); overflow: auto; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
 .universe-table { width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; font-variant-numeric: tabular-nums; }
-.universe-table th, .universe-table td { height: 26px; padding: 2px 6px; border-bottom: 1px solid var(--line); background-clip: padding-box; text-align: center; white-space: nowrap; }
+.universe-table th, .universe-table td { height: 26px; padding: 2px 5px; border-bottom: 1px solid var(--line); background-clip: padding-box; text-align: center; white-space: nowrap; }
 .universe-table thead th { position: sticky; z-index: 7; background: var(--surface-3); color: var(--muted); font-size: 10.5px; font-weight: 800; }
+/* 페이지를 내려도 열 이름이 뷰포트 상단에 남는다. 아래 행이 비쳐 보이지 않게 그림자로 경계를 준다. */
+.universe-table thead tr:nth-child(2) th { box-shadow: 0 1px 0 var(--line-strong); }
 .universe-table thead tr:first-child th { top: 0; height: 26px; border-bottom: 1px solid var(--line-strong); }
 .universe-table thead tr:nth-child(2) th { top: 26px; height: 24px; border-bottom: 1px solid var(--line-strong); font-weight: 700; }
 .universe-table thead .group-head { color: var(--ink); text-align: center; }
@@ -332,6 +335,15 @@ table.fin { width: 100%; border-collapse: collapse; font-size: 11.5px; font-vari
 .main.has-drawer .kpi dt { font-size: 10px; }
 .main.has-drawer .kpi small { font-size: 10px; }
 .main.has-drawer .ind { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* 2026-08-27 사용자 결정: 표를 따로 스크롤하지 않고 페이지를 내리면 종목이 쭉 이어지게 한다.
+   그러려면 이 상자가 스크롤 컨테이너가 아니어야 한다 — overflow가 걸려 있으면 thead의 sticky가
+   페이지가 아니라 상자에 붙어서, 페이지를 내릴 때 열 이름이 같이 사라진다.
+   표가 화면에 들어가는 폭(확정 #1의 기준인 1440)에서만 적용한다. 그보다 좁으면 표가 화면보다 넓어
+   페이지가 통째로 가로로 밀린다(390폭에서 500px 실측). */
+@media (min-width: 1440px) {
+  .table-region { min-height: 0; max-height: none; overflow: visible; }
+}
+
 @media (max-width: 1600px) {
   /* 드로어가 열리면 본문이 좁아진다. 섹터 지수 차트를 한 단으로 펴야 축 글자가 읽힌다. */
   .main.has-drawer .sec-grid { grid-template-columns: minmax(0, 1fr); }

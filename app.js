@@ -1173,7 +1173,7 @@ function tableHtml() {
       <span class="visible-count" id="visibleCount">${visible.length} / ${state.snapshot?.stocks?.length || 0}종목</span>
       <span class="return-heat-legend" aria-label="수익률 셀 색상: 0은 무채색, 상승은 빨강, 하락은 파랑, 진할수록 변동폭이 큼">하락<i class="return-heat-legend__bar" aria-hidden="true"></i>상승</span>
     </div>
-    <div id="tableScroller" class="table-region" role="region" tabindex="0" aria-label="종목 비교표 (가로·세로 스크롤)">
+    <div id="tableScroller" class="table-region" role="region" tabindex="0" aria-label="종목 비교표">
       <table id="universeTable" class="universe-table">
         <thead id="tableHead"><tr>${groupRow}</tr><tr>${leafRow}</tr></thead>
         <tbody id="tableBody">${body}</tbody>
@@ -1215,17 +1215,19 @@ function viewHtml() {
 
 function renderView({ preserveScroll = false } = {}) {
   if (!state.snapshot) return;
+  // 표가 더 이상 따로 스크롤되지 않는다(2026-08-27). 세로 위치는 페이지 스크롤에서 지킨다.
+  // 실시간 체결이 1초마다 다시 그리므로 이걸 놓치면 화면이 계속 맨 위로 튄다.
   const scroller = $("#tableScroller");
-  if (preserveScroll && scroller) {
-    state.tableScrollLeft = scroller.scrollLeft;
-    state.tableScrollTop = scroller.scrollTop;
+  if (preserveScroll) {
+    state.tableScrollLeft = scroller ? scroller.scrollLeft : 0;
+    state.tableScrollTop = window.scrollY;
   }
   $("#view").innerHTML = viewHtml();
   renderBreadthValues();
   const next = $("#tableScroller");
-  if (preserveScroll && next) {
-    next.scrollLeft = state.tableScrollLeft;
-    next.scrollTop = state.tableScrollTop;
+  if (preserveScroll) {
+    if (next) next.scrollLeft = state.tableScrollLeft;
+    if (state.tableScrollTop) window.scrollTo({ top: state.tableScrollTop });
   }
 }
 
