@@ -1,27 +1,27 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-08-27T13:56:25.893Z",
+  "builtAt": "2026-08-28T00:00:01.671Z",
   "mode": "live",
-  "generatedAt": "2026-08-27T13:55:40.799Z",
-  "quotesGeneratedAt": "2026-08-27T13:56:25.829Z",
-  "heavyFingerprint": "{\"consensus\":\"2026-08-27T06:31:43.735520Z\",\"actuals\":\"2026-08-27T06:31:54.149443Z\",\"indicators\":null,\"sectorIndices\":\"2026-08-27T09:00:37.569Z\",\"sectorIndexDays\":250,\"stockCount\":76,\"mode\":\"live\",\"assets\":[\"9e082db7d77b940e\",\"41d8c628011a0cc0\",\"de473b4f202a0e5d\"]}",
+  "generatedAt": "2026-08-28T00:00:01.333Z",
+  "quotesGeneratedAt": "2026-08-28T00:00:01.333Z",
+  "heavyFingerprint": "{\"consensus\":\"2026-08-27T23:00:05.517709Z\",\"actuals\":\"2026-08-27T22:01:32.942349Z\",\"indicators\":null,\"sectorIndices\":\"2026-08-27T09:00:37.569Z\",\"sectorIndexDays\":250,\"stockCount\":76,\"mode\":\"live\",\"assets\":[\"9e082db7d77b940e\",\"41d8c628011a0cc0\",\"de473b4f202a0e5d\"]}",
   "stockCount": 76,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
   "sources": {
     "quote": {
       "source": "kiwoom",
-      "updatedAt": "2026-08-27T09:00:34.763Z",
+      "updatedAt": "2026-08-27T23:49:59.976Z",
       "status": "ok"
     },
     "actuals": {
       "source": "OpenDART",
-      "updatedAt": "2026-08-27T06:31:54.149443Z",
+      "updatedAt": "2026-08-27T22:01:32.942349Z",
       "status": "ok"
     },
     "consensus": {
       "source": "ConsenDB.xlsx",
-      "updatedAt": "2026-08-27T06:31:43.735520Z",
+      "updatedAt": "2026-08-27T23:00:05.517709Z",
       "status": "partial"
     },
     "indicators": {
