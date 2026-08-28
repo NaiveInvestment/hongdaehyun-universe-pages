@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-08-28T04:10:01.490Z",
+  "builtAt": "2026-08-28T04:15:01.461Z",
   "mode": "live",
   "generatedAt": "2026-08-28T03:05:01.375Z",
-  "quotesGeneratedAt": "2026-08-28T04:10:01.443Z",
+  "quotesGeneratedAt": "2026-08-28T04:15:01.416Z",
   "heavyFingerprint": "{\"consensus\":\"2026-08-28T03:00:02.529856Z\",\"actuals\":\"2026-08-27T22:01:32.942349Z\",\"indicators\":null,\"sectorIndices\":\"2026-08-27T09:00:37.569Z\",\"sectorIndexDays\":250,\"stockCount\":76,\"mode\":\"live\",\"assets\":[\"9e082db7d77b940e\",\"41d8c628011a0cc0\",\"de473b4f202a0e5d\"]}",
   "stockCount": 76,
   "realtime": false,
@@ -11,7 +11,7 @@
   "sources": {
     "quote": {
       "source": "kiwoom",
-      "updatedAt": "2026-08-28T04:09:51.562Z",
+      "updatedAt": "2026-08-28T04:14:51.762Z",
       "status": "ok"
     },
     "actuals": {
