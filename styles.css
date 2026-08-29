@@ -10,6 +10,7 @@
   --good: #4fd19a;
   --series-1: #8fb7e0; --series-2: #f2b84b; --series-3: #4fd19a; --series-4: #c08fe0;
   --return-heat-base: #151b22; --return-heat-positive: #ff0000; --return-heat-negative: #4a86e8;
+  --tick-up: rgba(255, 107, 122, .30); --tick-down: rgba(90, 162, 255, .30);
   --heat-ink: #ffffff;
   --sidebar: 236px; --drawer: 460px;
   --font: "Malgun Gothic", "맑은 고딕", "Segoe UI", -apple-system, sans-serif;
@@ -27,6 +28,7 @@
   --series-1: #1f4e7f; --series-2: #b8860b; --series-3: #1f8f63; --series-4: #7b4ea8;
   --return-heat-base: #ffffff;
   --heat-ink: #08172b;
+  --tick-up: rgba(197, 34, 61, .18); --tick-down: rgba(21, 95, 168, .18);
 }
 
 * { box-sizing: border-box; }
@@ -226,6 +228,20 @@ ul { padding: 0; list-style: none; }
 .universe-table td:nth-child(1), .universe-table th.sticky-sector { left: 0; width: 56px; min-width: 56px; max-width: 56px; text-align: left; }
 .universe-table td:nth-child(2), .universe-table th.sticky-stock { left: 56px; width: 112px; min-width: 112px; max-width: 112px; text-align: left; box-shadow: inset -1px 0 0 var(--line-strong); }
 .universe-table tbody tr[aria-selected="true"] td:nth-child(1) { box-shadow: inset 3px 0 0 var(--accent); }
+
+/* 틱 플래시 (2026-08-27). 초당 20건 넘게 체결이 들어오는데 숫자만 조용히 갈아끼워져
+   화면이 멈춘 것처럼 보였다. 값이 바뀐 현재가 셀만 잠깐 물들였다 뺀다.
+   색은 프로젝트 규약 그대로 오르면 빨강·내리면 파랑이고, 표 전체가 번쩍이지 않게 현재가 한 칸만 한다. */
+@keyframes hdu-tick-up {
+  from { background-color: var(--tick-up); }
+  to { background-color: transparent; }
+}
+@keyframes hdu-tick-down {
+  from { background-color: var(--tick-down); }
+  to { background-color: transparent; }
+}
+.universe-table td.tick-up { animation: hdu-tick-up .7s ease-out; }
+.universe-table td.tick-down { animation: hdu-tick-down .7s ease-out; }
 .universe-table .base-col { min-width: 46px; }
 .universe-table .price-col { width: 62px; min-width: 62px; }
 .universe-table .market-cap-col { width: 66px; min-width: 66px; }
@@ -391,4 +407,4 @@ table.fin { width: 100%; border-collapse: collapse; font-size: 11.5px; font-vari
   .kpi-rate strong { font-size: 10.5px; }
   .kpi-summary-toggle { gap: 4px 10px; }
 }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

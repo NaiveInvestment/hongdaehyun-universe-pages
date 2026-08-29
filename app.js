@@ -1452,12 +1452,35 @@ function updateReturnCell(root, key, value) {
   }
 }
 
+// 값이 바뀐 셀을 잠깐 물들인다. 같은 클래스를 다시 붙이면 애니메이션이 재생되지 않으므로
+// 지웠다가 강제 리플로우 뒤 다시 붙인다.
+function flashTick(cell, delta) {
+  if (!cell || !Number.isFinite(delta) || delta === 0) return;
+  cell.classList.remove("tick-up", "tick-down");
+  void cell.offsetWidth;
+  cell.classList.add(delta > 0 ? "tick-up" : "tick-down");
+}
+
+// 화면에 찍혀 있던 숫자를 되읽어 방향을 구한다. 서버가 직전 값을 따로 주지 않으므로 이게 가장 단순하다.
+function renderedNumber(text) {
+  const parsed = Number(String(text ?? "").replace(/[^\d.-]/g, ""));
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function updateLiveRow(stock) {
   const row = $(`#tableBody tr[data-code="${stock.code}"]`);
   if (!row) return;
   const price = row.querySelector('[data-live-field="quote.price"]');
   const marketCap = row.querySelector('[data-live-field="quote.marketCap"]');
-  if (price) price.textContent = formatPrice(stock.quote?.price);
+  if (price) {
+    const nextText = formatPrice(stock.quote?.price);
+    if (price.textContent !== nextText) {
+      const before = renderedNumber(price.textContent);
+      const after = renderedNumber(nextText);
+      price.textContent = nextText;
+      if (before != null && after != null) flashTick(price, after - before);
+    }
+  }
   if (marketCap) marketCap.textContent = formatNumber(stock.quote?.marketCap);
   for (const key of ["d1", "d5", "d20", "ytd", "y1", "drawdown52w"]) updateReturnCell(row, key, stock.performance?.[key]);
   for (const [compute, calculate] of Object.entries(COMPUTED)) {
@@ -1771,9 +1794,25 @@ function mergeQuotesDelta(snapshot, quotes) {
   return snapshot;
 }
 
-// 브라우저 QA가 시세 델타 병합을 직접 검사할 수 있게 열어 둔다.
-// 60초 주기를 기다리지 않고 합성 델타를 넣어 표가 실제로 갱신되는지 본다.
-if (RUNTIME.staticMode) window.__hduTest = { mergeQuotesDelta: (quotes) => applyQuotesDelta(quotes) };
+// 브라우저 QA 전용 seam. state와 렌더 함수가 모듈 스코프라 밖에서 실제 경로를 태울 방법이 없다.
+//  - mergeQuotesDelta: 60초 주기를 기다리지 않고 합성 시세 델타를 병합해 본다(정적 배포본).
+//  - simulateTick: 장이 닫혀 체결이 없을 때도 틱 플래시 경로를 검사한다. 값은 되돌린다.
+window.__hduTest = {
+  mergeQuotesDelta: (quotes) => applyQuotesDelta(quotes),
+  simulateTick: (code, delta) => {
+    const stock = state.snapshot?.stocks.find((item) => item.code === code);
+    if (!stock) return null;
+    const original = stock.quote.price;
+    stock.quote = { ...stock.quote, price: original + delta };
+    // flushLiveUpdates는 payload.quote.code로 종목을 찾는다. fixture의 quote에는 code가 없어
+    // 여기서 반드시 채워 줘야 실제 갱신 경로를 탄다.
+    state.liveUpdates.set(code, { quote: { ...stock.quote, code } });
+    return () => {
+      stock.quote = { ...stock.quote, price: original };
+      state.liveUpdates.set(code, { quote: { ...stock.quote, code } });
+    };
+  },
+};
 
 function applyQuotesDelta(quotes) {
   if (!state.snapshot) return;
