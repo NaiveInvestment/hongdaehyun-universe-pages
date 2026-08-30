@@ -102,15 +102,18 @@ const INDICATOR_CATALOG = {
     { name: "사우디 OSP", source: "Reuters 기사 파싱", cycle: "월", state: "auto" },
   ],
   "화학": [
+    { name: "폴리에틸렌", source: "SunSirs 295·334·435", cycle: "일", state: "fixed" },
+    { name: "폴리프로필렌", source: "SunSirs 718", cycle: "일", state: "fixed" },
+    { name: "합성고무", source: "SunSirs 358·388", cycle: "일", state: "fixed" },
+    { name: "PVC", source: "SunSirs 107", cycle: "일", state: "fixed" },
     { name: "나프타", source: "페트로넷", cycle: "일", state: "auto" },
-    { name: "에틸렌·PE·PP 중국 현물", source: "SunSirs", cycle: "일", state: "auto" },
     { name: "폴리실리콘", source: "InfoLink", cycle: "주", state: "auto" },
     { name: "품목별 수출", source: "관세청 API", cycle: "월", state: "auto" },
     { name: "중국 제조업 PMI", source: "NBS", cycle: "월", state: "auto" },
   ],
   "희토류": [
+    { name: "디스프로슘 산화물", source: "SunSirs 309", cycle: "일", state: "fixed" },
     { name: "NdPr 산화물", source: "생의사 100ppi", cycle: "일", state: "auto" },
-    { name: "Dy 산화물", source: "생의사 100ppi", cycle: "일", state: "auto" },
     { name: "ACREI 희토류 지수", source: "ACREI", cycle: "월", state: "auto" },
     { name: "중국 수출량", source: "GACC", cycle: "월", state: "auto" },
     { name: "NdFeB 자석가", source: "무료 원천 없음", cycle: "월", state: "paid" },
@@ -1066,10 +1069,19 @@ function indicatorPeriodLabel(tile) {
 
 // 확정 원천이 붙은 지표 하나. 최신값 · 직전 대비 변화 · 스파크라인.
 // 한 지표가 두 계열을 가질 수 있다(예대금리차 신규·잔액, 연체율 기업·가계).
+// 금리는 소수 셋째 자리까지가 뜻이 있지만(3.788%) 위안/톤 가격은 정수다(10,612위안).
+// 자릿수를 주기가 아니라 값의 크기로 정한다.
+function indicatorDigits(tile) {
+  const largest = Math.max(...tile.lines.map((line) => Math.abs(line.latest ?? 0)), 0);
+  if (largest >= 1000) return 0;
+  if (largest >= 100) return 1;
+  return tile.cycle === "D" ? 3 : 2;
+}
+
 function indicatorTile(tile) {
   const rows = tile.lines.map((line) => `<div class="ind-line">
     ${line.label ? `<em>${escapeHtml(line.label)}</em>` : ""}
-    <b>${line.latest == null ? "-" : formatNumber(line.latest, tile.cycle === "D" ? 3 : 2)}<u>${escapeHtml(tile.unit)}</u></b>
+    <b>${line.latest == null ? "-" : formatNumber(line.latest, indicatorDigits(tile))}<u>${escapeHtml(tile.unit)}</u></b>
     <span class="${numberClass(line.change)}">${formatIndicatorChange(line.change, tile.changeMode)}</span>
     <span class="ind-spark">${sparkline(line.spark, 84, 20)}</span>
   </div>`).join("");
@@ -1120,9 +1132,10 @@ function indicatorTiles(sector) {
     // 확정된 지표는 실제 타일로, 아직 원천이 없는 지표는 같은 줄에 대기 카드로 남는다.
     const liveKeys = new Set(live.map((tile) => tile.name));
     const pending = items.filter((item) => !liveKeys.has(item.name));
-    const note = state.snapshot?.indicators?.sampleKey
-      ? "한국은행 ECOS · 공개 sample 키(요청당 10행 제한)"
-      : "한국은행 ECOS";
+    // 원천이 섹터마다 다르다(금융·보험 = ECOS, 화학·희토류 = SunSirs). 그 섹터가 실제로 쓰는 것만 적는다.
+    const providerNames = { ecos: "한국은행 ECOS", sunsirs: "SunSirs 중국 현물" };
+    const providers = [...new Set(live.map((tile) => providerNames[tile.provider] || tile.provider).filter(Boolean))];
+    const note = providers.join(" · ") + (state.snapshot?.indicators?.sampleKey ? " · 공개 sample 키(요청당 10행 제한)" : "");
     return `<div class="ind-head"><h3>${escapeHtml(sector)} 트래킹 지표</h3>
         <span>${escapeHtml(note)} · 기준 ${escapeHtml(formatTimestamp(source.updatedAt || state.snapshot?.indicators?.loadedAt))}${source.stale ? " · 갱신 지연" : ""}</span></div>
       <ul class="ind" id="indicatorTiles">${live.map(indicatorTile).join("")}${pending.map(pendingIndicatorTile).join("")}</ul>`;

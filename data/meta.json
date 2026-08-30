@@ -1,32 +1,32 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-08-30T12:02:53.792Z",
+  "builtAt": "2026-08-30T12:24:23.106Z",
   "mode": "live",
-  "generatedAt": "2026-08-30T12:02:53.612Z",
-  "quotesGeneratedAt": "2026-08-30T12:02:53.612Z",
-  "heavyFingerprint": "{\"consensus\":\"2026-08-30T11:58:46.535848Z\",\"actuals\":\"2026-08-30T12:00:02.489183Z\",\"indicators\":\"2026-08-30T11:58:47.107Z\",\"sectorIndices\":\"2026-08-30T11:58:44.674Z\",\"sectorIndexDays\":250,\"stockCount\":76,\"mode\":\"live\",\"assets\":[\"63f6b23ba988cf3d\",\"93cbb161274b12cc\",\"e91176ec7177eac3\"]}",
+  "generatedAt": "2026-08-30T12:24:22.918Z",
+  "quotesGeneratedAt": "2026-08-30T12:24:22.918Z",
+  "heavyFingerprint": "{\"consensus\":\"2026-08-30T12:16:03.151404Z\",\"actuals\":\"2026-08-30T12:16:08.525410Z\",\"indicators\":\"2026-08-30T12:16:07.459Z\",\"sectorIndices\":\"2026-08-30T12:16:00.792Z\",\"sectorIndexDays\":250,\"stockCount\":76,\"mode\":\"live\",\"assets\":[\"63f6b23ba988cf3d\",\"cd0c545840f9b925\",\"e91176ec7177eac3\"]}",
   "stockCount": 76,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
   "sources": {
     "quote": {
       "source": "kiwoom",
-      "updatedAt": "2026-08-30T11:58:45.035Z",
+      "updatedAt": "2026-08-30T12:16:01.292Z",
       "status": "ok"
     },
     "actuals": {
       "source": "OpenDART",
-      "updatedAt": "2026-08-30T12:00:02.489183Z",
+      "updatedAt": "2026-08-30T12:16:08.525410Z",
       "status": "ok"
     },
     "consensus": {
       "source": "ConsenDB.xlsx",
-      "updatedAt": "2026-08-30T11:58:46.535848Z",
+      "updatedAt": "2026-08-30T12:16:03.151404Z",
       "status": "partial"
     },
     "indicators": {
       "source": "한국은행 ECOS",
-      "updatedAt": "2026-08-30T11:58:47.107Z",
+      "updatedAt": "2026-08-30T12:16:07.459Z",
       "status": "ok"
     }
   },
@@ -40,9 +40,11 @@
   "indicators": {
     "sectors": [
       "금융",
-      "보험"
+      "보험",
+      "화학",
+      "희토류"
     ],
-    "tiles": 9,
+    "tiles": 14,
     "sampleKey": false
   }
 }
