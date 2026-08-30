@@ -35,8 +35,8 @@ const SOURCE_LABELS = { quote: "시세", actuals: "공시", consensus: "컨센�
 const HORIZON_LABELS = { oneMonth: "1M 평균", threeMonth: "3M 평균", highest: "3M 최고" };
 // 2026-08-27 사용자 결정: 섹터 지수는 YTD 기준으로 본다. 원래 3M·6M·1Y뿐이라 YTD가 아예 없었다.
 // "ytd"는 거래일 개수가 아니라 날짜로 자르므로 windowSlice가 따로 처리한다.
-const RANGES = [["ytd", "YTD"], [62, "3M"], [124, "6M"], [0, "1Y"]];
-const BENCHMARK_MODES = [["KOSPI", "KOSPI"], ["KOSDAQ", "KOSDAQ"], ["both", "둘 다"]];
+// 2026-08-30 사용자 결정: 1Y를 빼고 1M을 넣었다. 거래일 기준 1M≈21 · 3M≈62 · 6M≈124일.
+const RANGES = [["ytd", "YTD"], [21, "1M"], [62, "3M"], [124, "6M"]];
 const RETURN_HEAT_CAPS = {
   d1: { positive: 10, negative: 5 },
   d5: { positive: 20, negative: 10 },
@@ -123,7 +123,6 @@ const state = {
   kpiCollapsed: true,
   columnGroups: new Set(),
   range: "ytd",
-  bench: "both",
   theme: "dark",
   liveUpdates: new Map(),
   tableScrollLeft: 0,
@@ -875,20 +874,14 @@ function ytdWindowLength(dates = indexDates()) {
   return dates.length;
 }
 
-function benchButtons() {
-  return BENCHMARK_MODES.map(([value, label]) => `<button class="btn tiny" type="button" data-bench="${value}" aria-pressed="${state.bench === value}">${label}</button>`).join("");
-}
-
+// 2026-08-30 사용자 결정: KOSPI·KOSDAQ 토글을 없애고 항상 둘 다 띄운다.
+// 셋 중 하나를 고르는 버튼이었는데 사실상 늘 "둘 다"로 두고 썼다.
 function benchmarkSeriesFor(dates) {
   const series = [];
-  if (state.bench !== "KOSDAQ") {
-    const kospi = benchmarkOf("KOSPI");
-    if (kospi) series.push({ name: "KOSPI", values: windowSlice(kospi.values), cls: "s-ctx" });
-  }
-  if (state.bench !== "KOSPI") {
-    const kosdaq = benchmarkOf("KOSDAQ");
-    if (kosdaq) series.push({ name: "KOSDAQ", values: windowSlice(kosdaq.values), cls: "s-ctx2" });
-  }
+  const kospi = benchmarkOf("KOSPI");
+  if (kospi) series.push({ name: "KOSPI", values: windowSlice(kospi.values), cls: "s-ctx" });
+  const kosdaq = benchmarkOf("KOSDAQ");
+  if (kosdaq) series.push({ name: "KOSDAQ", values: windowSlice(kosdaq.values), cls: "s-ctx2" });
   return series.filter((item) => item.values.length === dates.length || item.values.length > 1);
 }
 
@@ -908,7 +901,7 @@ function homeGroupChart() {
   const chart = lineChart({ series: [...series, ...benchmarkSeriesFor(dates)], labels: dates, ...box });
   return `<div class="card" id="homeGroupChart">
     <div class="card-head"><h3>8섹터 상대주가 vs 벤치마크</h3>
-      <span class="tools">${benchButtons()}<span class="gap"></span>${rangeButtons()}</span></div>
+      <span class="tools">${rangeButtons()}</span></div>
     ${chart}
     <div class="chart-legend">${SECTOR_ORDER.map((sector, index) => `<span><i class="s${index + 1}"></i>${escapeHtml(sector)}</span>`).join("")}
       <span><i class="ctx"></i>KOSPI</span><span><i class="ctx2"></i>KOSDAQ</span>
@@ -986,7 +979,7 @@ function sectorTrend(sector, stocks) {
   return `<div class="sec-grid">
     <div class="card" id="sectorTrendCard">
       <div class="card-head"><h3>${escapeHtml(sector)} 섹터 지수 vs 벤치마크</h3>
-        <span class="tools">${benchButtons()}<span class="gap"></span>${rangeButtons()}</span></div>
+        <span class="tools">${rangeButtons()}</span></div>
       ${chart}
       <div class="chart-legend">${globalLabel}
         <span><i class="ctx"></i>KOSPI</span><span><i class="ctx2"></i>KOSDAQ</span>
@@ -1704,8 +1697,6 @@ function bindEvents() {
     if (chip) return toggleColumnGroup(chip.dataset.columnGroup);
     const range = event.target.closest("[data-range]");
     if (range) { state.range = parseRangeValue(range.dataset.range); return renderView({ preserveScroll: true }); }
-    const bench = event.target.closest("[data-bench]");
-    if (bench) { state.bench = bench.dataset.bench; return renderView({ preserveScroll: true }); }
     if (event.target.closest("#kpiSummaryToggle")) return toggleKpiDetails();
     const row = event.target.closest("tr[data-code]");
     if (row) location.hash = `#/stock/${row.dataset.code}`;
