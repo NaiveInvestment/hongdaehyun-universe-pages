@@ -1,33 +1,33 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-08-30T11:38:17.123Z",
+  "builtAt": "2026-08-30T12:02:53.792Z",
   "mode": "live",
-  "generatedAt": "2026-08-30T11:38:16.926Z",
-  "quotesGeneratedAt": "2026-08-30T11:38:16.926Z",
-  "heavyFingerprint": "{\"consensus\":\"2026-08-30T11:23:01.955000Z\",\"actuals\":\"2026-08-30T11:23:07.462729Z\",\"indicators\":null,\"sectorIndices\":\"2026-08-30T11:22:59.885Z\",\"sectorIndexDays\":250,\"stockCount\":76,\"mode\":\"live\",\"assets\":[\"63f6b23ba988cf3d\",\"5d40f83690cc21a4\",\"e91176ec7177eac3\"]}",
+  "generatedAt": "2026-08-30T12:02:53.612Z",
+  "quotesGeneratedAt": "2026-08-30T12:02:53.612Z",
+  "heavyFingerprint": "{\"consensus\":\"2026-08-30T11:58:46.535848Z\",\"actuals\":\"2026-08-30T12:00:02.489183Z\",\"indicators\":\"2026-08-30T11:58:47.107Z\",\"sectorIndices\":\"2026-08-30T11:58:44.674Z\",\"sectorIndexDays\":250,\"stockCount\":76,\"mode\":\"live\",\"assets\":[\"63f6b23ba988cf3d\",\"93cbb161274b12cc\",\"e91176ec7177eac3\"]}",
   "stockCount": 76,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
   "sources": {
     "quote": {
       "source": "kiwoom",
-      "updatedAt": "2026-08-30T11:23:00.280Z",
+      "updatedAt": "2026-08-30T11:58:45.035Z",
       "status": "ok"
     },
     "actuals": {
       "source": "OpenDART",
-      "updatedAt": "2026-08-30T11:23:07.462729Z",
+      "updatedAt": "2026-08-30T12:00:02.489183Z",
       "status": "ok"
     },
     "consensus": {
       "source": "ConsenDB.xlsx",
-      "updatedAt": "2026-08-30T11:23:01.955000Z",
+      "updatedAt": "2026-08-30T11:58:46.535848Z",
       "status": "partial"
     },
     "indicators": {
       "source": "한국은행 ECOS",
-      "updatedAt": null,
-      "status": "not_configured"
+      "updatedAt": "2026-08-30T11:58:47.107Z",
+      "status": "ok"
     }
   },
   "sectorIndices": {
@@ -38,8 +38,11 @@
     ]
   },
   "indicators": {
-    "sectors": [],
-    "tiles": 0,
+    "sectors": [
+      "금융",
+      "보험"
+    ],
+    "tiles": 9,
     "sampleKey": false
   }
 }
