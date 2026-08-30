@@ -236,6 +236,8 @@ ul { padding: 0; list-style: none; }
 .universe-table thead tr:nth-child(2) th { top: 26px; height: 30px; border-bottom: 1px solid var(--line-strong); font-weight: 700; white-space: normal; line-height: 1.15; word-break: keep-all; }
 .universe-table thead tr:nth-child(2) th button { white-space: normal; line-height: 1.15; }
 .universe-table thead .group-head { color: var(--ink); text-align: center; }
+/* 열 이름 아래 줄에 기준을 적는다(목표가 괴리 / (3M 평균)). 항상 줄을 바꾸고 한 단계 작게 쓴다. */
+.universe-table thead .col-sub { display: block; color: var(--faint); font-size: 9px; font-weight: 700; line-height: 1.15; }
 .universe-table thead button { position: relative; width: 100%; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
 .universe-table thead button:focus { outline: 0; }
 .universe-table thead button:focus-visible { box-shadow: inset 0 -2px 0 var(--accent); }

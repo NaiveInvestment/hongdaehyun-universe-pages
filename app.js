@@ -371,7 +371,7 @@ function buildConsensusSections() {
       columns: [
         { key: "sector", label: "섹터", sort: "sector", className: "sticky-sector", kind: "sector" },
         { key: "name", label: "종목", sort: "name", className: "sticky-stock", kind: "name" },
-        { key: "targetGap", label: `목표가 괴리 (${targetPriceLabel()})`, sort: "computed.targetGap", className: "target-col revision-col", kind: "computed", compute: "targetGap", heat: "targetGap" },
+        { key: "targetGap", label: "목표가 괴리", subLabel: `(${targetPriceLabel()})`, sort: "computed.targetGap", className: "target-col revision-col", kind: "computed", compute: "targetGap", heat: "targetGap" },
       ],
     },
     ...CONSENSUS_METRICS.map(({ key, label, metric, className }) => ({
@@ -1146,10 +1146,12 @@ function pendingIndicatorTile(item) {
 // ---------------------------------------------------------------------------
 // 종목 표
 // ---------------------------------------------------------------------------
-function sortButton(label, key) {
+function sortButton(label, key, subLabel = "") {
   const active = state.sortKey === key;
   const arrow = active && state.sortDirection === "asc" ? "↑" : "↓";
-  return `<button type="button" data-sort="${key}" data-active="${active}" data-arrow="${arrow}" aria-label="${escapeHtml(label)} 기준 정렬">${escapeHtml(label)}</button>`;
+  const full = subLabel ? `${label} ${subLabel}` : label;
+  const sub = subLabel ? ` <span class="col-sub">${escapeHtml(subLabel)}</span>` : "";
+  return `<button type="button" data-sort="${key}" data-active="${active}" data-arrow="${arrow}" aria-label="${escapeHtml(full)} 기준 정렬">${escapeHtml(label)}${sub}</button>`;
 }
 
 // 최고 보기에서는 추정 칸만 최고 추정치로 바꾼다. 확정 실적은 기준이 하나뿐이라 그대로다.
@@ -1284,14 +1286,14 @@ function tableHtml() {
   const sections = visibleSections(hidden);
   const groupRow = sections.map((section) => {
     if (isPlainSection(section)) {
-      return section.columns.map((column, index) => `<th class="${column.className} ${section.key === "identity" ? "" : columnEdgeClass(column, index)}" rowspan="2" scope="col">${sortButton(column.label, column.sort)}</th>`).join("");
+      return section.columns.map((column, index) => `<th class="${column.className} ${section.key === "identity" ? "" : columnEdgeClass(column, index)}" rowspan="2" scope="col">${sortButton(column.label, column.sort, column.subLabel)}</th>`).join("");
     }
     return `<th class="group-head group-${section.key} section-start" colspan="${section.columns.length}" scope="colgroup">${escapeHtml(section.label)}</th>`;
   }).join("");
   const leafRow = sections
     .filter((section) => !isPlainSection(section))
     .flatMap((section) => section.columns.map((column, index) =>
-      `<th class="${column.className} ${columnEdgeClass(column, index)}" scope="col">${column.sort ? sortButton(column.label, column.sort) : escapeHtml(column.label)}</th>`))
+      `<th class="${column.className} ${columnEdgeClass(column, index)}" scope="col">${column.sort ? sortButton(column.label, column.sort, column.subLabel) : escapeHtml(column.label)}</th>`))
     .join("");
 
   // table-layout: fixed 는 첫 행의 폭만 본다. 첫 행은 colspan 묶음 헤더라서 열마다 준 폭이 전부 무시되고
