@@ -46,7 +46,6 @@ const RETURN_HEAT_CAPS = {
   targetGap: { positive: 50, negative: 25 },
 };
 const THEME_STORAGE_KEY = "hongdaehyun-universe:theme-v1";
-const KPI_COLLAPSE_STORAGE_KEY = "hongdaehyun-universe:kpi-summary-collapsed-v2";
 const COLUMN_GROUP_STORAGE_KEY = "hongdaehyun-universe:column-groups-v1";
 
 // 섹터별 트래킹 지표 — 2026-08-23 실접속으로 확인한 원천 "후보"다. 정본은 docs/indicator-sources.md.
@@ -120,7 +119,6 @@ const state = {
   detail: null,
   detailCode: null,
   detailLoading: false,
-  kpiCollapsed: true,
   columnGroups: new Set(),
   range: "ytd",
   theme: "dark",
@@ -145,8 +143,6 @@ function writeStorage(key, value) {
 function loadPreferences() {
   const theme = readStorage(THEME_STORAGE_KEY);
   state.theme = theme === "light" ? "light" : "dark";
-  const collapsed = readStorage(KPI_COLLAPSE_STORAGE_KEY);
-  state.kpiCollapsed = collapsed == null ? true : collapsed === "true";
   try {
     const saved = JSON.parse(readStorage(COLUMN_GROUP_STORAGE_KEY) || "[]");
     state.columnGroups = new Set(Array.isArray(saved) ? saved.filter((key) => OPTIONAL_COLUMN_GROUPS.some((group) => group.key === key)) : []);
@@ -489,24 +485,6 @@ function directionCounts(stocks = [], key = "d1") {
 }
 
 
-function coverageBreadth(stocks = []) {
-  const periods = {};
-  for (const period of ["d1", "d5", "d20", "ytd"]) {
-    const summary = { up: 0, down: 0, flat: 0, unavailable: 0 };
-    for (const stock of stocks) {
-      const value = stock.performance?.[period];
-      if (!Number.isFinite(value)) summary.unavailable += 1;
-      else if (value > 0) summary.up += 1;
-      else if (value < 0) summary.down += 1;
-      else summary.flat += 1;
-    }
-    summary.available = summary.up + summary.down + summary.flat;
-    summary.directional = summary.up + summary.down;
-    summary.upRate = summary.directional ? (summary.up / summary.directional) * 100 : null;
-    periods[period] = summary;
-  }
-  return { total: stocks.length, periods };
-}
 
 function benchmarkOf(market) {
   return state.snapshot?.sectorIndices?.benchmarks?.[market] || null;
@@ -826,76 +804,8 @@ function kpiStripHtml() {
   </dl>`;
 }
 
-function breadthRowHtml(market, label, totalLabel) {
-  const marketId = { KOSPI: "Kospi", KOSDAQ: "Kosdaq", COVERAGE: "Coverage" }[market];
-  const periods = [["d1", "1D", "D1"], ["d5", "5D", "D5"], ["d20", "20D", "D20"], ["ytd", "YTD", "Ytd"]];
-  return `<div class="kpi-market-row" data-kpi-row="${market}" role="group" aria-label="${escapeHtml(label)} 시장 폭">
-    <div class="kpi-market-row__label"><strong>${escapeHtml(label)}</strong><span>${totalLabel} <b data-kpi-total="${market}">-</b>개</span></div>
-    ${periods.map(([period, periodLabel, periodId]) => `<article class="kpi-period" data-kpi-market="${market}" data-kpi-period="${period}" aria-label="${escapeHtml(label)} ${periodLabel}">
-      <div class="kpi-period__label"><span>${periodLabel}</span></div>
-      <div class="kpi-direction">
-        <span class="kpi-up"><em>상승</em><strong id="kpi${marketId}${periodId}Up">-</strong></span>
-        <span class="kpi-down"><em>하락</em><strong id="kpi${marketId}${periodId}Down">-</strong></span>
-        <span class="kpi-rate"><em>비중</em><strong id="kpi${marketId}${periodId}Rate">-</strong></span>
-      </div></article>`).join("")}
-  </div>`;
-}
 
-function breadthHtml() {
-  return `<section id="kpiStrip" class="kpi-strip${state.kpiCollapsed ? " is-collapsed" : ""}" aria-label="상장기업 시장 폭">
-    <button id="kpiSummaryToggle" class="kpi-summary-toggle" type="button" aria-expanded="${!state.kpiCollapsed}" aria-controls="kpiDetails">
-      <span class="kpi-summary-title">시장 폭 상세</span>
-      <span class="kpi-summary-metric"><span>KOSPI</span><strong id="kpiKospiBreadth">-</strong></span>
-      <span class="kpi-summary-metric"><span>KOSDAQ</span><strong id="kpiKosdaqBreadth">-</strong></span>
-      <span class="kpi-summary-metric"><span>내 커버리지 1D 평균</span><em id="kpiCoverageAverage">-</em></span>
-      <span class="kpi-summary-chevron" aria-hidden="true">▾</span>
-    </button>
-    <div id="kpiDetails" class="kpi-details"${state.kpiCollapsed ? " hidden" : ""}>
-      ${breadthRowHtml("KOSPI", "KOSPI", "기업")}
-      ${breadthRowHtml("KOSDAQ", "KOSDAQ", "기업")}
-      ${breadthRowHtml("COVERAGE", "내 커버리지", "종목")}
-    </div>
-  </section>`;
-}
 
-function renderBreadthValues() {
-  const breadth = state.snapshot?.marketBreadth;
-  const summaries = {
-    KOSPI: breadth?.summary?.KOSPI,
-    KOSDAQ: breadth?.summary?.KOSDAQ,
-    COVERAGE: coverageBreadth(state.snapshot?.stocks || []),
-  };
-  const marketIds = { KOSPI: "Kospi", KOSDAQ: "Kosdaq", COVERAGE: "Coverage" };
-  const periodIds = { d1: "D1", d5: "D5", d20: "D20", ytd: "Ytd" };
-  for (const [market, marketId] of Object.entries(marketIds)) {
-    const marketSummary = summaries[market];
-    $$(`[data-kpi-total="${market}"]`).forEach((element) => {
-      element.textContent = Number.isFinite(marketSummary?.total) ? formatNumber(marketSummary.total) : "-";
-    });
-    for (const [period, periodId] of Object.entries(periodIds)) {
-      const summary = marketSummary?.periods?.[period];
-      const up = $(`#kpi${marketId}${periodId}Up`);
-      const down = $(`#kpi${marketId}${periodId}Down`);
-      const rate = $(`#kpi${marketId}${periodId}Rate`);
-      if (up) up.textContent = Number.isFinite(summary?.up) ? formatNumber(summary.up) : "-";
-      if (down) down.textContent = Number.isFinite(summary?.down) ? formatNumber(summary.down) : "-";
-      if (rate) rate.textContent = Number.isFinite(summary?.upRate) ? `${summary.upRate.toFixed(1)}%` : "-";
-    }
-  }
-  const kospiSummary = summaries.KOSPI?.periods?.d1;
-  const kosdaqSummary = summaries.KOSDAQ?.periods?.d1;
-  const kospiBreadth = $("#kpiKospiBreadth");
-  const kosdaqBreadth = $("#kpiKosdaqBreadth");
-  const average = $("#kpiCoverageAverage");
-  if (kospiBreadth) kospiBreadth.textContent = kospiSummary ? `${formatNumber(kospiSummary.up)} / ${formatNumber(kospiSummary.down)}` : "-";
-  if (kosdaqBreadth) kosdaqBreadth.textContent = kosdaqSummary ? `${formatNumber(kosdaqSummary.up)} / ${formatNumber(kosdaqSummary.down)}` : "-";
-  if (average) {
-    const values = (state.snapshot?.stocks || []).map((stock) => stock.performance?.d1).filter(Number.isFinite);
-    const mean = values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
-    average.textContent = formatPercent(mean, 2);
-    average.className = numberClass(mean);
-  }
-}
 
 // ---------------------------------------------------------------------------
 // 홈 · 섹터 화면 블록
@@ -1302,7 +1212,6 @@ function viewHtml() {
         <span>단위: 원 · 억원 · % · 배</span></div></div>
     ${kpiStripHtml()}
     ${middle}
-    ${breadthHtml()}
     ${tableHtml()}
     <p class="foot-note" id="footNote">자료: Kiwoom(시세) · ConsenDB 3M(컨센서스) · OpenDART(확정 실적). 가격·수익률은 KRX 정규장 기준이고 08~09시·15:30 이후에는 NXT 체결을 띄웁니다. 거래대금은 KRX+NXT 통합입니다. 결측은 보간 없이 빈칸입니다. ${escapeHtml(fixtureNote)}</p>`;
 }
@@ -1317,7 +1226,6 @@ function renderView({ preserveScroll = false } = {}) {
     state.tableScrollTop = window.scrollY;
   }
   $("#view").innerHTML = viewHtml();
-  renderBreadthValues();
   const next = $("#tableScroller");
   if (preserveScroll) {
     if (next) next.scrollLeft = state.tableScrollLeft;
@@ -1641,7 +1549,6 @@ function flushLiveUpdates() {
     updateLiveDrawer(payload);
   }
   renderKpis();
-  renderBreadthValues();
   renderSidebar();
 }
 
@@ -1699,17 +1606,6 @@ function toggleColumnGroup(key) {
   $(`[data-column-group="${key}"]`)?.focus();
 }
 
-function toggleKpiDetails() {
-  state.kpiCollapsed = !state.kpiCollapsed;
-  writeStorage(KPI_COLLAPSE_STORAGE_KEY, String(state.kpiCollapsed));
-  const strip = $("#kpiStrip");
-  const details = $("#kpiDetails");
-  const button = $("#kpiSummaryToggle");
-  if (!strip || !details || !button) return;
-  strip.classList.toggle("is-collapsed", state.kpiCollapsed);
-  details.hidden = state.kpiCollapsed;
-  button.setAttribute("aria-expanded", String(!state.kpiCollapsed));
-}
 
 function bindEvents() {
   $("#themeToggle").addEventListener("click", toggleTheme);
@@ -1727,7 +1623,6 @@ function bindEvents() {
     if (chip) return toggleColumnGroup(chip.dataset.columnGroup);
     const range = event.target.closest("[data-range]");
     if (range) { state.range = parseRangeValue(range.dataset.range); return renderView({ preserveScroll: true }); }
-    if (event.target.closest("#kpiSummaryToggle")) return toggleKpiDetails();
     const row = event.target.closest("tr[data-code]");
     if (row) location.hash = `#/stock/${row.dataset.code}`;
   });
