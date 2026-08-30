@@ -51,6 +51,7 @@ const RETURN_HEAT_CAPS = {
 const THEME_STORAGE_KEY = "hongdaehyun-universe:theme-v1";
 const COLUMN_GROUP_STORAGE_KEY = "hongdaehyun-universe:column-groups-v1";
 const ESTIMATE_BASIS_STORAGE_KEY = "hongdaehyun-universe:estimate-basis-v1";
+const PEER_EXPANDED_STORAGE_KEY = "hongdaehyun-universe:peer-expanded-v1";
 
 // 섹터별 트래킹 지표 — 2026-08-23 실접속으로 확인한 원천 "후보"다. 정본은 docs/indicator-sources.md.
 // 원천이 확정되기 전까지는 값을 만들지 않고 대기 카드로만 노출한다(예시 수치 금지).
@@ -61,7 +62,7 @@ const INDICATOR_CATALOG = {
     { name: "기준금리", source: "ECOS 722Y001", cycle: "일", state: "fixed" },
     { name: "예대금리차", source: "ECOS 121Y006·121Y002 / 121Y015·121Y013", cycle: "월", state: "fixed" },
     { name: "은행 연체율", source: "ECOS 901Y054", cycle: "월", state: "fixed" },
-    { name: "산금채 1년", source: "ECOS 817Y002", cycle: "일", state: "fixed" },
+    { name: "은행채 AAA 1년", source: "한국자산평가 민평 E130 · 산금채 E110", cycle: "일", state: "fixed" },
     { name: "CD 91일", source: "ECOS 817Y002", cycle: "일", state: "fixed" },
   ],
   "보험": [
@@ -88,7 +89,10 @@ const INDICATOR_CATALOG = {
     { name: "배당성향", source: "OpenDART", cycle: "연", state: "auto" },
     { name: "밸류업 공시", source: "KIND", cycle: "수시", state: "auto" },
   ],
-  "AI/SW": [
+  // 2026-08-30 사용자 지시: AI/SW는 지표를 나중에 채운다. 그때까지 대기 카드도 띄우지 않는다.
+  // 후보 목록은 docs/indicator-sources.md에 남아 있다.
+  "AI/SW": [],
+  "AI/SW (보류)": [
     { name: "해외 AI 대형주", source: "Yahoo chart JSON", cycle: "일", state: "auto" },
     { name: "빅테크 CAPEX", source: "Epoch AI", cycle: "분기", state: "auto" },
     { name: "온라인쇼핑 거래액", source: "KOSIS", cycle: "월", state: "auto" },
@@ -135,6 +139,8 @@ const state = {
   columnGroups: new Set(),
   // 컨센서스 값을 무엇으로 볼지. 1M 평균 · 3M 평균(기본) · 최고 추정치.
   estimateBasis: "threeMonth",
+  // 해외 peer를 종목별로 펼칠지. 기본은 묶음 두 줄이다(열 줄이면 종목표가 접힘선 아래로 밀린다).
+  peerExpanded: false,
   range: "ytd",
   theme: "dark",
   liveUpdates: new Map(),
@@ -166,6 +172,7 @@ function loadPreferences() {
   }
   const basis = readStorage(ESTIMATE_BASIS_STORAGE_KEY);
   state.estimateBasis = ESTIMATE_BASES.some(({ key }) => key === basis) ? basis : "threeMonth";
+  state.peerExpanded = readStorage(PEER_EXPANDED_STORAGE_KEY) === "true";
 }
 
 function applyTheme() {
@@ -1084,6 +1091,21 @@ function indicatorDigits(tile) {
   return tile.cycle === "D" ? 3 : 2;
 }
 
+// 스파크라인이 몇 개월치인지 적는다. 없으면 선이 30일인지 2년인지 알 길이 없다(2026-08-30 사용자 지적).
+// 실제 데이터의 첫 날짜와 끝 날짜로 계산한다 — 창 길이를 박아 두면 적재가 짧은 원천에서 거짓말이 된다.
+function indicatorSpanLabel(tile) {
+  const dates = tile.lines.flatMap((line) => line.sparkDates || []).filter(Boolean).sort();
+  if (dates.length < 2) return dates.length ? "1개 시점" : "";
+  const first = dates[0];
+  const last = dates.at(-1);
+  const days = Math.round((Date.parse(`${last}T00:00:00Z`) - Date.parse(`${first}T00:00:00Z`)) / 86400000);
+  if (!Number.isFinite(days) || days <= 0) return "";
+  if (days < 60) return `최근 ${days}일`;
+  const months = Math.round(days / 30.4);
+  if (months < 24) return `최근 ${months}개월`;
+  return `최근 ${(days / 365).toFixed(1)}년`;
+}
+
 function indicatorTile(tile) {
   const rows = tile.lines.map((line) => `<div class="ind-line">
     ${line.label ? `<em>${escapeHtml(line.label)}</em>` : ""}
@@ -1091,11 +1113,17 @@ function indicatorTile(tile) {
     <span class="${numberClass(line.change)}">${formatIndicatorChange(line.change, tile.changeMode)}</span>
     <span class="ind-spark">${sparkline(line.spark, 84, 20)}</span>
   </div>`).join("");
-  const title = `${tile.name} ${tile.lines.map((line) => `${line.label ? `${line.label} ` : ""}${line.latest ?? "-"}${tile.unit}`).join(", ")}`;
+  // 원천 코드(121Y006/BECBLA01 …)는 읽는 사람에게 뜻이 없다. 화면에서 빼고 툴팁으로만 남긴다.
+  // 출처를 지우는 게 아니라 안 보이는 데로 옮기는 것이다.
+  const title = `${tile.name} ${tile.lines.map((line) => `${line.label ? `${line.label} ` : ""}${line.latest ?? "-"}${tile.unit}`).join(", ")}`
+    + `
+${tile.sources.join(" · ")}`;
+  const span = indicatorSpanLabel(tile);
+  const footer = [span, tile.note].filter(Boolean).join(" · ");
   return `<li class="is-live" data-indicator="${escapeHtml(tile.key)}" title="${escapeHtml(title)}">
     <b>${escapeHtml(tile.name)}<u>${escapeHtml(indicatorPeriodLabel(tile))}</u></b>
     ${rows}
-    <i>${escapeHtml(tile.sources.join(" · "))}${tile.note ? ` · ${escapeHtml(tile.note)}` : ""}</i>
+    <i>${escapeHtml(footer)}</i>
   </li>`;
 }
 
@@ -1103,12 +1131,45 @@ function indicatorTile(tile) {
 // 컨센서스·실적이 국내 전용이라 매출·OP·P/E를 채울 수 없어, 주가·1D·YTD만 담는다.
 // 해외 peer 비교 구간. 1D만으로는 흐름이 안 보인다는 지적으로 2026-08-30에 넓혔다.
 const PEER_COLUMNS = [["changePercent", "1D"], ["m1", "1M"], ["m3", "3M"], ["m6", "6M"], ["ytd", "YTD"], ["y1", "1Y"]];
+// universe.js의 PEER_GROUP_LABELS와 같은 목록. 화면 코드는 universe.js를 import하지 않아 여기에 둔다.
+const PEER_GROUP_LABELS = { neocloud: "Neocloud", colocation: "Colocation" };
+
+// 묶음 수익률은 동일가중 평균이다(지수·KPI와 같은 규칙). 값이 없는 종목은 그 칸의 분모에서 빠진다.
+function peerGroupAverage(members, key) {
+  const values = members.map((member) => member[key]).filter((value) => Number.isFinite(value));
+  if (!values.length) return null;
+  return Math.round((values.reduce((total, value) => total + value, 0) / values.length) * 10) / 10;
+}
+
+function peerGroupRows(peers) {
+  const order = [];
+  const byGroup = new Map();
+  for (const peer of peers) {
+    const group = peer.group || "기타";
+    if (!byGroup.has(group)) { byGroup.set(group, []); order.push(group); }
+    byGroup.get(group).push(peer);
+  }
+  return order.map((group) => {
+    const members = byGroup.get(group).filter((peer) => !peer.error);
+    const row = { group, label: PEER_GROUP_LABELS[group] || group, count: byGroup.get(group).length, loaded: members.length };
+    for (const [key] of PEER_COLUMNS) row[key] = peerGroupAverage(members, key);
+    return row;
+  });
+}
 
 function foreignPeerTable(sector) {
   const peers = state.snapshot?.sectorIndices?.foreignPeers?.[sector] || [];
   if (!peers.length) return "";
   const loaded = peers.filter((peer) => !peer.error && peer.days);
-  const rows = peers.map((peer) => {
+  // 종목이 많은 섹터는 묶음 두 줄만 보이고 토글로 편다. 열 줄이 표를 다 먹어 종목표가 접힘선 아래로 밀린다.
+  const grouped = peers.some((peer) => peer.group);
+  const expanded = !grouped || state.peerExpanded;
+  const groupRows = grouped ? peerGroupRows(peers).map((row) => `<tr class="peer-group">`
+    + `<td class="l">${escapeHtml(row.label)}<small>${row.loaded}종목 동일가중</small></td>`
+    + `<td class="na">-</td>`
+    + PEER_COLUMNS.map(([key]) => `<td class="${numberClass(row[key])}">${formatPercent(row[key], 1)}</td>`).join("")
+    + "</tr>").join("") : "";
+  const rows = (expanded ? peers : []).map((peer) => {
     if (peer.error) {
       return `<tr><td class="l">${escapeHtml(peer.name)}<small>${escapeHtml(peer.symbol)}</small></td>`
         + `<td class="na" colspan="${PEER_COLUMNS.length + 1}">받지 못함 · ${escapeHtml(peer.error)}</td></tr>`;
@@ -1122,13 +1183,19 @@ function foreignPeerTable(sector) {
   const note = loaded.length < peers.length
     ? `${peers.length}종목 중 ${loaded.length}종목 수신`
     : `${peers.length}종목`;
+  const toggle = grouped
+    ? `<button type="button" class="peer-toggle" data-peer-toggle aria-pressed="${expanded}">${expanded ? "묶음만 보기" : "종목별 펼치기"}</button>`
+    : "";
   return `<div class="card" id="foreignPeers">
     <div class="card-head"><h3>${escapeHtml(sector)} 해외 peer</h3>
-      <span class="unit">Yahoo Finance · 일별 종가 · ${escapeHtml(note)}</span></div>
+      <span class="unit">Yahoo Finance · 일별 종가 · ${escapeHtml(note)}</span>${toggle}</div>
     <div class="fin-wrap"><table class="fin peer">
       <thead><tr><th class="l">종목</th><th>주가</th>${PEER_COLUMNS.map(([, label]) => `<th>${label}</th>`).join("")}</tr></thead>
+      <tbody>${groupRows}</tbody>
       <tbody>${rows}</tbody></table></div>
-    <p class="note">섹터 지수에 국내 종목과 같은 무게로 들어갑니다. 상장일이 기간 시작보다 늦은 종목은 그 기간 지수에서 빠집니다.</p>
+    <p class="note">${peers.some((peer) => peer.indexed !== false)
+      ? "섹터 지수에 국내 종목과 같은 무게로 들어갑니다. 상장일이 기간 시작보다 늦은 종목은 그 기간 지수에서 빠집니다."
+      : "비교용입니다. 섹터 지수에는 들어가지 않습니다. 묶음 수익률은 동일가중 평균이고 이력이 짧아 값이 없는 종목은 그 칸에서 빠집니다."}</p>
   </div>`;
 }
 
@@ -1142,7 +1209,7 @@ function indicatorTiles(sector) {
     const liveKeys = new Set(live.map((tile) => tile.name));
     const pending = items.filter((item) => !liveKeys.has(item.name));
     // 원천이 섹터마다 다르다(금융·보험 = ECOS, 화학·희토류 = SunSirs). 그 섹터가 실제로 쓰는 것만 적는다.
-    const providerNames = { ecos: "한국은행 ECOS", sunsirs: "생의사 중국 현물·국제유가", breadth: "Naver 시장 전체", holdco: "OpenDART 출자현황 × 시총" };
+    const providerNames = { ecos: "한국은행 ECOS", sunsirs: "생의사 중국 현물·국제유가", breadth: "Naver 시장 전체", holdco: "OpenDART 출자현황 × 시총", koreaap: "한국자산평가 민평" };
     const providers = [...new Set(live.map((tile) => providerNames[tile.provider] || tile.provider).filter(Boolean))];
     const note = providers.join(" · ") + (state.snapshot?.indicators?.sampleKey ? " · 공개 sample 키(요청당 10행 제한)" : "");
     return `<div class="ind-head"><h3>${escapeHtml(sector)} 트래킹 지표</h3>
@@ -1830,6 +1897,12 @@ function bindEvents() {
     if (chip) return toggleColumnGroup(chip.dataset.columnGroup);
     const basis = event.target.closest("[data-estimate-basis]");
     if (basis) return setEstimateBasis(basis.dataset.estimateBasis);
+    if (event.target.closest("[data-peer-toggle]")) {
+      state.peerExpanded = !state.peerExpanded;
+      writeStorage(PEER_EXPANDED_STORAGE_KEY, String(state.peerExpanded));
+      renderView({ preserveScroll: true });
+      return $("[data-peer-toggle]")?.focus();
+    }
     const range = event.target.closest("[data-range]");
     if (range) { state.range = parseRangeValue(range.dataset.range); return renderView({ preserveScroll: true }); }
     const row = event.target.closest("tr[data-code]");

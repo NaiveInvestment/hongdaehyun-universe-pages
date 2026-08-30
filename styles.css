@@ -480,3 +480,10 @@ table.fin { width: 100%; border-collapse: collapse; font-size: 11.5px; font-vari
   .kpi-summary-toggle { gap: 4px 10px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* 해외 peer 묶음 줄과 펼치기 토글. 종목이 열 줄이면 종목표가 접힘선 아래로 밀린다. */
+.fin.peer tbody tr.peer-group td { background: var(--surface-2); font-weight: 800; }
+.fin.peer tbody tr.peer-group td.l small { display: block; color: var(--muted); font-size: 10px; font-weight: 600; }
+.peer-toggle { height: 24px; margin-left: 8px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 999px; background: transparent; color: var(--muted); font-size: 11px; font-weight: 700; cursor: pointer; }
+.peer-toggle:hover { color: var(--ink); background: var(--surface-3); }
+.peer-toggle[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
