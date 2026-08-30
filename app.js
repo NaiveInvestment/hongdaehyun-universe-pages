@@ -1362,15 +1362,7 @@ function viewHtml() {
   const fixtureNote = state.snapshot?.mode === "fixture"
     ? "고정 fixture 검증 모드입니다. 실제 투자 판단에 사용할 수 없습니다."
     : "행을 클릭하면 오른쪽에 종목 상세가 열립니다.";
-  const quoteSource = String(state.snapshot?.sources?.quote?.source || "").toLowerCase();
-  const cadence = RUNTIME.staticMode
-    ? "지연 스냅샷 · 실시간 아님"
-    : quoteSource === "toss"
-      ? "현재가·시총 토스 통합시세(KRX+NXT)"
-      : "현재가·1D·시총·P/E·P/B 실시간";
-  return `<div class="topbar"><h2 id="viewTitle">${escapeHtml(title)}</h2>
-      <div class="meta"><span>${cadence}</span><span>컨센·실적 08:00 · 12:00 · 18:00</span>
-        <span>단위: 원 · 억원 · % · 배</span></div></div>
+  return `<div class="topbar"><h2 id="viewTitle">${escapeHtml(title)}</h2></div>
     ${kpiStripHtml()}
     ${middle}
     ${tableHtml()}
