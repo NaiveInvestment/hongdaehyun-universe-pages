@@ -106,7 +106,8 @@ const INDICATOR_CATALOG = {
     { name: "폴리프로필렌", source: "SunSirs 718", cycle: "일", state: "fixed" },
     { name: "합성고무", source: "SunSirs 358·388", cycle: "일", state: "fixed" },
     { name: "PVC", source: "SunSirs 107", cycle: "일", state: "fixed" },
-    { name: "나프타", source: "페트로넷", cycle: "일", state: "auto" },
+    { name: "나프타 CFR 일본", source: "생의사 상품정보", cycle: "일", state: "fixed" },
+    { name: "에틸렌-나프타 스프레드", source: "생의사 상품정보", cycle: "일", state: "fixed" },
     { name: "폴리실리콘", source: "InfoLink", cycle: "주", state: "auto" },
     { name: "품목별 수출", source: "관세청 API", cycle: "월", state: "auto" },
     { name: "중국 제조업 PMI", source: "NBS", cycle: "월", state: "auto" },
@@ -1073,6 +1074,8 @@ function indicatorPeriodLabel(tile) {
 // 자릿수를 주기가 아니라 값의 크기로 정한다.
 function indicatorDigits(tile) {
   const largest = Math.max(...tile.lines.map((line) => Math.abs(line.latest ?? 0)), 0);
+  // 톤당 가격은 원천이 소수 둘째 자리까지 준다(814.00 / -14.00). 천 단위가 넘으면 정수로 읽는다.
+  if (/\/t$/.test(tile.unit)) return largest >= 1000 ? 0 : 2;
   if (largest >= 1000) return 0;
   if (largest >= 100) return 1;
   return tile.cycle === "D" ? 3 : 2;
