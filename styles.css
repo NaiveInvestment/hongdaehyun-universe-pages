@@ -341,6 +341,12 @@ table.fin { width: 100%; border-collapse: collapse; font-size: 11.5px; font-vari
 .fin .focus { color: var(--accent); font-weight: 800; }
 /* 한 칸에 두 값(1M·최고)을 세로로 쌓는다. 나란히 두면 드로어 폭을 넘어 가로 스크롤이 생긴다.
    행 라벨이 "1M / 최고"라 위·아래 순서가 그대로 읽힌다. */
+/* 해외 peer 표. 종목 칸에 티커·거래소를 작게 붙이고 통화 단위는 숫자 뒤에 옅게 둔다. */
+.fin.peer td.l small { display: block; color: var(--faint); font-size: 10px; font-weight: 600; }
+.fin.peer td u { margin-left: 2px; color: var(--faint); font-size: 10px; text-decoration: none; }
+.fin.peer td { height: 30px; }
+#foreignPeers { margin-bottom: 10px; }
+#foreignPeers .note { margin-top: 6px; color: var(--faint); font-size: 10.5px; }
 .fin td.stack { line-height: 1.25; }
 .fin td.stack span { display: block; }
 .fin td.stack span + span { color: var(--faint); }

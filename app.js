@@ -1005,6 +1005,36 @@ function indicatorTile(tile) {
   </li>`;
 }
 
+// 해외 peer 표 (2026-08-30). 전체 종목표에는 넣지 않고 해당 섹터 페이지에서만 보여 준다.
+// 컨센서스·실적이 국내 전용이라 매출·OP·P/E를 채울 수 없어, 주가·1D·YTD만 담는다.
+function foreignPeerTable(sector) {
+  const peers = state.snapshot?.sectorIndices?.foreignPeers?.[sector] || [];
+  if (!peers.length) return "";
+  const loaded = peers.filter((peer) => !peer.error && peer.days);
+  const rows = peers.map((peer) => {
+    if (peer.error) {
+      return `<tr><td class="l">${escapeHtml(peer.name)}<small>${escapeHtml(peer.symbol)}</small></td>`
+        + `<td class="na" colspan="3">받지 못함 · ${escapeHtml(peer.error)}</td></tr>`;
+    }
+    return `<tr><td class="l">${escapeHtml(peer.name)}<small>${escapeHtml(peer.symbol)} · ${escapeHtml(peer.exchange || "")}</small></td>`
+      + `<td>${formatNumber(peer.price, 2)}<u>${escapeHtml(peer.currency || "")}</u></td>`
+      + `<td class="${numberClass(peer.changePercent)}">${formatPercent(peer.changePercent, 1)}</td>`
+      + `<td class="${numberClass(peer.ytd)}">${formatPercent(peer.ytd, 1)}</td></tr>`;
+  }).join("");
+  // 지수에 실제로 들어간 종목 수를 밝힌다. 상장이 늦은 종목은 기간에 따라 빠진다.
+  const note = loaded.length < peers.length
+    ? `${peers.length}종목 중 ${loaded.length}종목 수신`
+    : `${peers.length}종목`;
+  return `<div class="card" id="foreignPeers">
+    <div class="card-head"><h3>${escapeHtml(sector)} 해외 peer</h3>
+      <span class="unit">Yahoo Finance · 일별 종가 · ${escapeHtml(note)}</span></div>
+    <div class="fin-wrap"><table class="fin peer">
+      <thead><tr><th class="l">종목</th><th>주가</th><th>1D</th><th>YTD</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>
+    <p class="note">섹터 지수에 국내 종목과 같은 무게로 들어갑니다. 상장일이 기간 시작보다 늦은 종목은 그 기간 지수에서 빠집니다.</p>
+  </div>`;
+}
+
 function indicatorTiles(sector) {
   const live = state.snapshot?.indicators?.sectors?.[sector] || [];
   const items = INDICATOR_CATALOG[sector] || [];
@@ -1209,7 +1239,7 @@ function viewHtml() {
     : `${state.sector} — ${stocks.length}종목`;
   const middle = state.sector === "all"
     ? `<div class="home-grid">${homeGroupChart()}</div>${sectorTiles()}`
-    : `${sectorTrend(state.sector, stocks)}${indicatorTiles(state.sector)}`;
+    : `${sectorTrend(state.sector, stocks)}${foreignPeerTable(state.sector)}${indicatorTiles(state.sector)}`;
   const fixtureNote = state.snapshot?.mode === "fixture"
     ? "고정 fixture 검증 모드입니다. 실제 투자 판단에 사용할 수 없습니다."
     : "행을 클릭하면 오른쪽에 종목 상세가 열립니다.";
