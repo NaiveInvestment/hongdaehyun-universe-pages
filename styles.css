@@ -214,7 +214,10 @@ ul { padding: 0; list-style: none; }
 
 /* 좁은 화면에서는 표가 화면보다 넓어서 자체 스크롤이 필요하다. 이게 기본값이다. */
 .table-region { min-width: 0; min-height: 320px; max-height: calc(100vh - 210px); overflow: auto; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
-.universe-table { width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; font-variant-numeric: tabular-nums; }
+/* 2026-08-30: auto 레이아웃이라 표가 컨테이너를 채우려고 열을 늘렸다.
+   CSS로 44/96px을 줘도 실제로는 81/177px로 벌어져 섹터·종목 칸에 여백이 많았다.
+   fixed 레이아웃으로 바꿔 지정 폭을 그대로 지키고, 남는 폭은 숫자 열들이 나눠 갖는다. */
+.universe-table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; font-size: 12px; font-variant-numeric: tabular-nums; }
 .universe-table th, .universe-table td { height: 26px; padding: 2px 5px; border-bottom: 1px solid var(--line); background-clip: padding-box; text-align: center; white-space: nowrap; }
 .universe-table thead th { position: sticky; z-index: 7; background: var(--surface-3); color: var(--muted); font-size: 10.5px; font-weight: 800; }
 /* 페이지를 내려도 열 이름이 뷰포트 상단에 남는다. 아래 행이 비쳐 보이지 않게 그림자로 경계를 준다. */
