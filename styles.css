@@ -228,11 +228,13 @@ ul { padding: 0; list-style: none; }
 .universe-table thead tr:nth-child(2) th { top: 26px; height: 30px; border-bottom: 1px solid var(--line-strong); font-weight: 700; white-space: normal; line-height: 1.15; word-break: keep-all; }
 .universe-table thead tr:nth-child(2) th button { white-space: normal; line-height: 1.15; }
 .universe-table thead .group-head { color: var(--ink); text-align: center; }
-.universe-table thead button { width: 100%; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.universe-table thead button { position: relative; width: 100%; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
 .universe-table thead button:focus { outline: 0; }
 .universe-table thead button:focus-visible { box-shadow: inset 0 -2px 0 var(--accent); }
-.universe-table thead button::after { content: " ↕"; color: var(--faint); font-size: 8px; }
-.universe-table thead button[data-active="true"]::after { content: attr(data-arrow); color: var(--accent); }
+/* 정렬 화살표가 글자 흐름에 있으면 라벨을 두 번째 줄로 밀어낸다(2026-08-30 `P/E 26E` 실측).
+   흐름에서 빼서 칸 오른쪽 아래 모서리에 붙인다. 라벨은 한 줄에 남는다. */
+.universe-table thead button::after { content: "↕"; position: absolute; right: -3px; bottom: -3px; color: var(--faint); font-size: 7px; line-height: 1; pointer-events: none; }
+.universe-table thead button[data-active="true"]::after { content: attr(data-arrow); color: var(--accent); font-size: 9px; bottom: -4px; }
 /* 열 구분 세로선. 그룹 경계는 진하게, 그 안의 열 사이는 옅게 긋는다. */
 .universe-table .section-start { box-shadow: inset 1px 0 0 var(--line-strong); }
 .universe-table .subsection-start { border-left: 1px solid var(--line-strong) !important; }

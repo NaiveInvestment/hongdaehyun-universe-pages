@@ -297,10 +297,13 @@ function returnHeatMeta(value, key) {
 // 표 컬럼 모델 (2026-08-25 확정: 코어 열 상시 + 나머지는 열그룹 칩)
 // pending 열은 아직 원천이 없다. 빈 칸을 만들지 않으려고 DOM에 넣지 않고 표 아래 안내로만 알린다.
 // ---------------------------------------------------------------------------
+// 2026-08-30: 열그룹은 하나다. 켜면 컨센 상세가 붙고 시세·수익률 칸이 통째로 빠진다.
+// 컨센을 훑을 때 현재가·1D·YTD·MDD·시총은 보지 않기 때문이고, 그 폭을 컨센 열이 가져간다.
 const OPTIONAL_COLUMN_GROUPS = [
-  { key: "returnsPlus", label: "수익률+", hint: "5D · 20D · 1Y · 52주高比 · 거래대금" },
-  { key: "consensusDetail", label: "컨센 상세", hint: "1M변화 · 매출 · 참여사 · 배당 · 목표가 괴리" },
+  { key: "consensusDetail", label: "컨센 상세", hint: "1M변화 · 매출 · 참여사 · 배당 · 목표가 괴리 (시세 · 수익률 칸은 감춘다)" },
 ];
+// 켜면 통째로 사라지는 칸.
+const SECTIONS_HIDDEN_BY_GROUP = { consensusDetail: ["quote"] };
 
 // 2026-08-30 사용자 결정으로 코어 열을 다시 짰다.
 //   현재가 · 1D · YTD · MDD · 시총 │ P/E·P/B·ROE (26E·27E) │ 올해 4개 분기 + 26E·27E
@@ -318,6 +321,11 @@ function profitMetricFor(sector = state.sector) {
 }
 
 function profitLabelFor(sector = state.sector) {
+  return NET_INCOME_SECTORS.has(sector) ? "지배순이익" : "영업이익";
+}
+
+// 드로어 요약 칸처럼 폭이 좁은 자리에서만 쓰는 줄임말.
+function profitShortFor(sector = state.sector) {
   return NET_INCOME_SECTORS.has(sector) ? "순익" : "영익";
 }
 
@@ -341,11 +349,6 @@ function buildColumnSections(sector = state.sector) {
         { key: "ytd", label: "YTD", sort: "performance.ytd", className: "base-col return-col", kind: "return", period: "ytd" },
         { key: "ytdDrawdown", label: "MDD", sort: "performance.ytdDrawdown", className: "base-col return-col", kind: "return", period: "ytdDrawdown" },
         { key: "marketCap", label: "시총", sort: "quote.marketCap", className: "base-col market-cap-col", kind: "marketCap", field: "marketCap" },
-        { key: "d5", label: "5D", sort: "performance.d5", className: "base-col return-col", kind: "return", period: "d5", group: "returnsPlus" },
-        { key: "d20", label: "20D", sort: "performance.d20", className: "base-col return-col", kind: "return", period: "d20", group: "returnsPlus" },
-        { key: "y1", label: "1Y", sort: "performance.y1", className: "base-col return-col", kind: "return", period: "y1", group: "returnsPlus" },
-        { key: "drawdown52w", label: "52주高比", sort: "performance.drawdown52w", className: "base-col return-col", kind: "return", period: "drawdown52w", group: "returnsPlus" },
-        { key: "tradingValue", label: "거래대금", sort: "quote.tradingValue", className: "base-col market-cap-col", kind: "marketCap", field: "tradingValue", group: "returnsPlus" },
       ],
     },
     {
@@ -374,6 +377,13 @@ function buildColumnSections(sector = state.sector) {
           className: "metric-col", subsection: index === 0, kind: "financial", period, metric,
         })),
         { key: "opRevision", label: "1M변화", sort: `revision.annual.2026.${metric}`, className: "metric-col revision-col", kind: "revision", period: "2026", metric, group: "consensusDetail" },
+      ],
+    },
+    {
+      // 매출·참여사·배당·목표가는 이익이 아니다. 이익 그룹에 얹으면 머리글이 거짓말을 한다.
+      key: "consensusDetail",
+      label: "컨센 상세",
+      columns: [
         { key: "rev2026", label: "매출 26E", sort: "annual.2026.revenue", className: "metric-wide-col", kind: "financial", period: "2026", metric: "revenue", group: "consensusDetail" },
         { key: "rev2027", label: "매출 27E", sort: "annual.2027.revenue", className: "metric-wide-col", kind: "financial", period: "2027", metric: "revenue", group: "consensusDetail" },
         { key: "contributors", label: "참여사", sort: `annual.2026.contributors.${metric}`, className: "metric-col", kind: "count", period: "2026", metric, group: "consensusDetail" },
@@ -473,7 +483,9 @@ function columnEnabled(column, hidden) {
 }
 
 function visibleSections(hidden = hiddenColumnsForSector()) {
+  const dropped = new Set([...state.columnGroups].flatMap((key) => SECTIONS_HIDDEN_BY_GROUP[key] || []));
   return buildColumnSections()
+    .filter((section) => !dropped.has(section.key))
     .map((section) => ({ ...section, columns: section.columns.filter((column) => section.key === "identity" || columnEnabled(column, hidden)) }))
     .filter((section) => section.columns.length);
 }
@@ -887,7 +899,7 @@ function homeGroupChart() {
 function sectorExceptions(stocks) {
   const byReturn = [...stocks].filter((stock) => Number.isFinite(stock.performance?.d1)).sort((left, right) => right.performance.d1 - left.performance.d1);
   const byRevision = [...stocks]
-    .map((stock) => ({ stock, value: consensusRevision(stock, "2026", "operatingIncome") }))
+    .map((stock) => ({ stock, value: consensusRevision(stock, "2026", profitMetricFor()) }))
     .filter(({ value }) => Number.isFinite(value) && value !== 0)
     .sort((left, right) => right.value - left.value);
   const item = (stock, value) => `<li><span><a href="#/stock/${stock.code}">${escapeHtml(stock.name)}</a>`
@@ -901,8 +913,8 @@ function sectorExceptions(stocks) {
   return `<div class="exc-grid">
     ${block("1D 상승 상위", byReturn.slice(0, 2).map((stock) => item(stock, stock.performance.d1)))}
     ${block("1D 하락 상위", byReturn.slice(-2).reverse().map((stock) => item(stock, stock.performance.d1)))}
-    ${block("OP 26E 컨센 1M 상향", byRevision.slice(0, 2).map(({ stock, value }) => item(stock, value)))}
-    ${block("OP 26E 컨센 1M 하향", byRevision.slice(-2).reverse().map(({ stock, value }) => item(stock, value)))}
+    ${block(`${profitShortFor()} 26E 컨센 1M 상향`, byRevision.slice(0, 2).map(({ stock, value }) => item(stock, value)))}
+    ${block(`${profitShortFor()} 26E 컨센 1M 하향`, byRevision.slice(-2).reverse().map(({ stock, value }) => item(stock, value)))}
   </div>`;
 }
 
@@ -1051,7 +1063,7 @@ function pendingIndicatorTile(item) {
 function sortButton(label, key) {
   const active = state.sortKey === key;
   const arrow = active && state.sortDirection === "asc" ? "↑" : "↓";
-  return `<button type="button" data-sort="${key}" data-active="${active}" data-arrow=" ${arrow}" aria-label="${escapeHtml(label)} 기준 정렬">${escapeHtml(label)}</button>`;
+  return `<button type="button" data-sort="${key}" data-active="${active}" data-arrow="${arrow}" aria-label="${escapeHtml(label)} 기준 정렬">${escapeHtml(label)}</button>`;
 }
 
 function financialCell(record, metric, extraClass = "") {
@@ -1337,7 +1349,7 @@ function drawerConsensusTable(stock) {
         const focus = metric === profitMetricFor(stock.sector) && period === "2026" ? " focus" : "";
         return `<td class="${row?.kind === "estimate" ? "est" : ""}${focus}">${formatFinancial(row?.[metric])}</td>`;
       }).join("")}</tr>`).join("")}
-      <tr><td class="l">· ${profitLabelFor(stock.sector) === "순익" ? "지배순이익" : "영업이익"} 1M / 최고</td>${horizonRow(profitMetricFor(stock.sector))}</tr>
+      <tr><td class="l">· ${profitLabelFor(stock.sector)} 1M / 최고</td>${horizonRow(profitMetricFor(stock.sector))}</tr>
       <tr><td class="l">참여 증권사</td>${ANNUALS.map(([period]) => `<td>${formatNumber(stock.annual?.[period]?.contributors)}</td>`).join("")}</tr>
       <tr><td class="l">지배주주지분</td>${ANNUALS.map(([period]) => `<td class="${stock.annual?.[period]?.kind === "estimate" ? "est" : ""}">${formatFinancial(stock.annual?.[period]?.parentEquity)}</td>`).join("")}</tr>
       <tr><td class="l">주당배당금 (원)</td>${ANNUALS.map(([period]) => `<td class="${stock.annual?.[period]?.kind === "estimate" ? "est" : ""}">${formatPrice(stock.annual?.[period]?.dividendPerShare)}</td>`).join("")}</tr>
@@ -1383,7 +1395,7 @@ function drawerHtml(stock) {
     : '<p class="empty-state">주가 이력이 아직 없습니다.</p>';
   // 금융·보험·증권·지주는 영업이익 대신 지배순이익이 주력 지표다(전체 화면 (C)안과 같은 규칙).
   const profitMetric = profitMetricFor(stock.sector);
-  const profitName = profitMetric === "parentNetIncome" ? "지배순이익" : "영업이익";
+  const profitName = profitLabelFor(stock.sector);
   const otherMetric = profitMetric === "parentNetIncome" ? "operatingIncome" : "parentNetIncome";
   const otherName = profitMetric === "parentNetIncome" ? "영업이익" : "지배순이익";
   const quarters = quarterSeriesOf(stock, profitMetric);
@@ -1409,7 +1421,7 @@ function drawerHtml(stock) {
     <dl class="dgrid" id="drawerRatios">
       <div><dt>P/E 26E</dt><dd data-live-field="valuation.2026.pe">${formatRatio(valuation.pe, "pe")}</dd><small>27E ${formatRatio(stock.valuation?.["2027"]?.pe, "pe")}</small></div>
       <div><dt>P/B 26E</dt><dd data-live-field="valuation.2026.pb">${formatRatio(valuation.pb, "pb")}</dd><small>ROE ${formatRatio(valuation.roe, "roe")}</small></div>
-      <div><dt>${profitLabelFor(stock.sector)} 26E 1M변화</dt><dd class="${numberClass(opRevision)}">${formatPercent(opRevision)}</dd><small>1M ÷ 3M − 1</small></div>
+      <div><dt>${profitShortFor(stock.sector)} 26E 1M변화</dt><dd class="${numberClass(opRevision)}">${formatPercent(opRevision)}</dd><small>1M ÷ 3M − 1</small></div>
       <div><dt>YTD</dt><dd class="${numberClass(ytd)}" data-performance="ytd">${formatPercent(ytd)}</dd><small>vs KOSPI ${formatPercent(relative, 1)}</small></div>
       <div><dt>52주高比</dt><dd class="${numberClass(stock.performance?.drawdown52w)}" data-performance="drawdown52w">${formatPercent(stock.performance?.drawdown52w)}</dd><small>1Y ${formatPercent(stock.performance?.y1, 1)}</small></div>
       <div><dt>목표가 괴리</dt><dd class="${numberClass(COMPUTED.targetGap(stock))}">${formatPercent(COMPUTED.targetGap(stock))}</dd>
