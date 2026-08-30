@@ -297,13 +297,12 @@ function returnHeatMeta(value, key) {
 // 표 컬럼 모델 (2026-08-25 확정: 코어 열 상시 + 나머지는 열그룹 칩)
 // pending 열은 아직 원천이 없다. 빈 칸을 만들지 않으려고 DOM에 넣지 않고 표 아래 안내로만 알린다.
 // ---------------------------------------------------------------------------
-// 2026-08-30: 열그룹은 하나다. 켜면 컨센 상세가 붙고 시세·수익률 칸이 통째로 빠진다.
-// 컨센을 훑을 때 현재가·1D·YTD·MDD·시총은 보지 않기 때문이고, 그 폭을 컨센 열이 가져간다.
+// 2026-08-30: 칩 하나가 표를 통째로 바꾼다. 열을 몇 개 더 붙이는 게 아니라 다른 표로 간다.
+// 컨센서스를 볼 때는 시세·수익률도 밸류에이션도 보지 않는다. 그 폭을 매출·영업이익·순이익이 가져간다.
+const CONSENSUS_VIEW_KEY = "consensusDetail";
 const OPTIONAL_COLUMN_GROUPS = [
-  { key: "consensusDetail", label: "컨센 상세", hint: "1M변화 · 매출 · 참여사 · 배당 · 목표가 괴리 (시세 · 수익률 칸은 감춘다)" },
+  { key: CONSENSUS_VIEW_KEY, label: "컨센서스 자세히 보기", hint: "목표가 괴리 + 매출 · 영업이익 · 지배순이익을 분기·연간으로" },
 ];
-// 켜면 통째로 사라지는 칸.
-const SECTIONS_HIDDEN_BY_GROUP = { consensusDetail: ["quote"] };
 
 // 2026-08-30 사용자 결정으로 코어 열을 다시 짰다.
 //   현재가 · 1D · YTD · MDD · 시총 │ P/E·P/B·ROE (26E·27E) │ 올해 4개 분기 + 26E·27E
@@ -327,6 +326,45 @@ function profitLabelFor(sector = state.sector) {
 // 드로어 요약 칸처럼 폭이 좁은 자리에서만 쓰는 줄임말.
 function profitShortFor(sector = state.sector) {
   return NET_INCOME_SECTORS.has(sector) ? "순익" : "영익";
+}
+
+const CONSENSUS_METRICS = [
+  { key: "revenue", label: "매출", metric: "revenue", className: "metric-wide-col" },
+  { key: "op", label: "영업이익", metric: "operatingIncome", className: "metric-col" },
+  { key: "ni", label: "지배순이익", metric: "parentNetIncome", className: "metric-col" },
+];
+
+// 컨센서스 보기. 여기서는 섹터별 이익 지표 교체를 하지 않는다 — 세 지표를 다 펴 놓기 때문이다.
+// 매출이 없는 업종(은행지주·보험)은 섹터 페이지에서 매출 칸이 통째로 사라지는 기존 규칙이 처리한다.
+function buildConsensusSections() {
+  return [
+    {
+      key: "identity",
+      columns: [
+        { key: "sector", label: "섹터", sort: "sector", className: "sticky-sector", kind: "sector" },
+        { key: "name", label: "종목", sort: "name", className: "sticky-stock", kind: "name" },
+        { key: "targetGap", label: "목표가 괴리", sort: "computed.targetGap", className: "revision-col", kind: "computed", compute: "targetGap", heat: "targetGap" },
+      ],
+    },
+    ...CONSENSUS_METRICS.map(({ key, label, metric, className }) => ({
+      key: `consensus-${key}`,
+      label: `${label} (억원)`,
+      columns: [
+        ...TABLE_QUARTERS.map(([period, short]) => ({
+          key: `${key}-q${period}`, label: short, sort: `quarter.${period}.${metric}`,
+          className, kind: "quarterFinancial", period, metric,
+        })),
+        ...TABLE_ANNUALS.map(([period, short], index) => ({
+          key: `${key}-a${period}`, label: short, sort: `annual.${period}.${metric}`,
+          className, subsection: index === 0, kind: "financial", period, metric,
+        })),
+      ],
+    })),
+  ];
+}
+
+function activeSections(sector = state.sector) {
+  return state.columnGroups.has(CONSENSUS_VIEW_KEY) ? buildConsensusSections() : buildColumnSections(sector);
 }
 
 function buildColumnSections(sector = state.sector) {
@@ -376,19 +414,6 @@ function buildColumnSections(sector = state.sector) {
           key: `a${period}`, label, sort: `annual.${period}.${metric}`,
           className: "metric-col", subsection: index === 0, kind: "financial", period, metric,
         })),
-        { key: "opRevision", label: "1M변화", sort: `revision.annual.2026.${metric}`, className: "metric-col revision-col", kind: "revision", period: "2026", metric, group: "consensusDetail" },
-      ],
-    },
-    {
-      // 매출·참여사·배당·목표가는 이익이 아니다. 이익 그룹에 얹으면 머리글이 거짓말을 한다.
-      key: "consensusDetail",
-      label: "컨센 상세",
-      columns: [
-        { key: "rev2026", label: "매출 26E", sort: "annual.2026.revenue", className: "metric-wide-col", kind: "financial", period: "2026", metric: "revenue", group: "consensusDetail" },
-        { key: "rev2027", label: "매출 27E", sort: "annual.2027.revenue", className: "metric-wide-col", kind: "financial", period: "2027", metric: "revenue", group: "consensusDetail" },
-        { key: "contributors", label: "참여사", sort: `annual.2026.contributors.${metric}`, className: "metric-col", kind: "count", period: "2026", metric, group: "consensusDetail" },
-        { key: "dividendYield", label: "배당 수익률", sort: "computed.dividendYield", className: "metric-col", kind: "computed", compute: "dividendYield", signed: false, group: "consensusDetail" },
-        { key: "targetGap", label: "목표가 괴리", sort: "computed.targetGap", className: "metric-col revision-col", kind: "computed", compute: "targetGap", heat: "targetGap", group: "consensusDetail" },
       ],
     },
   ];
@@ -466,7 +491,7 @@ function hiddenColumnsForSector() {
   const stocks = (state.snapshot?.stocks || []).filter((stock) => stock.sector === state.sector);
   const hidden = new Map();
   if (!stocks.length) return hidden;
-  for (const section of buildColumnSections()) {
+  for (const section of activeSections()) {
     if (section.key === "identity") continue;
     for (const column of section.columns) {
       if (column.pending) continue;
@@ -483,9 +508,7 @@ function columnEnabled(column, hidden) {
 }
 
 function visibleSections(hidden = hiddenColumnsForSector()) {
-  const dropped = new Set([...state.columnGroups].flatMap((key) => SECTIONS_HIDDEN_BY_GROUP[key] || []));
-  return buildColumnSections()
-    .filter((section) => !dropped.has(section.key))
+  return activeSections()
     .map((section) => ({ ...section, columns: section.columns.filter((column) => section.key === "identity" || columnEnabled(column, hidden)) }))
     .filter((section) => section.columns.length);
 }
@@ -1212,7 +1235,6 @@ function tableHtml() {
     : '<p class="pending-columns" id="pendingColumns"></p>';
 
   return `<div class="toolbar">
-      <span class="label">열그룹</span>
       ${OPTIONAL_COLUMN_GROUPS.map((group) => `<button type="button" class="column-chip" data-column-group="${group.key}" aria-pressed="${state.columnGroups.has(group.key)}" title="${escapeHtml(group.hint)}">${escapeHtml(group.label)}</button>`).join("")}
       <span class="spacer"></span>
       <span class="visible-count" id="visibleCount">${visible.length} / ${state.snapshot?.stocks?.length || 0}종목</span>

@@ -202,11 +202,11 @@ ul { padding: 0; list-style: none; }
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; }
 .toolbar .spacer { flex: 1; }
 .toolbar .label { color: var(--muted); font-size: 11px; font-weight: 700; }
-.column-chip { height: 26px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--muted); font-size: 11.5px; font-weight: 700; }
-.column-chip::before { content: "+ "; }
+/* 칩 하나가 표를 통째로 바꾸는 보기 전환이다. 곁다리 옵션처럼 보이면 안 된다. */
+.column-chip { height: 28px; padding: 0 14px; border: 1px solid var(--accent); border-radius: 999px; color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: -0.1px; }
 .column-chip:hover { color: var(--ink); background: var(--surface-3); }
 .column-chip[aria-pressed="true"] { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
-.column-chip[aria-pressed="true"]::before { content: "\2212 "; }
+.column-chip[aria-pressed="true"]::before { content: "\2713  "; }
 .return-heat-legend { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 11px; white-space: nowrap; }
 .return-heat-legend__bar { display: inline-block; width: 38px; height: 9px; border: 1px solid var(--line-strong); background: linear-gradient(90deg, var(--return-heat-negative), var(--return-heat-base) 50%, var(--return-heat-positive)); }
 .pending-columns { margin: 6px 0 0; color: var(--faint); font-size: 10.5px; }
