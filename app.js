@@ -1218,7 +1218,9 @@ function foreignPeerTable(sector) {
 
 function indicatorTiles(sector) {
   const live = state.snapshot?.indicators?.sectors?.[sector] || [];
-  const items = INDICATOR_CATALOG[sector] || [];
+  // 2026-08-30: 공개본은 남에게 링크로 넘기는 화면이라 "후보" 카드를 띄우지 않는다.
+  // 아직 안 붙인 지표 목록은 우리 작업 메모지 읽는 사람에게 줄 정보가 아니다. 로컬에서는 그대로 남긴다.
+  const items = RUNTIME.staticMode ? [] : (INDICATOR_CATALOG[sector] || []);
   if (!live.length && !items.length) return "";
   const source = state.snapshot?.sources?.indicators || {};
   if (live.length) {
