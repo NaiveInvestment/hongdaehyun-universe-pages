@@ -528,6 +528,11 @@ function indexDates() {
   return state.snapshot?.sectorIndices?.dates || [];
 }
 
+// 국내 종목만으로 만든 계열. 홈 타일 스파크라인이 쓴다(타일 숫자가 국내 기준이라 선도 국내여야 한다).
+function domesticSeries(sector) {
+  return state.snapshot?.sectorIndices?.domestic?.[sector] || sectorSeries(sector);
+}
+
 function sectorSeries(sector) {
   return state.snapshot?.sectorIndices?.sectors?.[sector] || null;
 }
@@ -918,7 +923,9 @@ function sectorTiles() {
     const d1 = weightedPerformance(members, "d1");
     const ytd = weightedPerformance(members, "ytd");
     const relative = Number.isFinite(ytd) && Number.isFinite(kospiYtd) ? ytd - kospiYtd : null;
-    const entry = sectorSeries(sector);
+    // 타일의 숫자(1D·YTD−K)는 국내 커버리지 기준이므로 스파크라인도 국내 계열을 쓴다.
+    // 합성 계열을 그리면 한 타일 안에서 숫자와 선이 다른 것을 말하게 된다.
+    const entry = domesticSeries(sector);
     return `<a class="tile" role="listitem" href="#/sector/${encodeURIComponent(sector)}" aria-current="${state.sector === sector}" data-sector-tile="${escapeHtml(sector)}">
       <span class="t">${escapeHtml(sector)}<small>${members.length}</small></span>
       <span class="v"><b class="${numberClass(d1)}">${formatPercent(d1, 1)}</b></span>
@@ -951,19 +958,37 @@ function sectorExceptions(stocks) {
 
 function sectorTrend(sector, stocks) {
   const dates = windowSlice(indexDates());
-  const entry = sectorSeries(sector);
-  const series = entry && entry.values.length ? [{ name: sector, values: windowSlice(entry.values), cls: "s-main" }] : [];
+  const global = sectorSeries(sector);
+  const local = domesticSeries(sector);
+  // 해외 peer가 있는 섹터는 국내선과 글로벌선을 함께 그린다(2026-08-30).
+  // 합성선 하나만 그리면 국내 종목이 글로벌 테마를 따라가는지 아닌지가 보이지 않는다.
+  const hasPeers = local !== global && local?.values?.length;
+  const series = [];
+  if (global?.values?.length) {
+    series.push({
+      name: hasPeers ? `${sector} 글로벌` : sector,
+      short: hasPeers ? "글로벌" : sector,
+      values: windowSlice(global.values),
+      cls: "s-main",
+    });
+  }
+  if (hasPeers) {
+    series.push({ name: `${sector} 국내`, short: "국내", values: windowSlice(local.values), cls: "s-sector" });
+  }
   const box = chartBox({ width: 820, height: 220 }, { width: 430, height: 300 }, { ratio: SECTOR_CHART_RATIO });
   const chart = dates.length >= 2 && series.length
     ? lineChart({ series: [...series, ...benchmarkSeriesFor(dates)], labels: dates, ...box })
     : '<p class="empty-state">섹터 지수를 만들 일봉이 아직 없습니다.</p>';
-  const excluded = entry?.excluded?.length ? ` · 제외 ${entry.excluded.length}종목` : "";
+  const excluded = global?.excluded?.length ? ` · 제외 ${global.excluded.length}종목` : "";
+  const globalLabel = hasPeers
+    ? `<span><i></i>글로벌(동일가중 ${global?.members ?? 0}종목${excluded})</span><span><i class="sector"></i>국내(${local?.members ?? 0}종목)</span>`
+    : `<span><i></i>${escapeHtml(sector)} 섹터(동일가중 ${global?.members ?? 0}종목${excluded})</span>`;
   return `<div class="sec-grid">
     <div class="card" id="sectorTrendCard">
       <div class="card-head"><h3>${escapeHtml(sector)} 섹터 지수 vs 벤치마크</h3>
         <span class="tools">${benchButtons()}<span class="gap"></span>${rangeButtons()}</span></div>
       ${chart}
-      <div class="chart-legend"><span><i></i>${escapeHtml(sector)} 섹터(동일가중 ${entry?.members ?? 0}종목${excluded})</span>
+      <div class="chart-legend">${globalLabel}
         <span><i class="ctx"></i>KOSPI</span><span><i class="ctx2"></i>KOSDAQ</span>
         <span class="unit">기간 시작 = 100 · 동일가중 · 일별 종가</span></div>
     </div>
