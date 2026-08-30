@@ -50,6 +50,7 @@ const RETURN_HEAT_CAPS = {
 };
 const THEME_STORAGE_KEY = "hongdaehyun-universe:theme-v1";
 const COLUMN_GROUP_STORAGE_KEY = "hongdaehyun-universe:column-groups-v1";
+const ESTIMATE_BASIS_STORAGE_KEY = "hongdaehyun-universe:estimate-basis-v1";
 
 // 섹터별 트래킹 지표 — 2026-08-23 실접속으로 확인한 원천 "후보"다. 정본은 docs/indicator-sources.md.
 // 원천이 확정되기 전까지는 값을 만들지 않고 대기 카드로만 노출한다(예시 수치 금지).
@@ -123,6 +124,8 @@ const state = {
   detailCode: null,
   detailLoading: false,
   columnGroups: new Set(),
+  // 컨센서스 값을 무엇으로 볼지. threeMonth = 3M 평균(기본), highest = 증권사 추정치 중 최고.
+  estimateBasis: "threeMonth",
   range: "ytd",
   theme: "dark",
   liveUpdates: new Map(),
@@ -152,6 +155,7 @@ function loadPreferences() {
   } catch {
     state.columnGroups = new Set();
   }
+  state.estimateBasis = readStorage(ESTIMATE_BASIS_STORAGE_KEY) === "highest" ? "highest" : "threeMonth";
 }
 
 function applyTheme() {
@@ -348,7 +352,7 @@ function buildConsensusSections() {
     },
     ...CONSENSUS_METRICS.map(({ key, label, metric, className }) => ({
       key: `consensus-${key}`,
-      label: `${label} (억원)`,
+      label: `${label} (억원${state.estimateBasis === "highest" ? " · 최고" : ""})`,
       columns: [
         ...TABLE_QUARTERS.map(([period, short]) => ({
           key: `${key}-q${period}`, label: short, sort: `quarter.${period}.${metric}`,
@@ -466,8 +470,8 @@ function columnValue(stock, column) {
     case "price": return stock.quote?.price ?? null;
     case "marketCap": return stock.quote?.[column.field] ?? null;
     case "return": return stock.performance?.[column.period] ?? null;
-    case "financial": return stock.annual?.[column.period]?.[column.metric] ?? null;
-    case "quarterFinancial": return stock.quarter?.[column.period]?.[column.metric] ?? null;
+    case "financial": return financialValue(stock.annual?.[column.period], column.metric);
+    case "quarterFinancial": return financialValue(stock.quarter?.[column.period], column.metric);
     case "revision": return consensusRevision(stock, column.period, column.metric);
     case "ratio": {
       const result = stock.valuation?.[column.period]?.[column.ratio];
@@ -1089,8 +1093,16 @@ function sortButton(label, key) {
   return `<button type="button" data-sort="${key}" data-active="${active}" data-arrow="${arrow}" aria-label="${escapeHtml(label)} 기준 정렬">${escapeHtml(label)}</button>`;
 }
 
+// 최고 보기에서는 추정 칸만 최고 추정치로 바꾼다. 확정 실적은 기준이 하나뿐이라 그대로다.
+// 최고값이 없는 칸은 평균으로 되돌리지 않고 비운다. 되돌리면 어느 기준의 숫자인지 알 수 없다.
+function financialValue(record, metric) {
+  if (!record) return null;
+  if (state.estimateBasis === "highest" && record.kind === "estimate") return record.highest?.[metric] ?? null;
+  return record[metric] ?? null;
+}
+
 function financialCell(record, metric, extraClass = "") {
-  const value = record?.[metric] ?? null;
+  const value = financialValue(record, metric);
   const className = record?.kind === "actual" ? "actual-cell" : record?.kind === "estimate" ? "estimate-cell" : "na";
   return `<td class="${className} ${extraClass}">${formatFinancial(value)}</td>`;
 }
@@ -1142,6 +1154,11 @@ function bodyCell(stock, column, extraClass = "") {
 
 function sortValue(stock, key) {
   if (key.startsWith("computed.")) return COMPUTED[key.slice("computed.".length)]?.(stock) ?? null;
+  // 화면에 보이는 값으로 정렬해야 한다. 최고 보기에서 평균으로 줄을 세우면 순서와 숫자가 어긋난다.
+  if (/^(quarter|annual)\.[^.]+\.(revenue|operatingIncome|parentNetIncome)$/.test(key)) {
+    const [scope, period, metric] = key.split(".");
+    return financialValue(stock[scope]?.[period], metric);
+  }
   if (key.startsWith("revision.annual.")) {
     const [, , period, metric] = key.split(".");
     return consensusRevision(stock, period, metric);
@@ -1234,8 +1251,16 @@ function tableHtml() {
     ? `<p class="pending-columns" id="pendingColumns">원천 연결 대기 열: ${PENDING_COLUMNS.map(({ label, pending }) => `${escapeHtml(label)} - ${escapeHtml(pending)}`).join(" · ")}</p>`
     : '<p class="pending-columns" id="pendingColumns"></p>';
 
+  const basisSwitch = state.columnGroups.has(CONSENSUS_VIEW_KEY)
+    ? `<span class="basis-switch" role="group" aria-label="컨센서스 기준">`
+      + [["threeMonth", "평균", "최근 3개월 추정치 평균"], ["highest", "최고", "추정치 중 가장 높은 값"]]
+        .map(([key, label, hint]) => `<button type="button" data-estimate-basis="${key}" aria-pressed="${state.estimateBasis === key}" title="${hint}">${label}</button>`)
+        .join("")
+      + "</span>"
+    : "";
   return `<div class="toolbar">
       ${OPTIONAL_COLUMN_GROUPS.map((group) => `<button type="button" class="column-chip" data-column-group="${group.key}" aria-pressed="${state.columnGroups.has(group.key)}" title="${escapeHtml(group.hint)}">${escapeHtml(group.label)}</button>`).join("")}
+      ${basisSwitch}
       <span class="spacer"></span>
       <span class="visible-count" id="visibleCount">${visible.length} / ${state.snapshot?.stocks?.length || 0}종목</span>
       <span class="return-heat-legend" aria-label="수익률 셀 색상: 0은 무채색, 상승은 빨강, 하락은 파랑, 진할수록 변동폭이 큼">하락<i class="return-heat-legend__bar" aria-hidden="true"></i>상승</span>
@@ -1694,6 +1719,14 @@ function toggleColumnGroup(key) {
 }
 
 
+function setEstimateBasis(basis) {
+  if (state.estimateBasis === basis) return;
+  state.estimateBasis = basis;
+  writeStorage(ESTIMATE_BASIS_STORAGE_KEY, basis);
+  renderView({ preserveScroll: true });
+  $(`[data-estimate-basis="${basis}"]`)?.focus();
+}
+
 function bindEvents() {
   $("#themeToggle").addEventListener("click", toggleTheme);
   $("#searchInput").addEventListener("input", (event) => {
@@ -1708,6 +1741,8 @@ function bindEvents() {
     if (sort) return handleSort(sort.dataset.sort);
     const chip = event.target.closest("[data-column-group]");
     if (chip) return toggleColumnGroup(chip.dataset.columnGroup);
+    const basis = event.target.closest("[data-estimate-basis]");
+    if (basis) return setEstimateBasis(basis.dataset.estimateBasis);
     const range = event.target.closest("[data-range]");
     if (range) { state.range = parseRangeValue(range.dataset.range); return renderView({ preserveScroll: true }); }
     const row = event.target.closest("tr[data-code]");
