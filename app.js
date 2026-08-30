@@ -340,7 +340,20 @@ const ESTIMATE_BASES = [
 ];
 
 function estimateBasisTag() {
+  if (!horizonsAvailable()) return "";
   return ESTIMATE_BASES.find(({ key }) => key === state.estimateBasis)?.tag || "";
+}
+
+// 기준별 값(horizons)은 2026-08-30에 payload에 추가됐다. 그 전에 구워진 스냅샷에는 없다.
+// 없으면 기준 전환을 아예 띄우지 않는다 — 띄우고 3M 값을 "최고"라고 적으면 거짓말이 된다.
+// 서버 모듈만 고치고 재시작하지 않으면 화면은 새 코드, 데이터는 옛 payload가 되어 실제로 이 상태가 된다.
+function horizonsAvailable() {
+  for (const stock of state.snapshot?.stocks || []) {
+    for (const record of Object.values(stock.annual || {})) {
+      if (record?.kind === "estimate") return Boolean(record.horizons);
+    }
+  }
+  return false;
 }
 
 const CONSENSUS_METRICS = [
@@ -480,7 +493,8 @@ const COMPUTED = {
 function estimateContributors(stock, period) {
   const record = stock.annual?.[period];
   if (record?.kind !== "estimate") return null;
-  return record.horizons?.[state.estimateBasis]?.contributors ?? null;
+  if (!record.horizons) return contributorCount(stock, period, "operatingIncome");
+  return record.horizons[state.estimateBasis]?.contributors ?? null;
 }
 
 function contributorCount(stock, period, metric) {
@@ -1123,10 +1137,12 @@ function sortButton(label, key) {
 
 // 최고 보기에서는 추정 칸만 최고 추정치로 바꾼다. 확정 실적은 기준이 하나뿐이라 그대로다.
 // 최고값이 없는 칸은 평균으로 되돌리지 않고 비운다. 되돌리면 어느 기준의 숫자인지 알 수 없다.
-function financialValue(record, metric) {
+// 기준을 못 고르는 payload에서는 실려 온 값을 그대로 쓴다. 기대한 필드가 없다고 멀쩡한 숫자를 비우면 안 된다.
+// horizons가 있는데 그 기준만 비어 있는 것은 진짜 결측이므로 다른 기준으로 되돌리지 않는다.
+function financialValue(record, metric, basis = state.estimateBasis) {
   if (!record) return null;
-  if (record.kind !== "estimate") return record[metric] ?? null;
-  return record.horizons?.[state.estimateBasis]?.[metric] ?? null;
+  if (record.kind !== "estimate" || !record.horizons) return record[metric] ?? null;
+  return record.horizons[basis]?.[metric] ?? null;
 }
 
 function financialCell(record, metric, extraClass = "") {
@@ -1286,7 +1302,7 @@ function tableHtml() {
     ? `<p class="pending-columns" id="pendingColumns">원천 연결 대기 열: ${PENDING_COLUMNS.map(({ label, pending }) => `${escapeHtml(label)} - ${escapeHtml(pending)}`).join(" · ")}</p>`
     : '<p class="pending-columns" id="pendingColumns"></p>';
 
-  const basisSwitch = state.columnGroups.has(CONSENSUS_VIEW_KEY)
+  const basisSwitch = state.columnGroups.has(CONSENSUS_VIEW_KEY) && horizonsAvailable()
     ? `<span class="basis-switch" role="group" aria-label="컨센서스 기준">`
       + ESTIMATE_BASES
         .map(({ key, label, hint }) => `<button type="button" data-estimate-basis="${key}" aria-pressed="${state.estimateBasis === key}" title="${escapeHtml(hint)}">${escapeHtml(label)}</button>`)
@@ -1943,6 +1959,9 @@ function mergeQuotesDelta(snapshot, quotes) {
 //  - simulateTick: 장이 닫혀 체결이 없을 때도 틱 플래시 경로를 검사한다. 값은 되돌린다.
 window.__hduTest = {
   mergeQuotesDelta: (quotes) => applyQuotesDelta(quotes),
+  // 옛 payload(기준별 값 없음)에서도 숫자가 그대로 나오는지 확인하는 회귀 검사용.
+  financialValue: (record, metric, basis) => financialValue(record, metric, basis),
+  horizonsAvailable: () => horizonsAvailable(),
   simulateTick: (code, delta) => {
     const stock = state.snapshot?.stocks.find((item) => item.code === code);
     if (!stock) return null;
