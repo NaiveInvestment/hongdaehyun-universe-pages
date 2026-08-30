@@ -83,7 +83,7 @@ const INDICATOR_CATALOG = {
     { name: "IPO 공모규모", source: "KIND", cycle: "월", state: "auto" },
   ],
   "지주": [
-    { name: "상장 자회사 지분가치", source: "OpenDART otrCprInvstmntSttus", cycle: "분기", state: "auto" },
+    { name: "NAV 할인율", source: "OpenDART 출자현황 × 상장 자회사 시총", cycle: "일", state: "fixed" },
     { name: "자사주 비율", source: "OpenDART", cycle: "수시", state: "auto" },
     { name: "배당성향", source: "OpenDART", cycle: "연", state: "auto" },
     { name: "밸류업 공시", source: "KIND", cycle: "수시", state: "auto" },
@@ -1079,7 +1079,8 @@ function indicatorDigits(tile) {
   // 톤당 가격은 원천이 소수 둘째 자리까지 준다(814.00 / -14.00). 천 단위가 넘으면 정수로 읽는다.
   if (/\/t$/.test(tile.unit)) return largest >= 1000 ? 0 : 2;
   if (largest >= 1000) return 0;
-  if (largest >= 100) return 1;
+  // 금리는 3.788%처럼 셋째 자리까지가 뜻이 있지만, 두 자리수 %(NAV 할인율 -36.5%)는 한 자리면 된다.
+  if (largest >= 10) return 1;
   return tile.cycle === "D" ? 3 : 2;
 }
 
@@ -1141,7 +1142,7 @@ function indicatorTiles(sector) {
     const liveKeys = new Set(live.map((tile) => tile.name));
     const pending = items.filter((item) => !liveKeys.has(item.name));
     // 원천이 섹터마다 다르다(금융·보험 = ECOS, 화학·희토류 = SunSirs). 그 섹터가 실제로 쓰는 것만 적는다.
-    const providerNames = { ecos: "한국은행 ECOS", sunsirs: "생의사 중국 현물·국제유가", breadth: "Naver 시장 전체" };
+    const providerNames = { ecos: "한국은행 ECOS", sunsirs: "생의사 중국 현물·국제유가", breadth: "Naver 시장 전체", holdco: "OpenDART 출자현황 × 시총" };
     const providers = [...new Set(live.map((tile) => providerNames[tile.provider] || tile.provider).filter(Boolean))];
     const note = providers.join(" · ") + (state.snapshot?.indicators?.sampleKey ? " · 공개 sample 키(요청당 10행 제한)" : "");
     return `<div class="ind-head"><h3>${escapeHtml(sector)} 트래킹 지표</h3>
