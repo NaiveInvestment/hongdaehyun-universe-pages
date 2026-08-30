@@ -1,32 +1,32 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-08-30T12:56:31.480Z",
+  "builtAt": "2026-08-30T13:11:30.184Z",
   "mode": "live",
-  "generatedAt": "2026-08-30T12:56:31.265Z",
-  "quotesGeneratedAt": "2026-08-30T12:56:31.265Z",
-  "heavyFingerprint": "{\"consensus\":\"2026-08-30T12:53:42.908305Z\",\"actuals\":\"2026-08-30T12:53:48.352870Z\",\"indicators\":\"2026-08-30T12:53:49.595Z\",\"sectorIndices\":\"2026-08-30T12:53:40.848Z\",\"sectorIndexDays\":250,\"stockCount\":76,\"mode\":\"live\",\"assets\":[\"63f6b23ba988cf3d\",\"c53d5f8c5c78fd55\",\"e91176ec7177eac3\"]}",
+  "generatedAt": "2026-08-30T13:11:30.002Z",
+  "quotesGeneratedAt": "2026-08-30T13:11:30.002Z",
+  "heavyFingerprint": "{\"consensus\":\"2026-08-30T13:08:48.576176Z\",\"actuals\":\"2026-08-30T13:09:03.480313Z\",\"indicators\":\"2026-08-30T13:08:53.877Z\",\"sectorIndices\":\"2026-08-30T13:08:45.759Z\",\"sectorIndexDays\":250,\"stockCount\":76,\"mode\":\"live\",\"assets\":[\"63f6b23ba988cf3d\",\"ffed108985559a5a\",\"e91176ec7177eac3\"]}",
   "stockCount": 76,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
   "sources": {
     "quote": {
       "source": "kiwoom",
-      "updatedAt": "2026-08-30T12:53:41.238Z",
+      "updatedAt": "2026-08-30T13:08:46.149Z",
       "status": "ok"
     },
     "actuals": {
       "source": "OpenDART",
-      "updatedAt": "2026-08-30T12:53:48.352870Z",
+      "updatedAt": "2026-08-30T13:09:03.480313Z",
       "status": "ok"
     },
     "consensus": {
       "source": "ConsenDB.xlsx",
-      "updatedAt": "2026-08-30T12:53:42.908305Z",
+      "updatedAt": "2026-08-30T13:08:48.576176Z",
       "status": "partial"
     },
     "indicators": {
       "source": "한국은행 ECOS",
-      "updatedAt": "2026-08-30T12:53:49.595Z",
+      "updatedAt": "2026-08-30T13:08:53.877Z",
       "status": "ok"
     }
   },
@@ -43,9 +43,10 @@
       "보험",
       "화학",
       "정유",
+      "증권",
       "희토류"
     ],
-    "tiles": 18,
+    "tiles": 20,
     "sampleKey": false
   }
 }

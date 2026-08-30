@@ -75,7 +75,8 @@ const INDICATOR_CATALOG = {
     { name: "CSM (사별)", source: "무료 원천 없음", cycle: "분기", state: "paid" },
   ],
   "증권": [
-    { name: "거래대금·회전율", source: "KRX Open API", cycle: "일", state: "auto" },
+    { name: "시장 거래대금", source: "Naver 시총 목록 합계 (2,552종목)", cycle: "일", state: "fixed" },
+    { name: "KOSPI 회전율", source: "거래대금 ÷ 시가총액", cycle: "일", state: "fixed" },
     { name: "신용융자 잔고", source: "금투협 FreeSIS", cycle: "일", state: "auto" },
     { name: "해외주식 결제금액", source: "SEIBro", cycle: "월", state: "auto" },
     { name: "ELS 발행액", source: "data.go.kr", cycle: "월", state: "auto" },
@@ -1140,7 +1141,7 @@ function indicatorTiles(sector) {
     const liveKeys = new Set(live.map((tile) => tile.name));
     const pending = items.filter((item) => !liveKeys.has(item.name));
     // 원천이 섹터마다 다르다(금융·보험 = ECOS, 화학·희토류 = SunSirs). 그 섹터가 실제로 쓰는 것만 적는다.
-    const providerNames = { ecos: "한국은행 ECOS", sunsirs: "SunSirs 중국 현물" };
+    const providerNames = { ecos: "한국은행 ECOS", sunsirs: "생의사 중국 현물·국제유가", breadth: "Naver 시장 전체" };
     const providers = [...new Set(live.map((tile) => providerNames[tile.provider] || tile.provider).filter(Boolean))];
     const note = providers.join(" · ") + (state.snapshot?.indicators?.sampleKey ? " · 공개 sample 키(요청당 10행 제한)" : "");
     return `<div class="ind-head"><h3>${escapeHtml(sector)} 트래킹 지표</h3>
