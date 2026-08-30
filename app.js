@@ -1104,12 +1104,14 @@ function sortValue(stock, key) {
   return getPath(stock, key);
 }
 
+function compareByMarketCap(left, right) {
+  return ((right.quote?.marketCap ?? -Infinity) - (left.quote?.marketCap ?? -Infinity))
+    || left.code.localeCompare(right.code);
+}
+
 function compareStocks(left, right) {
-  if (state.sortKey === "default") {
-    // Pick 우선 정렬은 폐지됐다. 섹터 안에서는 시가총액 내림차순.
-    return ((right.quote?.marketCap ?? -Infinity) - (left.quote?.marketCap ?? -Infinity))
-      || left.code.localeCompare(right.code);
-  }
+  // Pick 우선 정렬은 폐지됐다. 기본은 시가총액 내림차순.
+  if (state.sortKey === "default") return compareByMarketCap(left, right);
   const a = sortValue(left, state.sortKey);
   const b = sortValue(right, state.sortKey);
   const missingA = a == null;
@@ -1127,9 +1129,18 @@ function filteredStocks() {
     !query || stock.name.toLocaleLowerCase("ko").includes(query) || stock.code.includes(query));
 }
 
+// 2026-08-30 사용자 결정: 전체 화면은 76종목을 하나의 목록으로 세운다.
+// 예전에는 섹터로 먼저 묶고 그 안에서만 정렬해서, 시총 열을 눌러도 시총 1위(지주 SK스퀘어 1,422,141억)가
+// 금융 12종목 아래에 묻혔다. 어떤 열을 눌러도 화면에 있는 종목 전체가 그 기준으로 다시 선다.
+// 섹터로 묶어 보고 싶으면 섹터 열 머리를 누른다.
 function sortedBySector(stocks) {
-  if (state.sortKey === "sector") return [...stocks].sort(compareStocks);
-  return SECTOR_ORDER.flatMap((sector) => stocks.filter((stock) => stock.sector === sector).sort(compareStocks));
+  if (state.sortKey !== "sector") return [...stocks].sort(compareStocks);
+  return SECTOR_ORDER.flatMap((sector) => stocks.filter((stock) => stock.sector === sector).sort(compareByMarketCap));
+}
+
+// 섹터 경계선은 섹터로 묶여 있을 때만 뜻이 있다. 섞여 있으면 거의 매 행에 걸려 잡음이 된다.
+function isSectorGrouped() {
+  return state.sortKey === "sector" || state.sector !== "all";
 }
 
 function tableHtml() {
@@ -1149,8 +1160,9 @@ function tableHtml() {
 
   const visible = sortedBySector(filteredStocks());
   let previousSector = null;
+  const grouped = isSectorGrouped();
   const body = visible.map((stock) => {
-    const sectorStart = stock.sector !== previousSector;
+    const sectorStart = grouped && previousSector !== null && stock.sector !== previousSector;
     previousSector = stock.sector;
     const cells = sections.flatMap((section) =>
       section.columns.map((column, index) => bodyCell(stock, column, section.key !== "identity" && index === 0 ? "section-start" : ""))).join("");

@@ -228,6 +228,8 @@ ul { padding: 0; list-style: none; }
 .universe-table td:nth-child(1), .universe-table th.sticky-sector { left: 0; width: 56px; min-width: 56px; max-width: 56px; text-align: left; }
 .universe-table td:nth-child(2), .universe-table th.sticky-stock { left: 56px; width: 112px; min-width: 112px; max-width: 112px; text-align: left; box-shadow: inset -1px 0 0 var(--line-strong); }
 .universe-table tbody tr[aria-selected="true"] td:nth-child(1) { box-shadow: inset 3px 0 0 var(--accent); }
+/* 섹터로 묶어 볼 때만 경계선을 긋는다. 클래스는 예전부터 붙고 있었는데 규칙이 없어 안 보였다. */
+.universe-table tbody tr.sector-start td { border-top: 1px solid var(--line-strong); }
 
 /* 틱 플래시 (2026-08-27). 초당 20건 넘게 체결이 들어오는데 숫자만 조용히 갈아끼워져
    화면이 멈춘 것처럼 보였다. 값이 바뀐 현재가 셀만 잠깐 물들였다 뺀다.
