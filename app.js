@@ -488,17 +488,6 @@ function directionCounts(stocks = [], key = "d1") {
   return { up, down };
 }
 
-function revisionCounts(stocks = []) {
-  let up = 0;
-  let down = 0;
-  for (const stock of stocks) {
-    const value = consensusRevision(stock, "2026", "operatingIncome");
-    if (!Number.isFinite(value) || value === 0) continue;
-    if (value > 0) up += 1;
-    else down += 1;
-  }
-  return { up, down };
-}
 
 function coverageBreadth(stocks = []) {
   const periods = {};
@@ -755,29 +744,63 @@ function kpiStripHtml() {
   const kospi = state.snapshot?.marketBreadth?.indices?.KOSPI;
   const kosdaq = state.snapshot?.marketBreadth?.indices?.KOSDAQ;
   const kospiYtd = benchmarkOf("KOSPI")?.ytd ?? null;
-  const kosdaqYtd = benchmarkOf("KOSDAQ")?.ytd ?? null;
   const weightedD1 = weightedPerformance(stocks, "d1");
-  const weightedYtd = weightedPerformance(stocks, "ytd");
-  const relative = Number.isFinite(weightedYtd) && Number.isFinite(kospiYtd) ? weightedYtd - kospiYtd : null;
   const direction = directionCounts(stocks, "d1");
-  const revisions = revisionCounts(stocks);
-  const ranked = [...stocks].filter((stock) => Number.isFinite(stock.performance?.d1)).sort((left, right) => right.performance.d1 - left.performance.d1);
-  const best = ranked[0];
-  const worst = ranked.at(-1);
+  // 2026-08-30 사용자 결정: KPI 6칸을 "오늘·이번 주에 어느 섹터·종목을 봐야 하나"로 바꿨다.
+  // 예전 구성은 KOSPI·KOSDAQ 두 칸이 사이드바 미니마켓과, 섹터 타일 8개가 사이드바 섹터 1D와
+  // 완전히 겹쳤다(실측 8/8 동일). 지수는 한 칸으로 합치고 남는 자리에 최고·최저를 넣는다.
+  // 리비전·목표주가 칸은 나중에 리포트 ingest가 생기면 만든다(메모 §3-5: 지금은 포맷을 설계하지 않는다).
+  const extremeStock = (key) => {
+    const ranked = [...stocks]
+      .filter((stock) => Number.isFinite(stock.performance?.[key]))
+      .sort((left, right) => right.performance[key] - left.performance[key]);
+    return { best: ranked[0] || null, worst: ranked.length > 1 ? ranked.at(-1) : null };
+  };
+  // 섹터 최고·최저는 화면에 보이는 범위를 따른다. 섹터 페이지에서는 그 섹터 하나뿐이라 칸이 비고,
+  // 대신 종목 최고·최저가 그 섹터 안에서 계산된다.
+  const extremeSector = (key) => {
+    const ranked = SECTOR_ORDER
+      .map((sector) => ({ sector, value: weightedPerformance(stocksInSector(sector), key) }))
+      .filter(({ value }) => Number.isFinite(value))
+      .sort((left, right) => right.value - left.value);
+    return { best: ranked[0] || null, worst: ranked.length > 1 ? ranked.at(-1) : null };
+  };
+  const pair = (top, bottom) => `<dd class="num compact">${top}</dd><small>${bottom}</small>`;
+  const stockLine = (stock, key, cls) => (stock
+    ? `<span class="${cls}">${escapeHtml(stock.name)} ${formatPercent(stock.performance[key], 1)}</span>`
+    : "-");
+  const sectorLine = (entry, cls) => (entry
+    ? `<span class="${cls}">${escapeHtml(entry.sector)} ${formatPercent(entry.value, 1)}</span>`
+    : "-");
+  const showSectorExtremes = state.sector === "all";
+  const d1Stock = extremeStock("d1");
+  const d5Stock = extremeStock("d5");
+  const d1Sector = extremeSector("d1");
+  const d5Sector = extremeSector("d5");
+  const weightedD5 = weightedPerformance(stocks, "d5");
+  const marketRelative = Number.isFinite(weightedD1) && Number.isFinite(kospi?.d1) ? weightedD1 - kospi.d1 : null;
+
   return `<dl class="kpis" id="kpis">
-    <div class="kpi"><dt>KOSPI</dt><dd class="num" id="kpiKospiIndex">${Number.isFinite(kospi?.level) ? formatNumber(kospi.level, 2) : "-"}</dd>
-      <small><span id="kpiKospiIndexReturn" class="${numberClass(kospi?.d1)}">${formatPercent(kospi?.d1, 2)}</span> · YTD ${formatPercent(kospiYtd, 1)}</small></div>
-    <div class="kpi"><dt>KOSDAQ</dt><dd class="num" id="kpiKosdaqIndex">${Number.isFinite(kosdaq?.level) ? formatNumber(kosdaq.level, 2) : "-"}</dd>
-      <small><span id="kpiKosdaqIndexReturn" class="${numberClass(kosdaq?.d1)}">${formatPercent(kosdaq?.d1, 2)}</span> · YTD ${formatPercent(kosdaqYtd, 1)}</small></div>
-    <div class="kpi"><dt>${escapeHtml(scope)} 1D (동일가중)</dt><dd class="num ${numberClass(weightedD1)}" id="kpiCoverageReturn">${formatPercent(weightedD1, 2)}</dd>
-      <small>상승 ${direction.up} · 하락 ${direction.down} / ${stocks.length}종목</small></div>
-    <div class="kpi"><dt>YTD vs KOSPI</dt><dd class="num ${numberClass(relative)}" id="kpiRelative">${formatPercent(relative, 1)}</dd>
-      <small>절대 ${formatPercent(weightedYtd, 1)}</small></div>
-    <div class="kpi"><dt>OP 26E 컨센 1M</dt><dd class="num compact" id="kpiRevision"><span class="positive">${revisions.up}</span> 상향 · <span class="negative">${revisions.down}</span> 하향</dd>
-      <small>1M 평균 ÷ 3M 평균 − 1</small></div>
-    <div class="kpi"><dt>1D 최대 상승 / 하락</dt>
-      <dd class="num compact">${best ? `<span class="positive">${escapeHtml(best.name)} ${formatPercent(best.performance.d1, 1)}</span>` : "-"}</dd>
-      <small>${worst && worst !== best ? `<span class="negative">${escapeHtml(worst.name)} ${formatPercent(worst.performance.d1, 1)}</span>` : "-"}</small></div>
+    <div class="kpi"><dt>KOSPI · KOSDAQ</dt>
+      <dd class="num compact"><span id="kpiKospiIndex">${Number.isFinite(kospi?.level) ? formatNumber(kospi.level, 2) : "-"}</span>
+        <span id="kpiKospiIndexReturn" class="${numberClass(kospi?.d1)}">${formatPercent(kospi?.d1, 2)}</span></dd>
+      <small><span id="kpiKosdaqIndex">${Number.isFinite(kosdaq?.level) ? formatNumber(kosdaq.level, 2) : "-"}</span>
+        <span id="kpiKosdaqIndexReturn" class="${numberClass(kosdaq?.d1)}">${formatPercent(kosdaq?.d1, 2)}</span></small></div>
+    <div class="kpi"><dt>${escapeHtml(scope)} 오늘 (동일가중)</dt>
+      <dd class="num ${numberClass(weightedD1)}" id="kpiCoverageReturn">${formatPercent(weightedD1, 2)}</dd>
+      <small>상승 ${direction.up} · 하락 ${direction.down} / ${stocks.length}종목 · vs KOSPI <span class="${numberClass(marketRelative)}">${formatPercent(marketRelative, 1)}</span></small></div>
+    <div class="kpi"><dt>오늘 섹터 최고 / 최저</dt>
+      ${showSectorExtremes
+        ? pair(sectorLine(d1Sector.best, "positive"), sectorLine(d1Sector.worst, "negative"))
+        : pair(`<span class="${numberClass(weightedD1)}">${escapeHtml(scope)} ${formatPercent(weightedD1, 1)}</span>`, "섹터 1개")}</div>
+    <div class="kpi"><dt>오늘 종목 최고 / 최저</dt>
+      ${pair(stockLine(d1Stock.best, "d1", "positive"), stockLine(d1Stock.worst, "d1", "negative"))}</div>
+    <div class="kpi"><dt>주간(5D) 섹터 최고 / 최저</dt>
+      ${showSectorExtremes
+        ? pair(sectorLine(d5Sector.best, "positive"), sectorLine(d5Sector.worst, "negative"))
+        : pair(`<span class="${numberClass(weightedD5)}">${escapeHtml(scope)} ${formatPercent(weightedD5, 1)}</span>`, "섹터 1개")}</div>
+    <div class="kpi"><dt>주간(5D) 종목 최고 / 최저</dt>
+      ${pair(stockLine(d5Stock.best, "d5", "positive"), stockLine(d5Stock.worst, "d5", "negative"))}</div>
   </dl>`;
 }
 
@@ -909,23 +932,6 @@ function homeGroupChart() {
   </div>`;
 }
 
-function sectorTiles() {
-  const kospiYtd = benchmarkOf("KOSPI")?.ytd ?? null;
-  return `<div class="tiles" role="list">${SECTOR_ORDER.map((sector) => {
-    const members = stocksInSector(sector);
-    const d1 = weightedPerformance(members, "d1");
-    const ytd = weightedPerformance(members, "ytd");
-    const relative = Number.isFinite(ytd) && Number.isFinite(kospiYtd) ? ytd - kospiYtd : null;
-    // 타일의 숫자(1D·YTD−K)는 국내 커버리지 기준이므로 스파크라인도 국내 계열을 쓴다.
-    // 합성 계열을 그리면 한 타일 안에서 숫자와 선이 다른 것을 말하게 된다.
-    const entry = domesticSeries(sector);
-    return `<a class="tile" role="listitem" href="#/sector/${encodeURIComponent(sector)}" aria-current="${state.sector === sector}" data-sector-tile="${escapeHtml(sector)}">
-      <span class="t">${escapeHtml(sector)}<small>${members.length}</small></span>
-      <span class="v"><b class="${numberClass(d1)}">${formatPercent(d1, 1)}</b></span>
-      <span class="r">YTD−K <b class="${numberClass(relative)}">${formatPercent(relative, 1)}</b></span>
-      ${sparkline((entry?.values || []).slice(-60))}</a>`;
-  }).join("")}</div>`;
-}
 
 function sectorExceptions(stocks) {
   const byReturn = [...stocks].filter((stock) => Number.isFinite(stock.performance?.d1)).sort((left, right) => right.performance.d1 - left.performance.d1);
@@ -1256,7 +1262,9 @@ function viewHtml() {
     ? `전체 유니버스 — 8섹터 ${state.snapshot?.stocks?.length || 0}종목`
     : `${state.sector} — ${stocks.length}종목`;
   const middle = state.sector === "all"
-    ? `<div class="home-grid">${homeGroupChart()}</div>${sectorTiles()}`
+    // 2026-08-30: 섹터 타일 8개를 없앴다. 1D가 사이드바와 8/8 동일하고 스파크라인은 위 차트의 축소판이라
+    // 101px를 쓰면서 새 정보가 없었다. YTD−K는 차트 끝점에서 읽힌다.
+    ? `<div class="home-grid">${homeGroupChart()}</div>`
     : `${sectorTrend(state.sector, stocks)}${foreignPeerTable(state.sector)}${indicatorTiles(state.sector)}`;
   const fixtureNote = state.snapshot?.mode === "fixture"
     ? "고정 fixture 검증 모드입니다. 실제 투자 판단에 사용할 수 없습니다."
