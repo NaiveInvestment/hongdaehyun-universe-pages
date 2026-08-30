@@ -124,7 +124,7 @@ const state = {
   detailCode: null,
   detailLoading: false,
   columnGroups: new Set(),
-  // 컨센서스 값을 무엇으로 볼지. threeMonth = 3M 평균(기본), highest = 증권사 추정치 중 최고.
+  // 컨센서스 값을 무엇으로 볼지. 1M 평균 · 3M 평균(기본) · 최고 추정치.
   estimateBasis: "threeMonth",
   range: "ytd",
   theme: "dark",
@@ -155,7 +155,8 @@ function loadPreferences() {
   } catch {
     state.columnGroups = new Set();
   }
-  state.estimateBasis = readStorage(ESTIMATE_BASIS_STORAGE_KEY) === "highest" ? "highest" : "threeMonth";
+  const basis = readStorage(ESTIMATE_BASIS_STORAGE_KEY);
+  state.estimateBasis = ESTIMATE_BASES.some(({ key }) => key === basis) ? basis : "threeMonth";
 }
 
 function applyTheme() {
@@ -332,6 +333,16 @@ function profitShortFor(sector = state.sector) {
   return NET_INCOME_SECTORS.has(sector) ? "순익" : "영익";
 }
 
+const ESTIMATE_BASES = [
+  { key: "oneMonth", label: "1M 평균", tag: "1M 평균", hint: "최근 1개월 추정치 평균" },
+  { key: "threeMonth", label: "3M 평균", tag: "3M 평균", hint: "최근 3개월 추정치 평균 (기본)" },
+  { key: "highest", label: "최고", tag: "최고", hint: "추정치 중 가장 높은 값" },
+];
+
+function estimateBasisTag() {
+  return ESTIMATE_BASES.find(({ key }) => key === state.estimateBasis)?.tag || "";
+}
+
 const CONSENSUS_METRICS = [
   { key: "revenue", label: "매출", metric: "revenue", className: "metric-wide-col" },
   { key: "op", label: "영업이익", metric: "operatingIncome", className: "metric-col" },
@@ -352,7 +363,7 @@ function buildConsensusSections() {
     },
     ...CONSENSUS_METRICS.map(({ key, label, metric, className }) => ({
       key: `consensus-${key}`,
-      label: `${label} (억원${state.estimateBasis === "highest" ? " · 최고" : ""})`,
+      label: `${label} (억원 · ${estimateBasisTag()})`,
       columns: [
         ...TABLE_QUARTERS.map(([period, short]) => ({
           key: `${key}-q${period}`, label: short, sort: `quarter.${period}.${metric}`,
@@ -364,6 +375,14 @@ function buildConsensusSections() {
         })),
       ],
     })),
+    {
+      // 그룹 이름 없이 한 칸만 세운다. 어느 그룹에도 속하지 않는 값이라 묶음 머리글을 붙이면 거짓말이 된다.
+      key: "contributors",
+      plain: true,
+      columns: [
+        { key: "contributors", label: "참여사", sort: "consensus.contributors", className: "revision-col", kind: "contributors", period: "2026" },
+      ],
+    },
   ];
 }
 
@@ -456,6 +475,14 @@ const COMPUTED = {
 
 // ConsenDB의 참여 증권사 수는 지표별로 다르다(payload가 { operatingIncome: 17 } 꼴).
 // 지표가 지정되면 그 지표의 수를, 아니면 예전처럼 숫자 하나를 그대로 읽는다.
+// 선택된 기준의 참여 증권사 수. FnGuide는 영업이익 기준 하나만 주고, 1M과 3M이 다르다
+// (SK스퀘어 2026E: 3M 5곳 · 1M 1곳). 최고는 3M과 같은 모수를 쓴다.
+function estimateContributors(stock, period) {
+  const record = stock.annual?.[period];
+  if (record?.kind !== "estimate") return null;
+  return record.horizons?.[state.estimateBasis]?.contributors ?? null;
+}
+
 function contributorCount(stock, period, metric) {
   const raw = stock.annual?.[period]?.contributors;
   if (raw == null) return null;
@@ -478,6 +505,7 @@ function columnValue(stock, column) {
       return result && result.status === "ok" ? result.value : null;
     }
     case "count": return contributorCount(stock, column.period, column.metric);
+    case "contributors": return estimateContributors(stock, column.period);
     case "computed": return COMPUTED[column.compute]?.(stock) ?? null;
     default: return null;
   }
@@ -1097,8 +1125,8 @@ function sortButton(label, key) {
 // 최고값이 없는 칸은 평균으로 되돌리지 않고 비운다. 되돌리면 어느 기준의 숫자인지 알 수 없다.
 function financialValue(record, metric) {
   if (!record) return null;
-  if (state.estimateBasis === "highest" && record.kind === "estimate") return record.highest?.[metric] ?? null;
-  return record[metric] ?? null;
+  if (record.kind !== "estimate") return record[metric] ?? null;
+  return record.horizons?.[state.estimateBasis]?.[metric] ?? null;
 }
 
 function financialCell(record, metric, extraClass = "") {
@@ -1147,12 +1175,14 @@ function bodyCell(stock, column, extraClass = "") {
     case "revision": return revisionCell(stock, column.period, column.metric, extraClass);
     case "ratio": return `<td data-live-field="valuation.${column.period}.${column.ratio}" class="${extraClass}">${formatRatio(stock.valuation?.[column.period]?.[column.ratio], column.ratio)}</td>`;
     case "count": return `<td class="${extraClass}">${formatNumber(contributorCount(stock, column.period, column.metric))}</td>`;
+    case "contributors": return `<td class="${extraClass}">${formatNumber(estimateContributors(stock, column.period))}</td>`;
     case "computed": return computedCell(stock, column, extraClass);
     default: return `<td class="na ${extraClass}">-</td>`;
   }
 }
 
 function sortValue(stock, key) {
+  if (key === "consensus.contributors") return estimateContributors(stock, "2026");
   if (key.startsWith("computed.")) return COMPUTED[key.slice("computed.".length)]?.(stock) ?? null;
   // 화면에 보이는 값으로 정렬해야 한다. 최고 보기에서 평균으로 줄을 세우면 순서와 숫자가 어긋난다.
   if (/^(quarter|annual)\.[^.]+\.(revenue|operatingIncome|parentNetIncome)$/.test(key)) {
@@ -1206,6 +1236,11 @@ function isSectorGrouped() {
 }
 
 // 그룹 첫 칸에는 굵은 세로선, 그룹 안에서 성격이 바뀌는 칸(분기 → 연간)에는 같은 선을 한 번 더 긋는다.
+// 그룹 이름 없이 세우는 칸(섹터·종목, 그리고 컨센서스 보기의 참여사).
+function isPlainSection(section) {
+  return section.key === "identity" || section.plain === true;
+}
+
 function columnEdgeClass(column, index) {
   if (index === 0) return "section-start";
   return column.subsection ? "subsection-start" : "";
@@ -1215,13 +1250,13 @@ function tableHtml() {
   const hidden = hiddenColumnsForSector();
   const sections = visibleSections(hidden);
   const groupRow = sections.map((section) => {
-    if (section.key === "identity") {
-      return section.columns.map((column) => `<th class="${column.className}" rowspan="2" scope="col">${sortButton(column.label, column.sort)}</th>`).join("");
+    if (isPlainSection(section)) {
+      return section.columns.map((column, index) => `<th class="${column.className} ${section.key === "identity" ? "" : columnEdgeClass(column, index)}" rowspan="2" scope="col">${sortButton(column.label, column.sort)}</th>`).join("");
     }
     return `<th class="group-head group-${section.key} section-start" colspan="${section.columns.length}" scope="colgroup">${escapeHtml(section.label)}</th>`;
   }).join("");
   const leafRow = sections
-    .filter(({ key }) => key !== "identity")
+    .filter((section) => !isPlainSection(section))
     .flatMap((section) => section.columns.map((column, index) =>
       `<th class="${column.className} ${columnEdgeClass(column, index)}" scope="col">${column.sort ? sortButton(column.label, column.sort) : escapeHtml(column.label)}</th>`))
     .join("");
@@ -1253,8 +1288,8 @@ function tableHtml() {
 
   const basisSwitch = state.columnGroups.has(CONSENSUS_VIEW_KEY)
     ? `<span class="basis-switch" role="group" aria-label="컨센서스 기준">`
-      + [["threeMonth", "평균", "최근 3개월 추정치 평균"], ["highest", "최고", "추정치 중 가장 높은 값"]]
-        .map(([key, label, hint]) => `<button type="button" data-estimate-basis="${key}" aria-pressed="${state.estimateBasis === key}" title="${hint}">${label}</button>`)
+      + ESTIMATE_BASES
+        .map(({ key, label, hint }) => `<button type="button" data-estimate-basis="${key}" aria-pressed="${state.estimateBasis === key}" title="${escapeHtml(hint)}">${escapeHtml(label)}</button>`)
         .join("")
       + "</span>"
     : "";
@@ -1720,7 +1755,7 @@ function toggleColumnGroup(key) {
 
 
 function setEstimateBasis(basis) {
-  if (state.estimateBasis === basis) return;
+  if (state.estimateBasis === basis || !ESTIMATE_BASES.some(({ key }) => key === basis)) return;
   state.estimateBasis = basis;
   writeStorage(ESTIMATE_BASIS_STORAGE_KEY, basis);
   renderView({ preserveScroll: true });
