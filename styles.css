@@ -228,7 +228,9 @@ ul { padding: 0; list-style: none; }
 .universe-table thead th { position: sticky; z-index: 7; background: var(--surface-3); color: var(--muted); font-size: 10.5px; font-weight: 800; }
 /* 페이지를 내려도 열 이름이 뷰포트 상단에 남는다. 아래 행이 비쳐 보이지 않게 그림자로 경계를 준다. */
 .universe-table thead tr:nth-child(2) th { box-shadow: 0 1px 0 var(--line-strong); }
-.universe-table thead tr:first-child th { top: 0; height: 26px; border-bottom: 1px solid var(--line-strong); }
+/* 첫 행에는 묶음 머리글과 함께, 그룹에 속하지 않는 rowspan 열(섹터·종목·목표가 괴리·참여사)이 같이 선다.
+   `목표가 괴리 (3M 평균)`처럼 기준까지 붙은 이름은 한 줄로는 잘리므로 두 줄을 허용한다(rowspan 칸은 56px 높이다). */
+.universe-table thead tr:first-child th { top: 0; height: 26px; border-bottom: 1px solid var(--line-strong); white-space: normal; line-height: 1.15; word-break: keep-all; }
 /* 열 이름은 두 줄까지 접는다. 열을 다 펼치면 칸이 51px까지 좁아지는데(1440폭),
    "목표가 괴리"처럼 긴 라벨이 잘린다. 라벨을 줄이는 대신 접어서 뜻을 보존한다. 값 칸은 그대로 한 줄이다. */
 .universe-table thead tr:nth-child(2) th { top: 26px; height: 30px; border-bottom: 1px solid var(--line-strong); font-weight: 700; white-space: normal; line-height: 1.15; word-break: keep-all; }
@@ -282,6 +284,7 @@ ul { padding: 0; list-style: none; }
 .universe-table .metric-col { width: 60px; min-width: 60px; }
 .universe-table .metric-wide-col { width: 64px; min-width: 64px; }
 .universe-table .revision-col { width: 66px; min-width: 66px; }
+.universe-table .target-col { width: 78px; min-width: 78px; }
 .universe-table .ratio-col { width: 49px; min-width: 49px; }
 
 /* table-layout: fixed 에서 실제로 열 폭을 정하는 자리. th/td 쪽 폭 지정은 첫 행이 colspan 묶음 헤더라
@@ -295,6 +298,8 @@ ul { padding: 0; list-style: none; }
 .universe-table col.metric-col { width: 60px; }
 .universe-table col.metric-wide-col { width: 64px; }
 .universe-table col.revision-col { width: 62px; }
+/* 목표가 괴리는 기준까지 이름에 붙어(목표가 괴리 (3M 평균)) 두 줄로 접힌다. 한 칸만 조금 넓힌다. */
+.universe-table col.target-col { width: 78px; }
 .stock-name { display: inline-block; max-width: 90px; overflow: hidden; font-size: 11.5px; font-weight: 800; line-height: 18px; text-overflow: ellipsis; vertical-align: middle; }
 .universe-table .positive, .universe-table .negative { font-weight: 750; }
 .heat-weight-5 { --heat-weight: 5%; } .heat-weight-10 { --heat-weight: 10%; } .heat-weight-15 { --heat-weight: 15%; }

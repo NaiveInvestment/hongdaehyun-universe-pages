@@ -336,7 +336,7 @@ function profitShortFor(sector = state.sector) {
 const ESTIMATE_BASES = [
   { key: "oneMonth", label: "1M 평균", tag: "1M 평균", hint: "최근 1개월 추정치 평균" },
   { key: "threeMonth", label: "3M 평균", tag: "3M 평균", hint: "최근 3개월 추정치 평균 (기본)" },
-  { key: "highest", label: "최고", tag: "최고", hint: "추정치 중 가장 높은 값" },
+  { key: "highest", label: "3M 최고", tag: "3M 최고", hint: "최근 3개월 추정치 중 가장 높은 값" },
 ];
 
 function estimateBasisTag() {
@@ -371,7 +371,7 @@ function buildConsensusSections() {
       columns: [
         { key: "sector", label: "섹터", sort: "sector", className: "sticky-sector", kind: "sector" },
         { key: "name", label: "종목", sort: "name", className: "sticky-stock", kind: "name" },
-        { key: "targetGap", label: "목표가 괴리", sort: "computed.targetGap", className: "revision-col", kind: "computed", compute: "targetGap", heat: "targetGap" },
+        { key: "targetGap", label: `목표가 괴리 (${targetPriceLabel()})`, sort: "computed.targetGap", className: "target-col revision-col", kind: "computed", compute: "targetGap", heat: "targetGap" },
       ],
     },
     ...CONSENSUS_METRICS.map(({ key, label, metric, className }) => ({
@@ -479,12 +479,29 @@ const COMPUTED = {
     return (dps / price) * 100;
   },
   targetGap: (stock) => {
-    const target = stock.annual?.["2026"]?.targetPrice;
+    const target = targetPriceOf(stock, "2026");
     const price = stock.quote?.price;
     if (!Number.isFinite(target) || !Number.isFinite(price) || price <= 0) return null;
     return ((target / price) - 1) * 100;
   },
 };
+
+// 목표주가는 ConsenDB에 3M 평균(E610300.M)과 3M 최고(E610301.M)만 있다. 1M 평균은 아예 없다.
+// 그래서 1M 평균을 골라도 목표주가는 3M 평균을 쓴다. 없는 값을 만들지 않되, 어느 기준인지는 열 이름에 적는다.
+function targetPriceBasis() {
+  return state.estimateBasis === "highest" ? "highest" : "threeMonth";
+}
+
+function targetPriceLabel() {
+  return targetPriceBasis() === "highest" ? "3M 최고" : "3M 평균";
+}
+
+function targetPriceOf(stock, period = "2026") {
+  const record = stock.annual?.[period];
+  if (!record) return null;
+  if (record.kind !== "estimate" || !record.horizons) return record.targetPrice ?? null;
+  return record.horizons[targetPriceBasis()]?.targetPrice ?? record.targetPrice ?? null;
+}
 
 // ConsenDB의 참여 증권사 수는 지표별로 다르다(payload가 { operatingIncome: 17 } 꼴).
 // 지표가 지정되면 그 지표의 수를, 아니면 예전처럼 숫자 하나를 그대로 읽는다.
@@ -1523,7 +1540,7 @@ function drawerHtml(stock) {
       <div><dt>YTD</dt><dd class="${numberClass(ytd)}" data-performance="ytd">${formatPercent(ytd)}</dd><small>vs KOSPI ${formatPercent(relative, 1)}</small></div>
       <div><dt>52주高比</dt><dd class="${numberClass(stock.performance?.drawdown52w)}" data-performance="drawdown52w">${formatPercent(stock.performance?.drawdown52w)}</dd><small>1Y ${formatPercent(stock.performance?.y1, 1)}</small></div>
       <div><dt>목표가 괴리</dt><dd class="${numberClass(COMPUTED.targetGap(stock))}">${formatPercent(COMPUTED.targetGap(stock))}</dd>
-        <small>TP ${formatPrice(stock.annual?.["2026"]?.targetPrice)} · 배당 ${formatLevelPercent(COMPUTED.dividendYield(stock))}</small></div>
+        <small>TP ${formatPrice(targetPriceOf(stock))} (${targetPriceLabel()}) · 배당 ${formatLevelPercent(COMPUTED.dividendYield(stock))}</small></div>
     </dl>
     <section class="panel"><div class="panel-head"><h3>주가 vs 섹터 · 벤치마크</h3>
         <span class="tools">${rangeButtons()}</span></div>
