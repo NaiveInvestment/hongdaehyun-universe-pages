@@ -462,18 +462,19 @@ function stocksInSector(sector) {
   return sector === "all" ? stocks : stocks.filter((stock) => stock.sector === sector);
 }
 
-// 시총가중 평균 수익률. 시총 또는 수익률이 없는 종목은 분모에서도 뺀다.
+// 동일가중 평균 수익률(2026-08-30 결정). 수익률이 없는 종목은 분모에서도 뺀다.
+// 지수를 동일가중으로 바꾸면서 KPI·사이드바도 같이 맞췄다. 한쪽만 시총가중으로 두면
+// 사이드바의 섹터 1D와 차트가 서로 다른 숫자를 말한다.
 function weightedPerformance(stocks = [], key = "d1") {
-  let weight = 0;
+  let counted = 0;
   let total = 0;
   for (const stock of stocks) {
     const value = stock.performance?.[key];
-    const marketCap = stock.quote?.marketCap;
-    if (!Number.isFinite(value) || !Number.isFinite(marketCap) || marketCap <= 0) continue;
-    weight += marketCap;
-    total += value * marketCap;
+    if (!Number.isFinite(value)) continue;
+    counted += 1;
+    total += value;
   }
-  return weight > 0 ? total / weight : null;
+  return counted > 0 ? total / counted : null;
 }
 
 function directionCounts(stocks = [], key = "d1") {
@@ -764,7 +765,7 @@ function kpiStripHtml() {
       <small><span id="kpiKospiIndexReturn" class="${numberClass(kospi?.d1)}">${formatPercent(kospi?.d1, 2)}</span> · YTD ${formatPercent(kospiYtd, 1)}</small></div>
     <div class="kpi"><dt>KOSDAQ</dt><dd class="num" id="kpiKosdaqIndex">${Number.isFinite(kosdaq?.level) ? formatNumber(kosdaq.level, 2) : "-"}</dd>
       <small><span id="kpiKosdaqIndexReturn" class="${numberClass(kosdaq?.d1)}">${formatPercent(kosdaq?.d1, 2)}</span> · YTD ${formatPercent(kosdaqYtd, 1)}</small></div>
-    <div class="kpi"><dt>${escapeHtml(scope)} 1D (시총가중)</dt><dd class="num ${numberClass(weightedD1)}" id="kpiCoverageReturn">${formatPercent(weightedD1, 2)}</dd>
+    <div class="kpi"><dt>${escapeHtml(scope)} 1D (동일가중)</dt><dd class="num ${numberClass(weightedD1)}" id="kpiCoverageReturn">${formatPercent(weightedD1, 2)}</dd>
       <small>상승 ${direction.up} · 하락 ${direction.down} / ${stocks.length}종목</small></div>
     <div class="kpi"><dt>YTD vs KOSPI</dt><dd class="num ${numberClass(relative)}" id="kpiRelative">${formatPercent(relative, 1)}</dd>
       <small>절대 ${formatPercent(weightedYtd, 1)}</small></div>
@@ -886,24 +887,27 @@ function benchmarkSeriesFor(dates) {
   return series.filter((item) => item.values.length === dates.length || item.values.length > 1);
 }
 
+// 2026-08-30 사용자 결정: 홈 비교 차트를 4그룹에서 8섹터로 바꿨다.
+// 4그룹(금융·지주·보험·증권 / AI/SW / 정유·화학 / 희토류)으로 묶으면 섹터끼리의 차이가 뭉개진다.
+// 8섹터 + KOSPI + KOSDAQ = 10선이다.
 function homeGroupChart() {
   const dates = windowSlice(indexDates());
-  if (dates.length < 2) return `<div class="card"><div class="card-head"><h3>4그룹 상대주가</h3></div><p class="empty-state">섹터 지수를 만들 일봉이 아직 없습니다.</p></div>`;
-  const series = HOME_GROUPS.map((group, index) => {
-    const entry = groupSeries(group.label);
+  if (dates.length < 2) return `<div class="card"><div class="card-head"><h3>섹터 상대주가</h3></div><p class="empty-state">섹터 지수를 만들 일봉이 아직 없습니다.</p></div>`;
+  const series = SECTOR_ORDER.map((sector, index) => {
+    const entry = sectorSeries(sector);
     return entry && entry.values.length
-      ? { name: group.label, short: group.short, values: windowSlice(entry.values), cls: `s-${index + 1}`, members: entry.members }
+      ? { name: sector, short: sector, values: windowSlice(entry.values), cls: `s-${index + 1}`, members: entry.members }
       : null;
   }).filter(Boolean);
   const box = chartBox({ width: 900, height: 300 }, { width: 430, height: 300 });
   const chart = lineChart({ series: [...series, ...benchmarkSeriesFor(dates)], labels: dates, ...box });
   return `<div class="card" id="homeGroupChart">
-    <div class="card-head"><h3>4그룹 상대주가 vs 벤치마크</h3>
+    <div class="card-head"><h3>8섹터 상대주가 vs 벤치마크</h3>
       <span class="tools">${benchButtons()}<span class="gap"></span>${rangeButtons()}</span></div>
     ${chart}
-    <div class="chart-legend">${HOME_GROUPS.map((group, index) => `<span><i class="s${index + 1}"></i>${escapeHtml(group.label)}</span>`).join("")}
+    <div class="chart-legend">${SECTOR_ORDER.map((sector, index) => `<span><i class="s${index + 1}"></i>${escapeHtml(sector)}</span>`).join("")}
       <span><i class="ctx"></i>KOSPI</span><span><i class="ctx2"></i>KOSDAQ</span>
-      <span class="unit">기간 시작 = 100 · 시총가중 · 일별 종가</span></div>
+      <span class="unit">기간 시작 = 100 · 동일가중 · 일별 종가</span></div>
   </div>`;
 }
 
@@ -959,9 +963,9 @@ function sectorTrend(sector, stocks) {
       <div class="card-head"><h3>${escapeHtml(sector)} 섹터 지수 vs 벤치마크</h3>
         <span class="tools">${benchButtons()}<span class="gap"></span>${rangeButtons()}</span></div>
       ${chart}
-      <div class="chart-legend"><span><i></i>${escapeHtml(sector)} 섹터(시총가중 ${entry?.members ?? 0}종목${excluded})</span>
+      <div class="chart-legend"><span><i></i>${escapeHtml(sector)} 섹터(동일가중 ${entry?.members ?? 0}종목${excluded})</span>
         <span><i class="ctx"></i>KOSPI</span><span><i class="ctx2"></i>KOSDAQ</span>
-        <span class="unit">기간 시작 = 100 · 일별 종가</span></div>
+        <span class="unit">기간 시작 = 100 · 동일가중 · 일별 종가</span></div>
     </div>
     <div class="card"><div class="card-head"><h3>섹터 내 예외</h3><span class="unit">${stocks.length}종목</span></div>${sectorExceptions(stocks)}</div>
   </div>`;

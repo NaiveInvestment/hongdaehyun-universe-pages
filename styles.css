@@ -9,6 +9,7 @@
   --up: #ff6b7a; --down: #5aa2ff;
   --good: #4fd19a;
   --series-1: #8fb7e0; --series-2: #f2b84b; --series-3: #4fd19a; --series-4: #c08fe0;
+  --series-5: #ff8f6b; --series-6: #6fd3e0; --series-7: #d9e07a; --series-8: #e08fb8;
   --return-heat-base: #151b22; --return-heat-positive: #ff0000; --return-heat-negative: #4a86e8;
   --tick-up: rgba(255, 107, 122, .30); --tick-down: rgba(90, 162, 255, .30);
   --heat-ink: #ffffff;
@@ -26,6 +27,7 @@
   --up: #c5223d; --down: #155fa8;
   --good: #1f8f63;
   --series-1: #1f4e7f; --series-2: #b8860b; --series-3: #1f8f63; --series-4: #7b4ea8;
+  --series-5: #c2541f; --series-6: #0f7c8c; --series-7: #7a7d1f; --series-8: #a8447a;
   --return-heat-base: #ffffff;
   --heat-ink: #08172b;
   --tick-up: rgba(197, 34, 61, .18); --tick-down: rgba(21, 95, 168, .18);
@@ -282,6 +284,10 @@ svg.chart .s-1 { fill: none; stroke: var(--series-1); stroke-width: 2; }
 svg.chart .s-2 { fill: none; stroke: var(--series-2); stroke-width: 2; }
 svg.chart .s-3 { fill: none; stroke: var(--series-3); stroke-width: 2; }
 svg.chart .s-4 { fill: none; stroke: var(--series-4); stroke-width: 2; }
+svg.chart .s-5 { fill: none; stroke: var(--series-5); stroke-width: 2; }
+svg.chart .s-6 { fill: none; stroke: var(--series-6); stroke-width: 2; }
+svg.chart .s-7 { fill: none; stroke: var(--series-7); stroke-width: 2; }
+svg.chart .s-8 { fill: none; stroke: var(--series-8); stroke-width: 2; }
 svg.chart .bar-a { fill: var(--brand); }
 svg.chart .bar-e { fill: rgba(143, 183, 224, .22); stroke: var(--brand); stroke-dasharray: 3 2; }
 svg.chart .bar-c { fill: none; stroke: var(--accent); stroke-width: 1.5; }
@@ -297,6 +303,10 @@ svg.chart .bar-c { fill: none; stroke: var(--accent); stroke-width: 1.5; }
 .chart-legend i.s2 { border-top-color: var(--series-2); }
 .chart-legend i.s3 { border-top-color: var(--series-3); }
 .chart-legend i.s4 { border-top-color: var(--series-4); }
+.chart-legend i.s5 { border-top-color: var(--series-5); }
+.chart-legend i.s6 { border-top-color: var(--series-6); }
+.chart-legend i.s7 { border-top-color: var(--series-7); }
+.chart-legend i.s8 { border-top-color: var(--series-8); }
 .chart-legend .unit { margin-left: auto; color: var(--faint); }
 
 /* ---- drawer ---- */
