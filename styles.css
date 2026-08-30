@@ -101,6 +101,8 @@ ul { padding: 0; list-style: none; }
 .kpi .pairtop, .kpi .pairbot { display: block; overflow: hidden; font-size: 13px; font-weight: 800; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .kpi .pairbot { color: var(--muted); }
 .kpi .pairtop i, .kpi .pairbot i { margin-right: 3px; font-size: 10px; font-style: normal; font-weight: 700; opacity: .85; }
+/* 지수 칸은 어느 줄이 KOSPI인지 보여야 한다. 예전 KPI는 라벨이 없어 구분이 안 됐다. */
+.kpi .pairtop em, .kpi .pairbot em { margin-right: 5px; color: var(--faint); font-size: 10px; font-style: normal; font-weight: 800; }
 
 /* ---- 시장 폭 상세 (접기) ---- */
 .kpi-strip { display: grid; gap: 6px; margin-bottom: 10px; }
@@ -214,16 +216,17 @@ ul { padding: 0; list-style: none; }
 
 /* 좁은 화면에서는 표가 화면보다 넓어서 자체 스크롤이 필요하다. 이게 기본값이다. */
 .table-region { min-width: 0; min-height: 320px; max-height: calc(100vh - 210px); overflow: auto; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
-/* 2026-08-30: auto 레이아웃이라 표가 컨테이너를 채우려고 열을 늘렸다.
-   CSS로 44/96px을 줘도 실제로는 81/177px로 벌어져 섹터·종목 칸에 여백이 많았다.
-   fixed 레이아웃으로 바꿔 지정 폭을 그대로 지키고, 남는 폭은 숫자 열들이 나눠 갖는다. */
-.universe-table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; font-size: 12px; font-variant-numeric: tabular-nums; }
+/* 좁은 화면(1440 미만)에서는 표가 자체 가로 스크롤을 쓴다. 내용만큼 넓어져야 잘리지 않는다. */
+.universe-table { width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; font-variant-numeric: tabular-nums; }
 .universe-table th, .universe-table td { height: 26px; padding: 2px 5px; border-bottom: 1px solid var(--line); background-clip: padding-box; text-align: center; white-space: nowrap; }
 .universe-table thead th { position: sticky; z-index: 7; background: var(--surface-3); color: var(--muted); font-size: 10.5px; font-weight: 800; }
 /* 페이지를 내려도 열 이름이 뷰포트 상단에 남는다. 아래 행이 비쳐 보이지 않게 그림자로 경계를 준다. */
 .universe-table thead tr:nth-child(2) th { box-shadow: 0 1px 0 var(--line-strong); }
 .universe-table thead tr:first-child th { top: 0; height: 26px; border-bottom: 1px solid var(--line-strong); }
-.universe-table thead tr:nth-child(2) th { top: 26px; height: 24px; border-bottom: 1px solid var(--line-strong); font-weight: 700; }
+/* 열 이름은 두 줄까지 접는다. 열을 다 펼치면 칸이 51px까지 좁아지는데(1440폭),
+   "목표가 괴리"처럼 긴 라벨이 잘린다. 라벨을 줄이는 대신 접어서 뜻을 보존한다. 값 칸은 그대로 한 줄이다. */
+.universe-table thead tr:nth-child(2) th { top: 26px; height: 30px; border-bottom: 1px solid var(--line-strong); font-weight: 700; white-space: normal; line-height: 1.15; word-break: keep-all; }
+.universe-table thead tr:nth-child(2) th button { white-space: normal; line-height: 1.15; }
 .universe-table thead .group-head { color: var(--ink); text-align: center; }
 .universe-table thead button { width: 100%; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
 .universe-table thead button:focus { outline: 0; }
@@ -390,6 +393,10 @@ table.fin { width: 100%; border-collapse: collapse; font-size: 11.5px; font-vari
    페이지가 통째로 가로로 밀린다(390폭에서 500px 실측). */
 @media (min-width: 1440px) {
   .table-region { min-height: 0; max-height: none; overflow: visible; }
+  /* 2026-08-30: auto 레이아웃은 표를 컨테이너에 맞추려고 열을 늘렸다. CSS로 44/96px을 줘도
+     실제로는 81/177px로 벌어져 섹터·종목 칸에 여백이 많았다. fixed로 지정 폭을 그대로 지킨다.
+     이 폭에서는 표가 자체 스크롤을 쓰지 않으므로(페이지 스크롤) 표는 컨테이너 안에 들어와야 한다. */
+  .universe-table { width: 100%; min-width: 0; table-layout: fixed; }
 }
 
 @media (max-width: 1600px) {

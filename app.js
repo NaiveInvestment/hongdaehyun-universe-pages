@@ -44,6 +44,8 @@ const RETURN_HEAT_CAPS = {
   ytd: { positive: 200, negative: 100 },
   y1: { positive: 200, negative: 100 },
   targetGap: { positive: 50, negative: 25 },
+  // MDD는 0(신고가)에서 아래로만 간다. 음수 쪽만 색을 쓴다.
+  ytdDrawdown: { positive: 1, negative: 40 },
 };
 const THEME_STORAGE_KEY = "hongdaehyun-universe:theme-v1";
 const COLUMN_GROUP_STORAGE_KEY = "hongdaehyun-universe:column-groups-v1";
@@ -295,11 +297,16 @@ function returnHeatMeta(value, key) {
 // pending 열은 아직 원천이 없다. 빈 칸을 만들지 않으려고 DOM에 넣지 않고 표 아래 안내로만 알린다.
 // ---------------------------------------------------------------------------
 const OPTIONAL_COLUMN_GROUPS = [
-  { key: "returnsPlus", label: "수익률+", hint: "5D · 20D · 1Y · 52주高比" },
-  { key: "profitPlus", label: "순이익·P/B", hint: "순이익 26E·27E · P/B 26E" },
-  { key: "consensusDetail", label: "컨센 상세", hint: "추정 참여 증권사 수" },
+  { key: "returnsPlus", label: "수익률+", hint: "5D · 20D · 1Y · 52주高比 · 거래대금" },
+  { key: "consensusCore", label: "컨센서스", hint: "OP 27E · OP 1M변화 · 순이익 27E · 매출 27E" },
+  { key: "consensusDetail", label: "컨센 상세", hint: "참여사 · 배당수익률 · 목표가 괴리" },
 ];
 
+// 2026-08-30 사용자 결정으로 코어 열을 다시 짰다.
+//   현재가 · 1D · YTD · MDD · 시총 · P/E · P/B · ROE
+// MDD는 "올해 최고점 대비 현재가"다(신고가면 0%). 52주高比와 기준 구간이 다르다.
+// 밸류에이션은 27E 기준으로 통일했다. 매출·영업이익·순이익은 코어에서 빼고 칩·드로어로 내렸다
+// (매출은 은행지주·보험에 개념이 없어 절반이 비고, 연도·분기별 상세는 드로어가 이미 다룬다).
 const COLUMN_SECTIONS = [
   {
     key: "identity",
@@ -310,45 +317,37 @@ const COLUMN_SECTIONS = [
   },
   {
     key: "quote",
-    label: "시세",
+    label: "시세 · 수익률",
     columns: [
       { key: "price", label: "현재가", sort: "quote.price", className: "base-col price-col", kind: "price" },
       { key: "d1", label: "1D", sort: "performance.d1", className: "base-col return-col", kind: "return", period: "d1" },
-      { key: "marketCap", label: "시총", sort: "quote.marketCap", className: "base-col market-cap-col", kind: "marketCap", field: "marketCap" },
-      { key: "tradingValue", label: "거래대금", sort: "quote.tradingValue", className: "base-col market-cap-col", kind: "marketCap", field: "tradingValue" },
-    ],
-  },
-  {
-    key: "returns",
-    label: "수익률",
-    columns: [
       { key: "ytd", label: "YTD", sort: "performance.ytd", className: "base-col return-col", kind: "return", period: "ytd" },
+      { key: "ytdDrawdown", label: "MDD", sort: "performance.ytdDrawdown", className: "base-col return-col", kind: "return", period: "ytdDrawdown" },
+      { key: "marketCap", label: "시총", sort: "quote.marketCap", className: "base-col market-cap-col", kind: "marketCap", field: "marketCap" },
       { key: "d5", label: "5D", sort: "performance.d5", className: "base-col return-col", kind: "return", period: "d5", group: "returnsPlus" },
       { key: "d20", label: "20D", sort: "performance.d20", className: "base-col return-col", kind: "return", period: "d20", group: "returnsPlus" },
       { key: "y1", label: "1Y", sort: "performance.y1", className: "base-col return-col", kind: "return", period: "y1", group: "returnsPlus" },
       { key: "drawdown52w", label: "52주高比", sort: "performance.drawdown52w", className: "base-col return-col", kind: "return", period: "drawdown52w", group: "returnsPlus" },
+      { key: "tradingValue", label: "거래대금", sort: "quote.tradingValue", className: "base-col market-cap-col", kind: "marketCap", field: "tradingValue", group: "returnsPlus" },
+    ],
+  },
+  {
+    key: "valuation",
+    label: "밸류에이션 27E",
+    columns: [
+      { key: "pe", label: "P/E", sort: "valuation.2027.pe.value", className: "ratio-col", kind: "ratio", period: "2027", ratio: "pe" },
+      { key: "pb", label: "P/B", sort: "valuation.2027.pb.value", className: "ratio-col", kind: "ratio", period: "2027", ratio: "pb" },
+      { key: "roe", label: "ROE", sort: "valuation.2027.roe.value", className: "ratio-col", kind: "ratio", period: "2027", ratio: "roe" },
     ],
   },
   {
     key: "consensus",
     label: "컨센서스 (억원)",
     columns: [
-      { key: "rev2026", label: "매출 26E", sort: "annual.2026.revenue", className: "metric-col", kind: "financial", period: "2026", metric: "revenue" },
-      { key: "rev2027", label: "매출 27E", sort: "annual.2027.revenue", className: "metric-col", kind: "financial", period: "2027", metric: "revenue" },
-      { key: "op2026", label: "OP 26E", sort: "annual.2026.operatingIncome", className: "metric-col", kind: "financial", period: "2026", metric: "operatingIncome" },
-      { key: "op2027", label: "OP 27E", sort: "annual.2027.operatingIncome", className: "metric-col", kind: "financial", period: "2027", metric: "operatingIncome" },
-      { key: "opRevision", label: "OP 1M변화", sort: "revision.annual.2026.operatingIncome", className: "metric-col revision-col", kind: "revision", period: "2026", metric: "operatingIncome" },
-      { key: "np2026", label: "순이익 26E", sort: "annual.2026.parentNetIncome", className: "metric-col", kind: "financial", period: "2026", metric: "parentNetIncome", group: "profitPlus" },
-      { key: "np2027", label: "순이익 27E", sort: "annual.2027.parentNetIncome", className: "metric-col", kind: "financial", period: "2027", metric: "parentNetIncome", group: "profitPlus" },
-    ],
-  },
-  {
-    key: "valuation",
-    label: "밸류에이션 26E",
-    columns: [
-      { key: "pe", label: "P/E", sort: "valuation.2026.pe.value", className: "ratio-col", kind: "ratio", period: "2026", ratio: "pe" },
-      { key: "roe", label: "ROE", sort: "valuation.2026.roe.value", className: "ratio-col", kind: "ratio", period: "2026", ratio: "roe" },
-      { key: "pb", label: "P/B", sort: "valuation.2026.pb.value", className: "ratio-col", kind: "ratio", period: "2026", ratio: "pb", group: "profitPlus" },
+      { key: "op2027", label: "OP 27E", sort: "annual.2027.operatingIncome", className: "metric-col", kind: "financial", period: "2027", metric: "operatingIncome", group: "consensusCore" },
+      { key: "opRevision", label: "OP 1M변화", sort: "revision.annual.2026.operatingIncome", className: "metric-col revision-col", kind: "revision", period: "2026", metric: "operatingIncome", group: "consensusCore" },
+      { key: "np2027", label: "순이익 27E", sort: "annual.2027.parentNetIncome", className: "metric-col", kind: "financial", period: "2027", metric: "parentNetIncome", group: "consensusCore" },
+      { key: "rev2027", label: "매출 27E", sort: "annual.2027.revenue", className: "metric-col", kind: "financial", period: "2027", metric: "revenue", group: "consensusCore" },
     ],
   },
   {
@@ -356,7 +355,7 @@ const COLUMN_SECTIONS = [
     label: "컨센 상세",
     columns: [
       { key: "contributors", label: "참여사", sort: "annual.2026.contributors", className: "metric-col", kind: "count", period: "2026", group: "consensusDetail" },
-      { key: "dividendYield", label: "배당수익률", sort: "computed.dividendYield", className: "metric-col", kind: "computed", compute: "dividendYield", signed: false, group: "consensusDetail" },
+      { key: "dividendYield", label: "배당 수익률", sort: "computed.dividendYield", className: "metric-col", kind: "computed", compute: "dividendYield", signed: false, group: "consensusDetail" },
       { key: "targetGap", label: "목표가 괴리", sort: "computed.targetGap", className: "metric-col revision-col", kind: "computed", compute: "targetGap", heat: "targetGap", group: "consensusDetail" },
     ],
   },
@@ -691,13 +690,7 @@ function sectorNavItems() {
 }
 
 function renderSidebar() {
-  const indices = state.snapshot?.marketBreadth?.indices || {};
-  $("#marketMini").innerHTML = ["KOSPI", "KOSDAQ"].map((market) => {
-    const index = indices[market];
-    return `<div><dt>${market}</dt><dd id="mini${market}">${Number.isFinite(index?.level) ? formatNumber(index.level, 2) : "-"}</dd>`
-      + `<small id="mini${market}Return" class="${numberClass(index?.d1)}">${formatPercent(index?.d1, 2)}</small></div>`;
-  }).join("");
-
+  // 2026-08-30 사용자 결정: KOSPI·KOSDAQ은 KPI 첫 칸으로 옮기고 사이드바에서는 뺐다(중복).
   const items = sectorNavItems();
   $("#sectorNav").innerHTML = items.map((item) => `<li><a href="${item.href}"${state.sector === item.key ? ' aria-current="page"' : ""}>`
     + `<span>${escapeHtml(item.label)}</span><small>${item.count}</small>`
@@ -718,6 +711,8 @@ function renderSidebar() {
 // ---------------------------------------------------------------------------
 function kpiStripHtml() {
   const stocks = stocksInSector(state.sector);
+  const kospi = state.snapshot?.marketBreadth?.indices?.KOSPI;
+  const kosdaq = state.snapshot?.marketBreadth?.indices?.KOSDAQ;
   const scope = state.sector === "all" ? "커버리지" : state.sector;
   const weightedD1 = weightedPerformance(stocks, "d1");
   const direction = directionCounts(stocks, "d1");
@@ -761,17 +756,6 @@ function kpiStripHtml() {
     .filter((stock) => Number.isFinite(stock.quote?.tradingValueSurge))
     .sort((left, right) => right.quote.tradingValueSurge - left.quote.tradingValueSurge)
     .slice(0, 2);
-  // 실시간 30분 급등·급락. 값이 없으면(장 마감·재기동 직후) 만들지 않고 이유를 적는다.
-  const intraday = [...stocks]
-    .filter((stock) => Number.isFinite(stock.quote?.change30m))
-    .sort((left, right) => right.quote.change30m - left.quote.change30m);
-  const intradayLine = (stock, cls) => (stock
-    ? `<span class="${cls}"><i>${mark(cls)}</i>${escapeHtml(stock.name)} ${formatPercent(stock.quote.change30m, 1)}</span>`
-    : "-");
-  const quoteSource = state.snapshot?.sources?.quote || {};
-  const intradayNote = quoteSource.krxSession === false || quoteSource.marketOpen === false
-    ? "장마감"
-    : "집계 중 · 30분 필요";
   const surgeLine = (stock) => (stock
     ? `<span class="${numberClass(stock.performance?.d1)}"><i>×${formatNumber(stock.quote.tradingValueSurge, 1)}</i>${escapeHtml(stock.name)} ${formatPercent(stock.performance?.d1, 1)}</span>`
     : "-");
@@ -783,10 +767,11 @@ function kpiStripHtml() {
   const weightedD5 = weightedPerformance(stocks, "d5");
 
   return `<dl class="kpis" id="kpis">
-    <div class="kpi" id="kpiIntraday"><dt>실시간 <u>최근 30분</u></dt>
-      ${intraday.length
-        ? pair(intradayLine(intraday[0], "positive"), intradayLine(intraday.length > 1 ? intraday.at(-1) : null, "negative"))
-        : pair(`<span class="na">${escapeHtml(intradayNote)}</span>`, "<span class=\"na\">-</span>")}</div>
+    <div class="kpi" id="kpiMarket"><dt>지수 <u>KOSPI · KOSDAQ</u></dt>
+      ${pair(
+        `<span><em>KOSPI</em>${Number.isFinite(kospi?.level) ? formatNumber(kospi.level, 2) : "-"} <span class="${numberClass(kospi?.d1)}">${formatPercent(kospi?.d1, 2)}</span></span>`,
+        `<span><em>KOSDAQ</em>${Number.isFinite(kosdaq?.level) ? formatNumber(kosdaq.level, 2) : "-"} <span class="${numberClass(kosdaq?.d1)}">${formatPercent(kosdaq?.d1, 2)}</span></span>`,
+      )}</div>
     <div class="kpi"><dt>거래대금 급증 <u>20일 평균 대비</u></dt>
       ${pair(surgeLine(surging[0]), surgeLine(surging[1]))}</div>
     <div class="kpi"><dt>오늘 <u>섹터</u></dt>
