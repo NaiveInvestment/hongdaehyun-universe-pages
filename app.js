@@ -741,14 +741,16 @@ function renderSidebar() {
 function kpiStripHtml() {
   const stocks = stocksInSector(state.sector);
   const scope = state.sector === "all" ? "커버리지" : state.sector;
-  const kospi = state.snapshot?.marketBreadth?.indices?.KOSPI;
-  const kosdaq = state.snapshot?.marketBreadth?.indices?.KOSDAQ;
-  const kospiYtd = benchmarkOf("KOSPI")?.ytd ?? null;
   const weightedD1 = weightedPerformance(stocks, "d1");
   const direction = directionCounts(stocks, "d1");
-  // 2026-08-30 사용자 결정: KPI 6칸을 "오늘·이번 주에 어느 섹터·종목을 봐야 하나"로 바꿨다.
-  // 예전 구성은 KOSPI·KOSDAQ 두 칸이 사이드바 미니마켓과, 섹터 타일 8개가 사이드바 섹터 1D와
-  // 완전히 겹쳤다(실측 8/8 동일). 지수는 한 칸으로 합치고 남는 자리에 최고·최저를 넣는다.
+  // 2026-08-30 사용자 결정: KPI 6칸을 "지금·오늘·이번 주에 어느 섹터·종목을 봐야 하나"로 바꿨다.
+  //
+  // 뺀 것과 이유
+  //  - KOSPI·KOSDAQ 두 칸: 사이드바 미니마켓과 같은 값인데 라벨이 없어 어느 줄인지도 안 보였다.
+  //  - 섹터 타일 8개: 1D가 사이드바와 8/8 동일하고 스파크라인은 위 차트의 축소판이었다.
+  //  - 커버리지 1D 평균: 8섹터가 서로 상관이 낮아 한 숫자로 묶는 의미가 약하다.
+  //    (커버리지 평균은 아래 시장 폭 줄에 그대로 있다)
+  //
   // 리비전·목표주가 칸은 나중에 리포트 ingest가 생기면 만든다(메모 §3-5: 지금은 포맷을 설계하지 않는다).
   const extremeStock = (key) => {
     const ranked = [...stocks]
@@ -781,6 +783,17 @@ function kpiStripHtml() {
     .filter((stock) => Number.isFinite(stock.quote?.tradingValueSurge))
     .sort((left, right) => right.quote.tradingValueSurge - left.quote.tradingValueSurge)
     .slice(0, 2);
+  // 실시간 30분 급등·급락. 값이 없으면(장 마감·재기동 직후) 만들지 않고 이유를 적는다.
+  const intraday = [...stocks]
+    .filter((stock) => Number.isFinite(stock.quote?.change30m))
+    .sort((left, right) => right.quote.change30m - left.quote.change30m);
+  const intradayLine = (stock, cls) => (stock
+    ? `<span class="${cls}"><i>${mark(cls)}</i>${escapeHtml(stock.name)} ${formatPercent(stock.quote.change30m, 1)}</span>`
+    : "-");
+  const quoteSource = state.snapshot?.sources?.quote || {};
+  const intradayNote = quoteSource.krxSession === false || quoteSource.marketOpen === false
+    ? "장마감"
+    : "집계 중 · 30분 필요";
   const surgeLine = (stock) => (stock
     ? `<span class="${numberClass(stock.performance?.d1)}"><i>×${formatNumber(stock.quote.tradingValueSurge, 1)}</i>${escapeHtml(stock.name)} ${formatPercent(stock.performance?.d1, 1)}</span>`
     : "-");
@@ -792,11 +805,10 @@ function kpiStripHtml() {
   const weightedD5 = weightedPerformance(stocks, "d5");
 
   return `<dl class="kpis" id="kpis">
-    <div class="kpi"><dt>KOSPI · KOSDAQ</dt>
-      <dd class="num compact"><span id="kpiKospiIndex">${Number.isFinite(kospi?.level) ? formatNumber(kospi.level, 2) : "-"}</span>
-        <span id="kpiKospiIndexReturn" class="${numberClass(kospi?.d1)}">${formatPercent(kospi?.d1, 2)}</span></dd>
-      <small><span id="kpiKosdaqIndex">${Number.isFinite(kosdaq?.level) ? formatNumber(kosdaq.level, 2) : "-"}</span>
-        <span id="kpiKosdaqIndexReturn" class="${numberClass(kosdaq?.d1)}">${formatPercent(kosdaq?.d1, 2)}</span></small></div>
+    <div class="kpi" id="kpiIntraday"><dt>실시간 <u>최근 30분</u></dt>
+      ${intraday.length
+        ? pair(intradayLine(intraday[0], "positive"), intradayLine(intraday.length > 1 ? intraday.at(-1) : null, "negative"))
+        : pair(`<span class="na">${escapeHtml(intradayNote)}</span>`, "<span class=\"na\">-</span>")}</div>
     <div class="kpi"><dt>거래대금 급증 <u>20일 평균 대비</u></dt>
       ${pair(surgeLine(surging[0]), surgeLine(surging[1]))}</div>
     <div class="kpi"><dt>오늘 <u>섹터</u></dt>
