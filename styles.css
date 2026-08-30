@@ -95,6 +95,12 @@ ul { padding: 0; list-style: none; }
 .kpi dd { font-size: 18px; font-weight: 800; line-height: 1.2; letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .kpi dd.compact { overflow: hidden; font-size: 12.5px; text-overflow: ellipsis; }
 .kpi small { display: block; overflow: hidden; color: var(--muted); font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+/* 최고·최저 쌍 (2026-08-30). 두 줄을 같은 크기로 둬야 최저가 곁가지로 안 읽힌다.
+   ▲▼를 앞에 붙여 색에만 기대지 않는다. */
+.kpi dt u { color: var(--faint); font-weight: 600; text-decoration: none; }
+.kpi .pairtop, .kpi .pairbot { display: block; overflow: hidden; font-size: 13px; font-weight: 800; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.kpi .pairbot { color: var(--muted); }
+.kpi .pairtop i, .kpi .pairbot i { margin-right: 3px; font-size: 10px; font-style: normal; font-weight: 700; opacity: .85; }
 
 /* ---- 시장 폭 상세 (접기) ---- */
 .kpi-strip { display: grid; gap: 6px; margin-bottom: 10px; }

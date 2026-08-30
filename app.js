@@ -765,12 +765,24 @@ function kpiStripHtml() {
       .sort((left, right) => right.value - left.value);
     return { best: ranked[0] || null, worst: ranked.length > 1 ? ranked.at(-1) : null };
   };
-  const pair = (top, bottom) => `<dd class="num compact">${top}</dd><small>${bottom}</small>`;
+  // 최고·최저는 같은 무게로 읽혀야 한다. 아래를 작게 두면 최저가 곁가지처럼 보인다.
+  // 색만으로 방향을 알리지 않고 ▲▼를 붙인다.
+  const pair = (top, bottom) => `<dd class="num pairtop">${top}</dd><small class="pairbot">${bottom}</small>`;
+  const mark = (cls) => (cls === "positive" ? "▲" : "▼");
   const stockLine = (stock, key, cls) => (stock
-    ? `<span class="${cls}">${escapeHtml(stock.name)} ${formatPercent(stock.performance[key], 1)}</span>`
+    ? `<span class="${cls}"><i>${mark(cls)}</i>${escapeHtml(stock.name)} ${formatPercent(stock.performance[key], 1)}</span>`
     : "-");
   const sectorLine = (entry, cls) => (entry
-    ? `<span class="${cls}">${escapeHtml(entry.sector)} ${formatPercent(entry.value, 1)}</span>`
+    ? `<span class="${cls}"><i>${mark(cls)}</i>${escapeHtml(entry.sector)} ${formatPercent(entry.value, 1)}</span>`
+    : "-");
+  // 거래대금이 평소의 몇 배인지. 오늘 1D 최고·최저에 안 잡히는 종목을 짚어 준다
+  // (2026-08-30 실측: 한화가 ×2.4인데 1D는 +3.6%라 최고에 안 들어왔고, 주간으로는 +34%였다).
+  const surging = [...stocks]
+    .filter((stock) => Number.isFinite(stock.quote?.tradingValueSurge))
+    .sort((left, right) => right.quote.tradingValueSurge - left.quote.tradingValueSurge)
+    .slice(0, 2);
+  const surgeLine = (stock) => (stock
+    ? `<span class="${numberClass(stock.performance?.d1)}"><i>×${formatNumber(stock.quote.tradingValueSurge, 1)}</i>${escapeHtml(stock.name)} ${formatPercent(stock.performance?.d1, 1)}</span>`
     : "-");
   const showSectorExtremes = state.sector === "all";
   const d1Stock = extremeStock("d1");
@@ -778,7 +790,6 @@ function kpiStripHtml() {
   const d1Sector = extremeSector("d1");
   const d5Sector = extremeSector("d5");
   const weightedD5 = weightedPerformance(stocks, "d5");
-  const marketRelative = Number.isFinite(weightedD1) && Number.isFinite(kospi?.d1) ? weightedD1 - kospi.d1 : null;
 
   return `<dl class="kpis" id="kpis">
     <div class="kpi"><dt>KOSPI · KOSDAQ</dt>
@@ -786,20 +797,19 @@ function kpiStripHtml() {
         <span id="kpiKospiIndexReturn" class="${numberClass(kospi?.d1)}">${formatPercent(kospi?.d1, 2)}</span></dd>
       <small><span id="kpiKosdaqIndex">${Number.isFinite(kosdaq?.level) ? formatNumber(kosdaq.level, 2) : "-"}</span>
         <span id="kpiKosdaqIndexReturn" class="${numberClass(kosdaq?.d1)}">${formatPercent(kosdaq?.d1, 2)}</span></small></div>
-    <div class="kpi"><dt>${escapeHtml(scope)} 오늘 (동일가중)</dt>
-      <dd class="num ${numberClass(weightedD1)}" id="kpiCoverageReturn">${formatPercent(weightedD1, 2)}</dd>
-      <small>상승 ${direction.up} · 하락 ${direction.down} / ${stocks.length}종목 · vs KOSPI <span class="${numberClass(marketRelative)}">${formatPercent(marketRelative, 1)}</span></small></div>
-    <div class="kpi"><dt>오늘 섹터 최고 / 최저</dt>
+    <div class="kpi"><dt>거래대금 급증 <u>20일 평균 대비</u></dt>
+      ${pair(surgeLine(surging[0]), surgeLine(surging[1]))}</div>
+    <div class="kpi"><dt>오늘 <u>섹터</u></dt>
       ${showSectorExtremes
         ? pair(sectorLine(d1Sector.best, "positive"), sectorLine(d1Sector.worst, "negative"))
         : pair(`<span class="${numberClass(weightedD1)}">${escapeHtml(scope)} ${formatPercent(weightedD1, 1)}</span>`, "섹터 1개")}</div>
-    <div class="kpi"><dt>오늘 종목 최고 / 최저</dt>
+    <div class="kpi"><dt>오늘 <u>종목</u></dt>
       ${pair(stockLine(d1Stock.best, "d1", "positive"), stockLine(d1Stock.worst, "d1", "negative"))}</div>
-    <div class="kpi"><dt>주간(5D) 섹터 최고 / 최저</dt>
+    <div class="kpi"><dt>주간 5D <u>섹터</u></dt>
       ${showSectorExtremes
         ? pair(sectorLine(d5Sector.best, "positive"), sectorLine(d5Sector.worst, "negative"))
         : pair(`<span class="${numberClass(weightedD5)}">${escapeHtml(scope)} ${formatPercent(weightedD5, 1)}</span>`, "섹터 1개")}</div>
-    <div class="kpi"><dt>주간(5D) 종목 최고 / 최저</dt>
+    <div class="kpi"><dt>주간 5D <u>종목</u></dt>
       ${pair(stockLine(d5Stock.best, "d5", "positive"), stockLine(d5Stock.worst, "d5", "negative"))}</div>
   </dl>`;
 }
