@@ -4,7 +4,7 @@
   color-scheme: dark;
   --canvas: #0e1318; --surface: #151b22; --surface-2: #1b232c; --surface-3: #222c36;
   --ink: #e7edf3; --muted: #9aa7b4; --faint: #7b8896;
-  --line: #273039; --line-strong: #36424e;
+  --line: #273039; --line-strong: #36424e; --line-group: #4a5a68;
   --brand: #8fb7e0; --accent: #f2b84b; --accent-ink: #1a1a1a;
   --up: #ff6b7a; --down: #5aa2ff;
   --good: #4fd19a;
@@ -22,7 +22,7 @@
   color-scheme: light;
   --canvas: #f3f5f7; --surface: #ffffff; --surface-2: #f6f8fa; --surface-3: #eaeef2;
   --ink: #141c25; --muted: #5b6876; --faint: #8a96a3;
-  --line: #dde3e9; --line-strong: #c2cbd4;
+  --line: #dde3e9; --line-strong: #c2cbd4; --line-group: #9fabb7;
   --brand: #1f4e7f; --accent: #b8860b; --accent-ink: #ffffff;
   --up: #c5223d; --down: #155fa8;
   --good: #1f8f63;
@@ -236,7 +236,10 @@ ul { padding: 0; list-style: none; }
 .universe-table thead button::after { content: "↕"; position: absolute; right: -3px; bottom: -3px; color: var(--faint); font-size: 7px; line-height: 1; pointer-events: none; }
 .universe-table thead button[data-active="true"]::after { content: attr(data-arrow); color: var(--accent); font-size: 9px; bottom: -4px; }
 /* 열 구분 세로선. 그룹 경계는 진하게, 그 안의 열 사이는 옅게 긋는다. */
-.universe-table .section-start { box-shadow: inset 1px 0 0 var(--line-strong); }
+.universe-table .section-start { box-shadow: inset 1px 0 0 var(--line-group); }
+/* 잎 헤더 행에는 아래쪽 경계선 그림자가 이미 걸려 있어서, 같은 속성인 그룹 세로선이 통째로 덮여 사라졌다
+   (2026-08-30 실측: `P/E 26E` 칸의 box-shadow 가 `0 1px 0` 하나뿐이었다). 두 그림자를 함께 준다. */
+.universe-table thead tr:nth-child(2) th.section-start { box-shadow: 0 1px 0 var(--line-strong), inset 1px 0 0 var(--line-group); }
 .universe-table .subsection-start { border-left: 1px solid var(--line-strong) !important; }
 .universe-table tbody td:not(.section-start):not(:nth-child(1)):not(:nth-child(2)),
 .universe-table thead tr:nth-child(2) th:not(.section-start):not(.sticky-sector):not(.sticky-stock) { border-left: 1px solid var(--line); }
