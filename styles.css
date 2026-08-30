@@ -235,6 +235,7 @@ ul { padding: 0; list-style: none; }
 .universe-table thead button[data-active="true"]::after { content: attr(data-arrow); color: var(--accent); }
 /* 열 구분 세로선. 그룹 경계는 진하게, 그 안의 열 사이는 옅게 긋는다. */
 .universe-table .section-start { box-shadow: inset 1px 0 0 var(--line-strong); }
+.universe-table .subsection-start { border-left: 1px solid var(--line-strong) !important; }
 .universe-table tbody td:not(.section-start):not(:nth-child(1)):not(:nth-child(2)),
 .universe-table thead tr:nth-child(2) th:not(.section-start):not(.sticky-sector):not(.sticky-stock) { border-left: 1px solid var(--line); }
 .universe-table tbody tr { cursor: pointer; }
@@ -244,8 +245,8 @@ ul { padding: 0; list-style: none; }
 .universe-table th.sticky-sector, .universe-table th.sticky-stock { z-index: 12; background: var(--surface-3); }
 /* 2026-08-30: 섹터·종목 칸이 넓어 여백이 많았다. 실측한 최대 길이에 맞춰 줄인다.
    섹터는 최장 "AI/SW"(5자), 종목은 최장 "현대지에프홀딩스"(8자)이고 8자는 76종목 중 1개뿐이다. */
-.universe-table td:nth-child(1), .universe-table th.sticky-sector { left: 0; width: 44px; min-width: 44px; max-width: 44px; text-align: left; }
-.universe-table td:nth-child(2), .universe-table th.sticky-stock { left: 44px; width: 96px; min-width: 96px; max-width: 96px; text-align: left; box-shadow: inset -1px 0 0 var(--line-strong); }
+.universe-table td:nth-child(1), .universe-table th.sticky-sector { left: 0; width: 48px; min-width: 48px; max-width: 48px; text-align: left; }
+.universe-table td:nth-child(2), .universe-table th.sticky-stock { left: 48px; width: 100px; min-width: 100px; max-width: 100px; text-align: left; box-shadow: inset -1px 0 0 var(--line-strong); }
 .universe-table tbody tr[aria-selected="true"] td:nth-child(1) { box-shadow: inset 3px 0 0 var(--accent); }
 /* 섹터로 묶어 볼 때만 경계선을 긋는다. 클래스는 예전부터 붙고 있었는데 규칙이 없어 안 보였다. */
 .universe-table tbody tr.sector-start td { border-top: 1px solid var(--line-strong); }
@@ -268,9 +269,22 @@ ul { padding: 0; list-style: none; }
 .universe-table .market-cap-col { width: 66px; min-width: 66px; }
 .universe-table .return-col { width: 46px; min-width: 46px; }
 .universe-table .metric-col { width: 60px; min-width: 60px; }
+.universe-table .metric-wide-col { width: 64px; min-width: 64px; }
 .universe-table .revision-col { width: 66px; min-width: 66px; }
 .universe-table .ratio-col { width: 49px; min-width: 49px; }
-.stock-name { display: inline-block; max-width: 100px; overflow: hidden; font-size: 11.5px; font-weight: 800; line-height: 18px; text-overflow: ellipsis; vertical-align: middle; }
+
+/* table-layout: fixed 에서 실제로 열 폭을 정하는 자리. th/td 쪽 폭 지정은 첫 행이 colspan 묶음 헤더라
+   무시된다(2026-08-30 실측). colgroup 은 무시되지 않는다. 합이 표 폭보다 작으면 남는 폭이 비례 배분된다. */
+.universe-table col.sticky-sector { width: 48px; }
+.universe-table col.sticky-stock { width: 100px; }
+.universe-table col.price-col { width: 68px; }
+.universe-table col.market-cap-col { width: 70px; }
+.universe-table col.return-col { width: 60px; }
+.universe-table col.ratio-col { width: 52px; }
+.universe-table col.metric-col { width: 60px; }
+.universe-table col.metric-wide-col { width: 64px; }
+.universe-table col.revision-col { width: 62px; }
+.stock-name { display: inline-block; max-width: 90px; overflow: hidden; font-size: 11.5px; font-weight: 800; line-height: 18px; text-overflow: ellipsis; vertical-align: middle; }
 .universe-table .positive, .universe-table .negative { font-weight: 750; }
 .heat-weight-5 { --heat-weight: 5%; } .heat-weight-10 { --heat-weight: 10%; } .heat-weight-15 { --heat-weight: 15%; }
 .heat-weight-20 { --heat-weight: 20%; } .heat-weight-25 { --heat-weight: 25%; } .heat-weight-30 { --heat-weight: 30%; }
@@ -393,6 +407,8 @@ table.fin { width: 100%; border-collapse: collapse; font-size: 11.5px; font-vari
    페이지가 통째로 가로로 밀린다(390폭에서 500px 실측). */
 @media (min-width: 1440px) {
   .table-region { min-height: 0; max-height: none; overflow: visible; }
+  /* 열그룹을 다 켜서 표가 본문보다 넓어지면(30열) 페이지를 가로로 밀지 않고 표만 스크롤시킨다. */
+  .table-region[data-wide="true"] { max-height: calc(100vh - 210px); overflow: auto; }
   /* 2026-08-30: auto 레이아웃은 표를 컨테이너에 맞추려고 열을 늘렸다. CSS로 44/96px을 줘도
      실제로는 81/177px로 벌어져 섹터·종목 칸에 여백이 많았다. fixed로 지정 폭을 그대로 지킨다.
      이 폭에서는 표가 자체 스크롤을 쓰지 않으므로(페이지 스크롤) 표는 컨테이너 안에 들어와야 한다. */

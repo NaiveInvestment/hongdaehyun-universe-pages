@@ -28,9 +28,10 @@ const HOME_GROUPS = [
 ];
 const KOSDAQ_CODES = new Set(["093320", "067160", "124500", "030520", "042000", "078020", "127120"]);
 // 2026-08-26 확정: 연간 컨센서스는 3개(26E·27E·28E)까지 보여준다. 2025는 확정 실적 비교용이다.
-const ANNUALS = [["2025", "2025"], ["2026", "2026E"], ["2027", "2027E"], ["2028", "2028E"]];
+const ANNUALS = [["2024", "2024"], ["2025", "2025"], ["2026", "2026E"], ["2027", "2027E"], ["2028", "2028E"]];
 // 분기는 확정 실적 8개 + 추정 4개.
 const QUARTER_ESTIMATE_COUNT = 4;
+const QUARTER_HISTORY_COUNT = 4;
 const SOURCE_LABELS = { quote: "시세", actuals: "공시", consensus: "컨센서스" };
 const HORIZON_LABELS = { oneMonth: "1M 평균", threeMonth: "3M 평균", highest: "3M 최고" };
 // 2026-08-27 사용자 결정: 섹터 지수는 YTD 기준으로 본다. 원래 3M·6M·1Y뿐이라 YTD가 아예 없었다.
@@ -298,70 +299,92 @@ function returnHeatMeta(value, key) {
 // ---------------------------------------------------------------------------
 const OPTIONAL_COLUMN_GROUPS = [
   { key: "returnsPlus", label: "수익률+", hint: "5D · 20D · 1Y · 52주高比 · 거래대금" },
-  { key: "consensusCore", label: "컨센서스", hint: "OP 27E · OP 1M변화 · 순이익 27E · 매출 27E" },
-  { key: "consensusDetail", label: "컨센 상세", hint: "참여사 · 배당수익률 · 목표가 괴리" },
+  { key: "consensusDetail", label: "컨센 상세", hint: "1M변화 · 매출 · 참여사 · 배당 · 목표가 괴리" },
 ];
 
 // 2026-08-30 사용자 결정으로 코어 열을 다시 짰다.
-//   현재가 · 1D · YTD · MDD · 시총 · P/E · P/B · ROE
+//   현재가 · 1D · YTD · MDD · 시총 │ P/E·P/B·ROE (26E·27E) │ 올해 4개 분기 + 26E·27E
 // MDD는 "올해 최고점 대비 현재가"다(신고가면 0%). 52주高比와 기준 구간이 다르다.
-// 밸류에이션은 27E 기준으로 통일했다. 매출·영업이익·순이익은 코어에서 빼고 칩·드로어로 내렸다
-// (매출은 은행지주·보험에 개념이 없어 절반이 비고, 연도·분기별 상세는 드로어가 이미 다룬다).
-const COLUMN_SECTIONS = [
-  {
-    key: "identity",
-    columns: [
-      { key: "sector", label: "섹터", sort: "sector", className: "sticky-sector", kind: "sector" },
-      { key: "name", label: "종목", sort: "name", className: "sticky-stock", kind: "name" },
-    ],
-  },
-  {
-    key: "quote",
-    label: "시세 · 수익률",
-    columns: [
-      { key: "price", label: "현재가", sort: "quote.price", className: "base-col price-col", kind: "price" },
-      { key: "d1", label: "1D", sort: "performance.d1", className: "base-col return-col", kind: "return", period: "d1" },
-      { key: "ytd", label: "YTD", sort: "performance.ytd", className: "base-col return-col", kind: "return", period: "ytd" },
-      { key: "ytdDrawdown", label: "MDD", sort: "performance.ytdDrawdown", className: "base-col return-col", kind: "return", period: "ytdDrawdown" },
-      { key: "marketCap", label: "시총", sort: "quote.marketCap", className: "base-col market-cap-col", kind: "marketCap", field: "marketCap" },
-      { key: "d5", label: "5D", sort: "performance.d5", className: "base-col return-col", kind: "return", period: "d5", group: "returnsPlus" },
-      { key: "d20", label: "20D", sort: "performance.d20", className: "base-col return-col", kind: "return", period: "d20", group: "returnsPlus" },
-      { key: "y1", label: "1Y", sort: "performance.y1", className: "base-col return-col", kind: "return", period: "y1", group: "returnsPlus" },
-      { key: "drawdown52w", label: "52주高比", sort: "performance.drawdown52w", className: "base-col return-col", kind: "return", period: "drawdown52w", group: "returnsPlus" },
-      { key: "tradingValue", label: "거래대금", sort: "quote.tradingValue", className: "base-col market-cap-col", kind: "marketCap", field: "tradingValue", group: "returnsPlus" },
-    ],
-  },
-  {
-    key: "valuation",
-    label: "밸류에이션 27E",
-    columns: [
-      { key: "pe", label: "P/E", sort: "valuation.2027.pe.value", className: "ratio-col", kind: "ratio", period: "2027", ratio: "pe" },
-      { key: "pb", label: "P/B", sort: "valuation.2027.pb.value", className: "ratio-col", kind: "ratio", period: "2027", ratio: "pb" },
-      { key: "roe", label: "ROE", sort: "valuation.2027.roe.value", className: "ratio-col", kind: "ratio", period: "2027", ratio: "roe" },
-    ],
-  },
-  {
-    key: "consensus",
-    label: "컨센서스 (억원)",
-    columns: [
-      { key: "op2027", label: "OP 27E", sort: "annual.2027.operatingIncome", className: "metric-col", kind: "financial", period: "2027", metric: "operatingIncome", group: "consensusCore" },
-      { key: "opRevision", label: "OP 1M변화", sort: "revision.annual.2026.operatingIncome", className: "metric-col revision-col", kind: "revision", period: "2026", metric: "operatingIncome", group: "consensusCore" },
-      { key: "np2027", label: "순이익 27E", sort: "annual.2027.parentNetIncome", className: "metric-col", kind: "financial", period: "2027", metric: "parentNetIncome", group: "consensusCore" },
-      { key: "rev2027", label: "매출 27E", sort: "annual.2027.revenue", className: "metric-col", kind: "financial", period: "2027", metric: "revenue", group: "consensusCore" },
-    ],
-  },
-  {
-    key: "consensusDetail",
-    label: "컨센 상세",
-    columns: [
-      { key: "contributors", label: "참여사", sort: "annual.2026.contributors", className: "metric-col", kind: "count", period: "2026", group: "consensusDetail" },
-      { key: "dividendYield", label: "배당 수익률", sort: "computed.dividendYield", className: "metric-col", kind: "computed", compute: "dividendYield", signed: false, group: "consensusDetail" },
-      { key: "targetGap", label: "목표가 괴리", sort: "computed.targetGap", className: "metric-col revision-col", kind: "computed", compute: "targetGap", heat: "targetGap", group: "consensusDetail" },
-    ],
-  },
-];
+//
+// 이익 지표는 섹터에 따라 바뀐다(확정 (C)안).
+//   전체 화면은 영업이익으로 통일한다 — 섞으면 정렬이 은행 순이익과 정유 영업이익을 나란히 세운다.
+//   금융·보험·증권·지주 섹터 페이지에서는 순이익으로 바뀐다. 그 안에서는 전부 같은 지표라 정렬이 정직하다.
+const NET_INCOME_SECTORS = new Set(["금융", "보험", "증권", "지주"]);
+const TABLE_QUARTERS = [["2026Q1", "1Q26"], ["2026Q2", "2Q26"], ["2026Q3", "3Q26"], ["2026Q4", "4Q26"]];
+const TABLE_ANNUALS = [["2026", "26E"], ["2027", "27E"]];
 
-const PENDING_COLUMNS = COLUMN_SECTIONS.flatMap(({ columns }) => columns.filter(({ pending }) => pending));
+function profitMetricFor(sector = state.sector) {
+  return NET_INCOME_SECTORS.has(sector) ? "parentNetIncome" : "operatingIncome";
+}
+
+function profitLabelFor(sector = state.sector) {
+  return NET_INCOME_SECTORS.has(sector) ? "순익" : "영익";
+}
+
+function buildColumnSections(sector = state.sector) {
+  const metric = profitMetricFor(sector);
+  const profit = profitLabelFor(sector);
+  return [
+    {
+      key: "identity",
+      columns: [
+        { key: "sector", label: "섹터", sort: "sector", className: "sticky-sector", kind: "sector" },
+        { key: "name", label: "종목", sort: "name", className: "sticky-stock", kind: "name" },
+      ],
+    },
+    {
+      key: "quote",
+      label: "시세 · 수익률",
+      columns: [
+        { key: "price", label: "현재가", sort: "quote.price", className: "base-col price-col", kind: "price" },
+        { key: "d1", label: "1D", sort: "performance.d1", className: "base-col return-col", kind: "return", period: "d1" },
+        { key: "ytd", label: "YTD", sort: "performance.ytd", className: "base-col return-col", kind: "return", period: "ytd" },
+        { key: "ytdDrawdown", label: "MDD", sort: "performance.ytdDrawdown", className: "base-col return-col", kind: "return", period: "ytdDrawdown" },
+        { key: "marketCap", label: "시총", sort: "quote.marketCap", className: "base-col market-cap-col", kind: "marketCap", field: "marketCap" },
+        { key: "d5", label: "5D", sort: "performance.d5", className: "base-col return-col", kind: "return", period: "d5", group: "returnsPlus" },
+        { key: "d20", label: "20D", sort: "performance.d20", className: "base-col return-col", kind: "return", period: "d20", group: "returnsPlus" },
+        { key: "y1", label: "1Y", sort: "performance.y1", className: "base-col return-col", kind: "return", period: "y1", group: "returnsPlus" },
+        { key: "drawdown52w", label: "52주高比", sort: "performance.drawdown52w", className: "base-col return-col", kind: "return", period: "drawdown52w", group: "returnsPlus" },
+        { key: "tradingValue", label: "거래대금", sort: "quote.tradingValue", className: "base-col market-cap-col", kind: "marketCap", field: "tradingValue", group: "returnsPlus" },
+      ],
+    },
+    {
+      key: "valuation",
+      label: "밸류에이션",
+      columns: [
+        { key: "pe2026", label: "P/E 26E", sort: "valuation.2026.pe.value", className: "ratio-col", kind: "ratio", period: "2026", ratio: "pe" },
+        { key: "pe2027", label: "P/E 27E", sort: "valuation.2027.pe.value", className: "ratio-col", kind: "ratio", period: "2027", ratio: "pe" },
+        { key: "pb2026", label: "P/B 26E", sort: "valuation.2026.pb.value", className: "ratio-col", kind: "ratio", period: "2026", ratio: "pb" },
+        { key: "pb2027", label: "P/B 27E", sort: "valuation.2027.pb.value", className: "ratio-col", kind: "ratio", period: "2027", ratio: "pb" },
+        { key: "roe2026", label: "ROE 26E", sort: "valuation.2026.roe.value", className: "ratio-col", kind: "ratio", period: "2026", ratio: "roe" },
+        { key: "roe2027", label: "ROE 27E", sort: "valuation.2027.roe.value", className: "ratio-col", kind: "ratio", period: "2027", ratio: "roe" },
+      ],
+    },
+    {
+      key: "profit",
+      label: `${profit} (억원)`,
+      columns: [
+        ...TABLE_QUARTERS.map(([period, label]) => ({
+          key: `q${period}`, label, sort: `quarter.${period}.${metric}`,
+          className: "metric-col", kind: "quarterFinancial", period, metric,
+        })),
+        // 분기 넉 칸과 연간 두 칸이 한 그룹에 붙어 있다. 연간 첫 칸에 옅은 세로선을 둬서 경계를 보인다.
+        ...TABLE_ANNUALS.map(([period, label], index) => ({
+          key: `a${period}`, label, sort: `annual.${period}.${metric}`,
+          className: "metric-col", subsection: index === 0, kind: "financial", period, metric,
+        })),
+        { key: "opRevision", label: "1M변화", sort: `revision.annual.2026.${metric}`, className: "metric-col revision-col", kind: "revision", period: "2026", metric, group: "consensusDetail" },
+        { key: "rev2026", label: "매출 26E", sort: "annual.2026.revenue", className: "metric-wide-col", kind: "financial", period: "2026", metric: "revenue", group: "consensusDetail" },
+        { key: "rev2027", label: "매출 27E", sort: "annual.2027.revenue", className: "metric-wide-col", kind: "financial", period: "2027", metric: "revenue", group: "consensusDetail" },
+        { key: "contributors", label: "참여사", sort: `annual.2026.contributors.${metric}`, className: "metric-col", kind: "count", period: "2026", metric, group: "consensusDetail" },
+        { key: "dividendYield", label: "배당 수익률", sort: "computed.dividendYield", className: "metric-col", kind: "computed", compute: "dividendYield", signed: false, group: "consensusDetail" },
+        { key: "targetGap", label: "목표가 괴리", sort: "computed.targetGap", className: "metric-col revision-col", kind: "computed", compute: "targetGap", heat: "targetGap", group: "consensusDetail" },
+      ],
+    },
+  ];
+}
+
+const PENDING_COLUMNS = buildColumnSections("all").flatMap(({ columns }) => columns.filter(({ pending }) => pending));
 
 // 컨센서스 리비전: 1M 평균 / 3M 평균 - 1.
 // 목록 payload에는 서버가 요약해 둔 stock.revision이 오고, 상세 payload에는 원본 비교표가 온다.
@@ -392,6 +415,16 @@ const COMPUTED = {
   },
 };
 
+// ConsenDB의 참여 증권사 수는 지표별로 다르다(payload가 { operatingIncome: 17 } 꼴).
+// 지표가 지정되면 그 지표의 수를, 아니면 예전처럼 숫자 하나를 그대로 읽는다.
+function contributorCount(stock, period, metric) {
+  const raw = stock.annual?.[period]?.contributors;
+  if (raw == null) return null;
+  if (Number.isFinite(raw)) return raw;
+  const value = metric ? raw[metric] : raw.operatingIncome;
+  return Number.isFinite(value) ? value : null;
+}
+
 // 결측 판정용 원시값. 섹터 페이지에서 "전원이 결측인 열"을 숨길 때 쓴다.
 function columnValue(stock, column) {
   switch (column.kind) {
@@ -399,12 +432,13 @@ function columnValue(stock, column) {
     case "marketCap": return stock.quote?.[column.field] ?? null;
     case "return": return stock.performance?.[column.period] ?? null;
     case "financial": return stock.annual?.[column.period]?.[column.metric] ?? null;
+    case "quarterFinancial": return stock.quarter?.[column.period]?.[column.metric] ?? null;
     case "revision": return consensusRevision(stock, column.period, column.metric);
     case "ratio": {
       const result = stock.valuation?.[column.period]?.[column.ratio];
       return result && result.status === "ok" ? result.value : null;
     }
-    case "count": return stock.annual?.[column.period]?.contributors ?? null;
+    case "count": return contributorCount(stock, column.period, column.metric);
     case "computed": return COMPUTED[column.compute]?.(stock) ?? null;
     default: return null;
   }
@@ -422,7 +456,7 @@ function hiddenColumnsForSector() {
   const stocks = (state.snapshot?.stocks || []).filter((stock) => stock.sector === state.sector);
   const hidden = new Map();
   if (!stocks.length) return hidden;
-  for (const section of COLUMN_SECTIONS) {
+  for (const section of buildColumnSections()) {
     if (section.key === "identity") continue;
     for (const column of section.columns) {
       if (column.pending) continue;
@@ -439,7 +473,7 @@ function columnEnabled(column, hidden) {
 }
 
 function visibleSections(hidden = hiddenColumnsForSector()) {
-  return COLUMN_SECTIONS
+  return buildColumnSections()
     .map((section) => ({ ...section, columns: section.columns.filter((column) => section.key === "identity" || columnEnabled(column, hidden)) }))
     .filter((section) => section.columns.length);
 }
@@ -1062,9 +1096,10 @@ function bodyCell(stock, column, extraClass = "") {
     case "marketCap": return `<td data-live-field="quote.${column.field}" class="${extraClass}">${formatNumber(stock.quote?.[column.field])}</td>`;
     case "return": return performanceCell(stock, column.period, extraClass);
     case "financial": return financialCell(stock.annual?.[column.period], column.metric, extraClass);
+    case "quarterFinancial": return financialCell(stock.quarter?.[column.period], column.metric, extraClass);
     case "revision": return revisionCell(stock, column.period, column.metric, extraClass);
     case "ratio": return `<td data-live-field="valuation.${column.period}.${column.ratio}" class="${extraClass}">${formatRatio(stock.valuation?.[column.period]?.[column.ratio], column.ratio)}</td>`;
-    case "count": return `<td class="${extraClass}">${formatNumber(stock.annual?.[column.period]?.contributors)}</td>`;
+    case "count": return `<td class="${extraClass}">${formatNumber(contributorCount(stock, column.period, column.metric))}</td>`;
     case "computed": return computedCell(stock, column, extraClass);
     default: return `<td class="na ${extraClass}">-</td>`;
   }
@@ -1118,6 +1153,12 @@ function isSectorGrouped() {
   return state.sortKey === "sector" || state.sector !== "all";
 }
 
+// 그룹 첫 칸에는 굵은 세로선, 그룹 안에서 성격이 바뀌는 칸(분기 → 연간)에는 같은 선을 한 번 더 긋는다.
+function columnEdgeClass(column, index) {
+  if (index === 0) return "section-start";
+  return column.subsection ? "subsection-start" : "";
+}
+
 function tableHtml() {
   const hidden = hiddenColumnsForSector();
   const sections = visibleSections(hidden);
@@ -1130,8 +1171,13 @@ function tableHtml() {
   const leafRow = sections
     .filter(({ key }) => key !== "identity")
     .flatMap((section) => section.columns.map((column, index) =>
-      `<th class="${column.className} ${index === 0 ? "section-start" : ""}" scope="col">${column.sort ? sortButton(column.label, column.sort) : escapeHtml(column.label)}</th>`))
+      `<th class="${column.className} ${columnEdgeClass(column, index)}" scope="col">${column.sort ? sortButton(column.label, column.sort) : escapeHtml(column.label)}</th>`))
     .join("");
+
+  // table-layout: fixed 는 첫 행의 폭만 본다. 첫 행은 colspan 묶음 헤더라서 열마다 준 폭이 전부 무시되고
+  // 모든 열이 똑같이 나뉘었다(2026-08-30 실측: 1440폭에서 17열이 전부 59px). colgroup 으로 폭을 되돌린다.
+  const colGroup = `<colgroup>${sections.flatMap((section) => section.columns
+    .map((column) => `<col class="${column.className.split(" ").filter((name) => name.endsWith("-col") || name.startsWith("sticky-")).join(" ")}"/>`)).join("")}</colgroup>`;
 
   const visible = sortedBySector(filteredStocks());
   let previousSector = null;
@@ -1140,7 +1186,7 @@ function tableHtml() {
     const sectorStart = grouped && previousSector !== null && stock.sector !== previousSector;
     previousSector = stock.sector;
     const cells = sections.flatMap((section) =>
-      section.columns.map((column, index) => bodyCell(stock, column, section.key !== "identity" && index === 0 ? "section-start" : ""))).join("");
+      section.columns.map((column, index) => bodyCell(stock, column, section.key === "identity" ? "" : columnEdgeClass(column, index)))).join("");
     return `<tr data-code="${stock.code}" data-market="${marketForStock(stock)}" tabindex="0" aria-selected="${state.detailCode === stock.code}" class="${sectorStart ? "sector-start" : ""}">${cells}</tr>`;
   }).join("") || `<tr><td colspan="${visibleColumnCount(sections)}" class="empty-state">검색 결과가 없습니다.</td></tr>`;
 
@@ -1162,6 +1208,7 @@ function tableHtml() {
     </div>
     <div id="tableScroller" class="table-region" role="region" tabindex="0" aria-label="종목 비교표">
       <table id="universeTable" class="universe-table">
+        ${colGroup}
         <thead id="tableHead"><tr>${groupRow}</tr><tr>${leafRow}</tr></thead>
         <tbody id="tableBody">${body}</tbody>
       </table>
@@ -1212,10 +1259,23 @@ function renderView({ preserveScroll = false } = {}) {
   }
   $("#view").innerHTML = viewHtml();
   const next = $("#tableScroller");
+  syncTableOverflow(next);
   if (preserveScroll) {
     if (next) next.scrollLeft = state.tableScrollLeft;
     if (state.tableScrollTop) window.scrollTo({ top: state.tableScrollTop });
   }
+}
+
+// 넓은 화면에서는 표가 페이지와 같이 스크롤된다(열 이름이 화면 위에 붙어 있게 하려고).
+// 열그룹 칩을 다 켜면 열이 30개까지 늘어 그 폭으로는 페이지 자체가 가로로 밀린다.
+// 그때만 표를 자기 상자 안에서 스크롤시킨다. 페이지가 통째로 흔들리는 것보다 낫다.
+function syncTableOverflow(region = $("#tableScroller")) {
+  if (!region) return;
+  const table = region.querySelector(".universe-table");
+  if (!table) return;
+  const overflows = table.getBoundingClientRect().width > region.clientWidth + 1;
+  if (overflows) region.dataset.wide = "true";
+  else delete region.dataset.wide;
 }
 
 function renderKpis() {
@@ -1229,11 +1289,13 @@ function renderKpis() {
 // ---------------------------------------------------------------------------
 // 드로어 (우측 종목 상세)
 // ---------------------------------------------------------------------------
-function quarterSeriesOf(stock) {
+// 2026-08-30 확정: 드로어는 과거 4분기 + 향후 4분기, 딱 8개다.
+// 전체 표는 올해 4개 분기만 보여주므로 여기가 시계열을 길게 보는 유일한 자리다.
+function quarterSeriesOf(stock, metric = profitMetricFor(stock.sector)) {
   const actuals = [...(stock.actuals?.quarter || [])]
     .filter((row) => row?.period)
     .sort((left, right) => left.period.localeCompare(right.period))
-    .slice(-8);
+    .slice(-QUARTER_HISTORY_COUNT);
   const consensus = stock.consensusComparison?.quarter || {};
   const lastActual = actuals.at(-1)?.period || "";
   const estimates = Object.keys(consensus)
@@ -1244,11 +1306,12 @@ function quarterSeriesOf(stock) {
   return [...actuals, ...estimates].map((row) => ({
     period: row.period,
     label: quarterLabel(row.period),
-    value: row.operatingIncome ?? null,
+    value: row[metric] ?? null,
     revenue: row.revenue ?? null,
+    operatingIncome: row.operatingIncome ?? null,
     parentNetIncome: row.parentNetIncome ?? null,
     estimate: row.kind === "estimate",
-    consensus: consensus[row.period]?.threeMonth?.operatingIncome ?? null,
+    consensus: consensus[row.period]?.threeMonth?.[metric] ?? null,
   }));
 }
 
@@ -1267,14 +1330,14 @@ function drawerConsensusTable(stock) {
       + `<span>${formatFinancial(compare.highest?.[metric])}</span></td>`;
   }).join("");
   return `<div class="fin-wrap"><table class="fin" id="drawerConsensus">
-    <thead><tr><th class="l"></th>${ANNUALS.map(([period, label]) => `<th class="${period === "2025" ? "" : "est"}">${label}</th>`).join("")}</tr></thead>
+    <thead><tr><th class="l"></th>${ANNUALS.map(([period, label]) => `<th class="${period <= "2025" ? "" : "est"}">${label}</th>`).join("")}</tr></thead>
     <tbody>
       ${rows.map(([label, metric]) => `<tr><td class="l">${label}</td>${ANNUALS.map(([period]) => {
         const row = stock.annual?.[period];
-        const focus = metric === "operatingIncome" && period === "2026" ? " focus" : "";
+        const focus = metric === profitMetricFor(stock.sector) && period === "2026" ? " focus" : "";
         return `<td class="${row?.kind === "estimate" ? "est" : ""}${focus}">${formatFinancial(row?.[metric])}</td>`;
       }).join("")}</tr>`).join("")}
-      <tr><td class="l">· 영업이익 1M / 최고</td>${horizonRow("operatingIncome")}</tr>
+      <tr><td class="l">· ${profitLabelFor(stock.sector) === "순익" ? "지배순이익" : "영업이익"} 1M / 최고</td>${horizonRow(profitMetricFor(stock.sector))}</tr>
       <tr><td class="l">참여 증권사</td>${ANNUALS.map(([period]) => `<td>${formatNumber(stock.annual?.[period]?.contributors)}</td>`).join("")}</tr>
       <tr><td class="l">지배주주지분</td>${ANNUALS.map(([period]) => `<td class="${stock.annual?.[period]?.kind === "estimate" ? "est" : ""}">${formatFinancial(stock.annual?.[period]?.parentEquity)}</td>`).join("")}</tr>
       <tr><td class="l">주당배당금 (원)</td>${ANNUALS.map(([period]) => `<td class="${stock.annual?.[period]?.kind === "estimate" ? "est" : ""}">${formatPrice(stock.annual?.[period]?.dividendPerShare)}</td>`).join("")}</tr>
@@ -1318,12 +1381,17 @@ function drawerHtml(stock) {
   const chart = dates.length >= 2
     ? lineChart({ series: [...series, ...benchmarkSeriesFor(dates)], labels: dates, width: 430, height: 220 })
     : '<p class="empty-state">주가 이력이 아직 없습니다.</p>';
-  const quarters = quarterSeriesOf(stock);
-  const recent = quarters.slice(-8);
+  // 금융·보험·증권·지주는 영업이익 대신 지배순이익이 주력 지표다(전체 화면 (C)안과 같은 규칙).
+  const profitMetric = profitMetricFor(stock.sector);
+  const profitName = profitMetric === "parentNetIncome" ? "지배순이익" : "영업이익";
+  const otherMetric = profitMetric === "parentNetIncome" ? "operatingIncome" : "parentNetIncome";
+  const otherName = profitMetric === "parentNetIncome" ? "영업이익" : "지배순이익";
+  const quarters = quarterSeriesOf(stock, profitMetric);
+  const recent = quarters;
   const kospiYtd = benchmarkOf("KOSPI")?.ytd ?? null;
   const ytd = stock.performance?.ytd;
   const relative = Number.isFinite(ytd) && Number.isFinite(kospiYtd) ? ytd - kospiYtd : null;
-  const opRevision = consensusRevision(stock, "2026", "operatingIncome");
+  const opRevision = consensusRevision(stock, "2026", profitMetricFor(stock.sector));
   const valuation = stock.valuation?.["2026"] || {};
   const previousClose = stock.history?.at(-2)?.close ?? null;
   const change = Number.isFinite(stock.quote?.price) && Number.isFinite(previousClose) ? stock.quote.price - previousClose : null;
@@ -1341,7 +1409,7 @@ function drawerHtml(stock) {
     <dl class="dgrid" id="drawerRatios">
       <div><dt>P/E 26E</dt><dd data-live-field="valuation.2026.pe">${formatRatio(valuation.pe, "pe")}</dd><small>27E ${formatRatio(stock.valuation?.["2027"]?.pe, "pe")}</small></div>
       <div><dt>P/B 26E</dt><dd data-live-field="valuation.2026.pb">${formatRatio(valuation.pb, "pb")}</dd><small>ROE ${formatRatio(valuation.roe, "roe")}</small></div>
-      <div><dt>OP 26E 1M변화</dt><dd class="${numberClass(opRevision)}">${formatPercent(opRevision)}</dd><small>1M ÷ 3M − 1</small></div>
+      <div><dt>${profitLabelFor(stock.sector)} 26E 1M변화</dt><dd class="${numberClass(opRevision)}">${formatPercent(opRevision)}</dd><small>1M ÷ 3M − 1</small></div>
       <div><dt>YTD</dt><dd class="${numberClass(ytd)}" data-performance="ytd">${formatPercent(ytd)}</dd><small>vs KOSPI ${formatPercent(relative, 1)}</small></div>
       <div><dt>52주高比</dt><dd class="${numberClass(stock.performance?.drawdown52w)}" data-performance="drawdown52w">${formatPercent(stock.performance?.drawdown52w)}</dd><small>1Y ${formatPercent(stock.performance?.y1, 1)}</small></div>
       <div><dt>목표가 괴리</dt><dd class="${numberClass(COMPUTED.targetGap(stock))}">${formatPercent(COMPUTED.targetGap(stock))}</dd>
@@ -1354,20 +1422,20 @@ function drawerHtml(stock) {
         <span><i class="ctx"></i>KOSPI</span><span><i class="ctx2"></i>KOSDAQ</span><span class="unit">기간 시작 = 100</span></div></section>
     <section class="panel"><div class="panel-head"><h3>컨센서스 · 연간</h3><span class="unit">억원 · 3M 평균</span></div>
       ${drawerConsensusTable(stock)}</section>
-    <section class="panel"><div class="panel-head"><h3>분기 영업이익 — 실적 ${quarters.filter((row) => !row.estimate).length} + 추정 ${quarters.filter((row) => row.estimate).length}</h3><span class="unit">억원</span></div>
+    <section class="panel"><div class="panel-head"><h3>분기 ${profitName} — 실적 ${quarters.filter((row) => !row.estimate).length} + 추정 ${quarters.filter((row) => row.estimate).length}</h3><span class="unit">억원</span></div>
       ${quarterBarChart(quarters)}
       <div class="chart-legend"><span><i class="solid"></i>확정 실적</span><span><i class="box-e"></i>3M 추정</span><span><i class="acc"></i>발표 전 컨센</span></div>
       <div class="fin-wrap"><table class="fin" id="drawerQuarters">
         <thead><tr><th class="l"></th>${recent.map((row) => `<th class="${row.estimate ? "est" : ""}">${escapeHtml(row.label)}</th>`).join("")}</tr></thead>
         <tbody>
-          <tr><td class="l">영업이익</td>${recent.map((row) => `<td class="${row.estimate ? "est" : ""}">${formatFinancial(row.value)}</td>`).join("")}</tr>
+          <tr><td class="l">${profitName}</td>${recent.map((row) => `<td class="${row.estimate ? "est" : ""}">${formatFinancial(row.value)}</td>`).join("")}</tr>
           <tr><td class="l">컨센 3M</td>${recent.map((row) => `<td>${formatFinancial(row.consensus)}</td>`).join("")}</tr>
           <tr><td class="l">서프라이즈</td>${recent.map((row) => {
             const surprise = !row.estimate && Number.isFinite(row.value) && Number.isFinite(row.consensus) && row.consensus > 0
               ? ((row.value / row.consensus) - 1) * 100 : null;
             return `<td class="${numberClass(surprise)}">${formatPercent(surprise)}</td>`;
           }).join("")}</tr>
-          <tr><td class="l">지배순이익</td>${recent.map((row) => `<td class="${row.estimate ? "est" : ""}">${formatFinancial(row.parentNetIncome)}</td>`).join("")}</tr>
+          <tr><td class="l">${otherName}</td>${recent.map((row) => `<td class="${row.estimate ? "est" : ""}">${formatFinancial(row[otherMetric])}</td>`).join("")}</tr>
         </tbody></table></div></section>
     <section class="panel"><div class="panel-head"><h3>컨센서스 리비전</h3><span class="unit">억원 · %</span></div>
       ${drawerRevisionTable(stock)}</section>
