@@ -315,7 +315,6 @@ ul { padding: 0; list-style: none; }
 .universe-table td.return-heat.heat-medium, .universe-table td.return-heat.heat-strong { color: var(--heat-ink) !important; font-weight: 850; }
 .estimate-cell, .actual-cell { color: var(--ink); }
 .empty-state { padding: 26px; color: var(--muted); text-align: center; }
-.foot-note { margin-top: 8px; color: var(--muted); font-size: 11px; }
 
 /* ---- charts ---- */
 svg.chart { display: block; width: 100%; height: auto; }
@@ -484,6 +483,10 @@ table.fin { width: 100%; border-collapse: collapse; font-size: 11.5px; font-vari
 /* 해외 peer 묶음 줄과 펼치기 토글. 종목이 열 줄이면 종목표가 접힘선 아래로 밀린다. */
 .fin.peer tbody tr.peer-group td { background: var(--surface-2); font-weight: 800; }
 .fin.peer tbody tr.peer-group td.l small { display: block; color: var(--muted); font-size: 10px; font-weight: 600; }
-.peer-toggle { height: 24px; margin-left: 8px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 999px; background: transparent; color: var(--muted); font-size: 11px; font-weight: 700; cursor: pointer; }
-.peer-toggle:hover { color: var(--ink); background: var(--surface-3); }
-.peer-toggle[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+.fin.peer tbody tr.peer-group { cursor: pointer; }
+.fin.peer tbody tr.peer-group:hover td { background: var(--surface-3); }
+.fin.peer tbody tr.peer-group:focus { outline: 0; }
+.fin.peer tbody tr.peer-group:focus-visible td { box-shadow: inset 0 0 0 1px var(--accent); }
+.fin.peer .peer-caret { margin-right: 5px; color: var(--muted); font-size: 9px; font-style: normal; }
+/* 묶음 아래로 들어간 종목은 한 칸 들여쓴다. 어느 묶음 소속인지 보이게. */
+.fin.peer tbody tr.peer-member td.l { padding-left: 18px; }

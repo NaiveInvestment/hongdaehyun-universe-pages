@@ -139,8 +139,8 @@ const state = {
   columnGroups: new Set(),
   // 컨센서스 값을 무엇으로 볼지. 1M 평균 · 3M 평균(기본) · 최고 추정치.
   estimateBasis: "threeMonth",
-  // 해외 peer를 종목별로 펼칠지. 기본은 묶음 두 줄이다(열 줄이면 종목표가 접힘선 아래로 밀린다).
-  peerExpanded: false,
+  // 펼쳐 둔 해외 peer 묶음. 기본은 전부 접혀 있다(열 줄이면 종목표가 접힘선 아래로 밀린다).
+  peerGroups: new Set(),
   range: "ytd",
   theme: "dark",
   liveUpdates: new Map(),
@@ -172,7 +172,12 @@ function loadPreferences() {
   }
   const basis = readStorage(ESTIMATE_BASIS_STORAGE_KEY);
   state.estimateBasis = ESTIMATE_BASES.some(({ key }) => key === basis) ? basis : "threeMonth";
-  state.peerExpanded = readStorage(PEER_EXPANDED_STORAGE_KEY) === "true";
+  try {
+    const saved = JSON.parse(readStorage(PEER_EXPANDED_STORAGE_KEY) || "[]");
+    state.peerGroups = new Set(Array.isArray(saved) ? saved : []);
+  } catch {
+    state.peerGroups = new Set();
+  }
 }
 
 function applyTheme() {
@@ -845,12 +850,12 @@ function renderSidebar() {
     + `<span class="chg ${numberClass(item.d1)}">${formatPercent(item.d1, 1)}</span></a></li>`).join("");
   $("#mobileNav").innerHTML = items.map((item) => `<a href="${item.href}"${state.sector === item.key ? ' aria-current="page"' : ""}>${escapeHtml(item.label)}</a>`).join("");
 
-  const mode = state.snapshot?.mode === "fixture"
-    ? "고정 fixture 검증 데이터 · 투자 판단 사용 금지"
-    : `컨센 ${sourceDisplayName("consensus", state.snapshot?.sources?.consensus?.source)} · 실적 OpenDART`;
-  $("#sourceFoot").textContent = RUNTIME.staticMode
-    ? `${mode} · 실시간 아님(지연 스냅샷)`
-    : mode;
+  // 원천 이름(컨센 ConsenDB · 실적 OpenDART)은 화면에서 뺐다. 읽는 사람이 매번 볼 문장이 아니다.
+  // 다만 이 자리는 fixture 경고와 공개본 "실시간 아님" 표시를 이고 있다. 그 둘은 지우면 안 되므로 남긴다.
+  const warnings = [];
+  if (state.snapshot?.mode === "fixture") warnings.push("고정 fixture 검증 데이터 · 투자 판단 사용 금지");
+  if (RUNTIME.staticMode) warnings.push("실시간 아님(지연 스냅샷)");
+  $("#sourceFoot").textContent = warnings.join(" · ");
   $("#lastUpdated").textContent = `최근 갱신 ${formatTimestamp(state.snapshot?.generatedAt)}`;
 }
 
@@ -1161,38 +1166,50 @@ function foreignPeerTable(sector) {
   const peers = state.snapshot?.sectorIndices?.foreignPeers?.[sector] || [];
   if (!peers.length) return "";
   const loaded = peers.filter((peer) => !peer.error && peer.days);
-  // 종목이 많은 섹터는 묶음 두 줄만 보이고 토글로 편다. 열 줄이 표를 다 먹어 종목표가 접힘선 아래로 밀린다.
+  // 종목이 많은 섹터는 묶음 줄만 세우고, 묶음을 누르면 그 묶음 종목만 바로 아래로 펼친다.
+  // 열 줄을 한꺼번에 세우면 종목표가 접힘선 아래로 밀리고, 한 번에 다 펴면 어느 묶음 소속인지도 안 보인다.
   const grouped = peers.some((peer) => peer.group);
-  const expanded = !grouped || state.peerExpanded;
-  const groupRows = grouped ? peerGroupRows(peers).map((row) => `<tr class="peer-group">`
-    + `<td class="l">${escapeHtml(row.label)}<small>${row.loaded}종목 동일가중</small></td>`
-    + `<td class="na">-</td>`
-    + PEER_COLUMNS.map(([key]) => `<td class="${numberClass(row[key])}">${formatPercent(row[key], 1)}</td>`).join("")
-    + "</tr>").join("") : "";
-  const rows = (expanded ? peers : []).map((peer) => {
+  const memberRow = (peer) => {
     if (peer.error) {
-      return `<tr><td class="l">${escapeHtml(peer.name)}<small>${escapeHtml(peer.symbol)}</small></td>`
+      return `<tr class="peer-member"><td class="l">${escapeHtml(peer.name)}<small>${escapeHtml(peer.symbol)}</small></td>`
         + `<td class="na" colspan="${PEER_COLUMNS.length + 1}">받지 못함 · ${escapeHtml(peer.error)}</td></tr>`;
     }
-    return `<tr><td class="l">${escapeHtml(peer.name)}<small>${escapeHtml(peer.symbol)} · ${escapeHtml(peer.exchange || "")}</small></td>`
+    return `<tr class="peer-member"><td class="l">${escapeHtml(peer.name)}<small>${escapeHtml(peer.symbol)} · ${escapeHtml(peer.exchange || "")}</small></td>`
       + `<td>${formatNumber(peer.price, 2)}<u>${escapeHtml(peer.currency || "")}</u></td>`
       + PEER_COLUMNS.map(([key]) => `<td class="${numberClass(peer[key])}">${formatPercent(peer[key], 1)}</td>`).join("")
       + "</tr>";
-  }).join("");
+  };
+  let body = "";
+  if (!grouped) {
+    body = peers.map(memberRow).join("");
+  } else {
+    const byGroup = new Map();
+    for (const peer of peers) {
+      const key = peer.group || "기타";
+      if (!byGroup.has(key)) byGroup.set(key, []);
+      byGroup.get(key).push(peer);
+    }
+    body = peerGroupRows(peers).map((row) => {
+      const open = state.peerGroups.has(row.group);
+      const members = byGroup.get(row.group) || [];
+      return `<tr class="peer-group" data-peer-group="${escapeHtml(row.group)}" tabindex="0" role="button" aria-expanded="${open}">`
+        + `<td class="l"><i class="peer-caret">${open ? "▾" : "▸"}</i>${escapeHtml(row.label)}<small>${row.loaded}종목 동일가중</small></td>`
+        + `<td class="na">-</td>`
+        + PEER_COLUMNS.map(([key]) => `<td class="${numberClass(row[key])}">${formatPercent(row[key], 1)}</td>`).join("")
+        + "</tr>"
+        + (open ? members.map(memberRow).join("") : "");
+    }).join("");
+  }
   // 지수에 실제로 들어간 종목 수를 밝힌다. 상장이 늦은 종목은 기간에 따라 빠진다.
   const note = loaded.length < peers.length
     ? `${peers.length}종목 중 ${loaded.length}종목 수신`
     : `${peers.length}종목`;
-  const toggle = grouped
-    ? `<button type="button" class="peer-toggle" data-peer-toggle aria-pressed="${expanded}">${expanded ? "묶음만 보기" : "종목별 펼치기"}</button>`
-    : "";
   return `<div class="card" id="foreignPeers">
     <div class="card-head"><h3>${escapeHtml(sector)} 해외 peer</h3>
-      <span class="unit">Yahoo Finance · 일별 종가 · ${escapeHtml(note)}</span>${toggle}</div>
+      <span class="unit">Yahoo Finance · 일별 종가 · ${escapeHtml(note)}${grouped ? " · 묶음을 누르면 종목이 펼쳐집니다" : ""}</span></div>
     <div class="fin-wrap"><table class="fin peer">
       <thead><tr><th class="l">종목</th><th>주가</th>${PEER_COLUMNS.map(([, label]) => `<th>${label}</th>`).join("")}</tr></thead>
-      <tbody>${groupRows}</tbody>
-      <tbody>${rows}</tbody></table></div>
+      <tbody>${body}</tbody></table></div>
     <p class="note">${peers.some((peer) => peer.indexed !== false)
       ? "섹터 지수에 국내 종목과 같은 무게로 들어갑니다. 상장일이 기간 시작보다 늦은 종목은 그 기간 지수에서 빠집니다."
       : "비교용입니다. 섹터 지수에는 들어가지 않습니다. 묶음 수익률은 동일가중 평균이고 이력이 짧아 값이 없는 종목은 그 칸에서 빠집니다."}</p>
@@ -1451,14 +1468,10 @@ function viewHtml() {
     // 101px를 쓰면서 새 정보가 없었다. YTD−K는 차트 끝점에서 읽힌다.
     ? `<div class="home-grid">${homeGroupChart()}</div>`
     : `${sectorTrend(state.sector, stocks)}${foreignPeerTable(state.sector)}${indicatorTiles(state.sector)}`;
-  const fixtureNote = state.snapshot?.mode === "fixture"
-    ? "고정 fixture 검증 모드입니다. 실제 투자 판단에 사용할 수 없습니다."
-    : "행을 클릭하면 오른쪽에 종목 상세가 열립니다.";
   return `<div class="topbar"><h2 id="viewTitle">${escapeHtml(title)}</h2></div>
     ${kpiStripHtml()}
     ${middle}
-    ${tableHtml()}
-    <p class="foot-note" id="footNote">자료: Kiwoom(시세) · ConsenDB 3M(컨센서스) · OpenDART(확정 실적). 가격·수익률은 KRX 정규장 기준이고 08~09시·15:30 이후에는 NXT 체결을 띄웁니다. 거래대금은 KRX+NXT 통합입니다. 결측은 보간 없이 빈칸입니다. ${escapeHtml(fixtureNote)}</p>`;
+    ${tableHtml()}`;
 }
 
 function renderView({ preserveScroll = false } = {}) {
@@ -1873,6 +1886,14 @@ function toggleColumnGroup(key) {
 }
 
 
+function togglePeerGroup(group) {
+  if (state.peerGroups.has(group)) state.peerGroups.delete(group);
+  else state.peerGroups.add(group);
+  writeStorage(PEER_EXPANDED_STORAGE_KEY, JSON.stringify([...state.peerGroups]));
+  renderView({ preserveScroll: true });
+  $(`[data-peer-group="${group}"]`)?.focus();
+}
+
 function setEstimateBasis(basis) {
   if (state.estimateBasis === basis || !ESTIMATE_BASES.some(({ key }) => key === basis)) return;
   state.estimateBasis = basis;
@@ -1897,12 +1918,8 @@ function bindEvents() {
     if (chip) return toggleColumnGroup(chip.dataset.columnGroup);
     const basis = event.target.closest("[data-estimate-basis]");
     if (basis) return setEstimateBasis(basis.dataset.estimateBasis);
-    if (event.target.closest("[data-peer-toggle]")) {
-      state.peerExpanded = !state.peerExpanded;
-      writeStorage(PEER_EXPANDED_STORAGE_KEY, String(state.peerExpanded));
-      renderView({ preserveScroll: true });
-      return $("[data-peer-toggle]")?.focus();
-    }
+    const peerGroup = event.target.closest("[data-peer-group]");
+    if (peerGroup) return togglePeerGroup(peerGroup.dataset.peerGroup);
     const range = event.target.closest("[data-range]");
     if (range) { state.range = parseRangeValue(range.dataset.range); return renderView({ preserveScroll: true }); }
     const row = event.target.closest("tr[data-code]");
@@ -1911,6 +1928,8 @@ function bindEvents() {
 
   $("#view").addEventListener("keydown", (event) => {
     if (!["Enter", " "].includes(event.key)) return;
+    const peerGroup = event.target.closest("[data-peer-group]");
+    if (peerGroup) { event.preventDefault(); return togglePeerGroup(peerGroup.dataset.peerGroup); }
     const row = event.target.closest("tr[data-code]");
     if (row) { event.preventDefault(); location.hash = `#/stock/${row.dataset.code}`; }
   });
