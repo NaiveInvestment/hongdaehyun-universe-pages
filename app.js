@@ -1092,7 +1092,7 @@ function indicatorDigits(tile) {
   // 톤당 가격은 원천이 소수 둘째 자리까지 준다(814.00 / -14.00). 천 단위가 넘으면 정수로 읽는다.
   if (/\/t$/.test(tile.unit)) return largest >= 1000 ? 0 : 2;
   if (largest >= 1000) return 0;
-  // 금리는 3.788%처럼 셋째 자리까지가 뜻이 있지만, 두 자리수 %(NAV 할인율 -36.5%)는 한 자리면 된다.
+  // 금리는 3.788%처럼 셋째 자리까지가 뜻이 있지만, 두 자리수 %(NAV 할인율 36.5%)는 한 자리면 된다.
   if (largest >= 10) return 1;
   return tile.cycle === "D" ? 3 : 2;
 }
@@ -1223,6 +1223,13 @@ function foreignPeerTable(sector) {
 // 안 세는 것: 비상장 자회사 · 지주사 본업(브랜드로열티·임대 등) · 순차입금
 //   앞의 둘은 NAV를 낮추는 쪽이라 할인을 덜 심하게 보이게 하고, 순차입금은 반대로 민다.
 //   그래서 "정확한 NAV"가 아니라 "상장분만 세었을 때의 값"이라고 화면에 적는다.
+// 할인율은 관례대로 **양수가 할인**이다(할인율 42.5% = 시총이 NAV보다 42.5% 싸다).
+// 등락률처럼 부호를 붙이면 "+42.5%"가 되어 올랐다는 뜻으로 읽히므로 부호 없이 적는다.
+function formatDiscount(value) {
+  if (!Number.isFinite(value)) return "-";
+  return `${value.toFixed(1)}%`;
+}
+
 // 할인 깊이를 색 농도로 나눈다. 50% 넘게 할인이면 눈에 먼저 들어와야 한다.
 function discountDepth(value) {
   if (!Number.isFinite(value)) return "";
@@ -1242,15 +1249,16 @@ function holdcoNavTable(sector) {
     return `<tr class="peer-group" data-holdco="${escapeHtml(row.code)}" tabindex="0" role="button" aria-expanded="${open}">`
       + `<td class="l"><i class="peer-caret">${open ? "▾" : "▸"}</i>${escapeHtml(row.name)}<em>${row.matchedCount}곳</em></td>`
       // 할인율은 손익이 아니라 수준값이다. 상승·하락 색(빨강·파랑)을 쓰면 "손해"처럼 읽힌다.
-      + `<td class="disc ${discountDepth(shown)}">${usable ? formatPercent(shown, 1) : '<span class="na">산출 불가</span>'}</td>`
-      + `<td class="disc ${discountDepth(row.discountWithBook)}">${formatPercent(row.discountWithBook, 1)}</td>`
+      + `<td class="disc ${discountDepth(shown)}">${usable ? formatDiscount(shown) : '<span class="na">산출 불가</span>'}</td>`
+      + `<td class="disc ${discountDepth(row.discountWithBook)}">${formatDiscount(row.discountWithBook)}</td>`
       + `<td>${formatNumber(row.marketCap)}</td>`
       + `<td>${formatNumber(row.grossNav)}</td>`
       + `<td class="${row.netDebt < 0 ? "positive" : ""}">${formatNumber(row.netDebt)}</td>`
       + `<td>${formatNumber(row.unlistedBook)}</td>`
       + "</tr>"
       + (open && (row.series || []).length >= 3
-        ? `<tr class="peer-member"><td class="l">할인율 추이<em>${row.series.length}일</em></td>`
+        // 이제 위로 갈수록 할인이 깊다. 선만 보고 방향을 거꾸로 읽지 않도록 양끝 값을 같이 적는다.
+        ? `<tr class="peer-member"><td class="l">할인율 추이<em>${formatDiscount(row.series[0].value)} → ${formatDiscount(row.series.at(-1).value)}</em></td>`
           + `<td colspan="6" class="disc-spark">${sparkline(row.series.map((point) => point.value), 320, 26)}</td></tr>`
         : "")
       + (open && row.matched.length
@@ -1267,7 +1275,7 @@ function holdcoNavTable(sector) {
         <th>상장 기준 할인율</th><th>장부가 포함 할인율</th>
         <th>시가총액</th><th>상장 지분가치</th><th>순차입금 (별도)</th><th>비상장 장부가</th></tr></thead>
       <tbody>${body}</tbody></table></div>
-    <p class="note">진짜 할인율은 두 값 사이에 있습니다. 왼쪽은 비상장 자회사를 0으로 본 하한, 오른쪽은 장부가로 세어 더한 값입니다.
+    <p class="note">할인율이 클수록 시총이 NAV보다 쌉니다. 진짜 값은 두 열 사이에 있고, 왼쪽은 비상장 자회사를 0으로 본 하한입니다.
       순차입금은 별도 기준이고 음수는 순현금입니다. <b>본업 가치와 손자회사(예: LS전선 → 가온전선)는 빠져 있습니다.</b></p>
   </div>`;
 }
