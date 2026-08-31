@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-08-31T11:10:01.217Z",
+  "builtAt": "2026-08-31T11:15:01.298Z",
   "mode": "live",
   "generatedAt": "2026-08-31T10:43:42.297Z",
-  "quotesGeneratedAt": "2026-08-31T11:10:01.182Z",
+  "quotesGeneratedAt": "2026-08-31T11:15:01.264Z",
   "heavyFingerprint": "{\"consensus\":\"2026-08-31T10:35:45.098201Z\",\"actuals\":\"2026-08-31T10:35:57.701098Z\",\"indicators\":\"2026-08-31T10:15:41.368Z\",\"holdcoNav\":\"2026-08-31T10:35:58.514Z\",\"sectorIndices\":\"2026-08-31T10:35:43.421Z\",\"sectorIndexDays\":250,\"stockCount\":76,\"mode\":\"live\",\"assets\":[\"63f6b23ba988cf3d\",\"82a233f97c786d5f\",\"0e124c8a3ae14b8d\"]}",
   "stockCount": 76,
   "realtime": false,
