@@ -504,3 +504,7 @@ table.fin { width: 100%; border-collapse: collapse; font-size: 11.5px; font-vari
 .fin.dense td.disc { color: var(--ink); font-weight: 800; }
 .fin.dense td.disc .na { color: var(--faint); font-weight: 600; }
 .fin.dense tbody tr.peer-member td.disc { color: var(--faint); font-weight: 500; }
+
+/* col-sub는 종목표 전용 선택자였다. 밀도 표의 머리글에서도 줄을 바꿔야 "할인율상장분만"으로 붙지 않는다. */
+.fin.dense thead .col-sub { display: block; color: var(--faint); font-size: 9px; font-weight: 700; line-height: 1.15; }
+.fin.dense thead th { line-height: 1.15; }
