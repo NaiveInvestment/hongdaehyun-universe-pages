@@ -1237,23 +1237,29 @@ function holdcoNavTable(sector) {
       + `<td class="l"><i class="peer-caret">${open ? "▾" : "▸"}</i>${escapeHtml(row.name)}<small>상장 자회사 ${row.matchedCount}곳</small></td>`
       + `<td>${formatNumber(row.marketCap)}</td>`
       + `<td>${formatNumber(row.nav)}</td>`
+      + `<td>${formatNumber(row.unlistedBook)}</td>`
       + `<td class="${usable ? numberClass(shown) : "na"}">${usable ? formatPercent(shown, 1) : "산출 불가"}</td>`
+      + `<td class="${numberClass(row.discountWithBook)}">${formatPercent(row.discountWithBook, 1)}</td>`
       + "</tr>"
       + (open && row.matched.length
         ? row.matched.map((child) => `<tr class="peer-member"><td class="l">${escapeHtml(child.name)}<small>지분 ${formatNumber(child.ratio, 1)}%</small></td>`
-          + `<td class="na">-</td><td>${formatNumber(child.value)}</td><td class="na">-</td></tr>`).join("")
-        : open ? `<tr class="peer-member"><td class="l na" colspan="4">이름으로 찾은 상장 자회사가 없습니다.</td></tr>` : "");
+          + `<td class="na">-</td><td>${formatNumber(child.value)}</td><td class="na">-</td><td class="na">-</td><td class="na">-</td></tr>`).join("")
+        : open ? `<tr class="peer-member"><td class="l na" colspan="6">이름으로 찾은 상장 자회사가 없습니다.</td></tr>` : "");
   }).join("");
   const usable = rows.filter((row) => Number.isFinite(row.discount)).length;
   return `<div class="card" id="holdcoNav">
     <div class="card-head"><h3>지주사 NAV 할인율</h3>
-      <span class="unit">상장 자회사 지분가치 기준 · ${rows.length}종목 중 ${usable}종목 산출 · 억원 · 종목을 누르면 자회사가 펼쳐집니다</span></div>
+      <span class="unit">${rows.length}종목 중 ${usable}종목 산출 · 억원 · 종목을 누르면 상장 자회사가 펼쳐집니다</span></div>
     <div class="fin-wrap"><table class="fin peer">
-      <thead><tr><th class="l">종목</th><th>시가총액</th><th>상장 지분가치</th><th>할인율</th></tr></thead>
+      <thead><tr><th class="l">종목</th><th>시가총액</th><th>상장 지분가치</th><th>비상장 장부가</th>
+        <th>할인율<span class="col-sub">(상장분)</span></th><th>할인율<span class="col-sub">(장부가 포함)</span></th></tr></thead>
       <tbody>${body}</tbody></table></div>
-    <p class="note">지분율 × 상장 자회사 시가총액만 더한 값입니다. <b>비상장 자회사·지주사 본업·순차입금은 빠져 있습니다.</b>
-      앞의 둘은 값을 낮춰 할인을 덜 심하게 보이게 하고 순차입금은 반대로 밉니다.
-      이름으로 자회사를 찾는 방식이라 놓칠 수는 있어도 없는 자회사를 만들지는 않으므로, 할인(음수)은 실제 할인의 하한으로 볼 수 있습니다.
+    <p class="note"><b>진짜 할인율은 두 값 사이에 있습니다.</b>
+      왼쪽은 비상장 자회사를 0으로 본 값이라 할인의 하한이고, 오른쪽은 비상장을 장부가로 세어 더한 값입니다.
+      장부가는 감사받은 실제 숫자지 시장가치가 아니라서 둘을 합치지 않고 나란히 둡니다
+      (성장 자회사는 장부가가 시장가보다 낮아 여전히 보수적이고, 손상난 자회사는 반대입니다).
+      <b>지주사 본업과 순차입금은 아직 빠져 있습니다</b> — 본업은 지주마다 성격이 달라 하나의 규칙으로 셀 수 없습니다.
+      이름으로 자회사를 찾는 방식이라 놓칠 수는 있어도 없는 자회사를 만들지는 않습니다.
       플러스로 나오면 프리미엄이 아니라 자회사를 못 찾았다는 뜻이라 <b>산출 불가</b>로 둡니다.</p>
   </div>`;
 }

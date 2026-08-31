@@ -1,32 +1,32 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-08-31T08:00:01.468Z",
+  "builtAt": "2026-08-31T08:05:01.526Z",
   "mode": "live",
-  "generatedAt": "2026-08-31T08:00:01.277Z",
-  "quotesGeneratedAt": "2026-08-31T08:00:01.277Z",
-  "heavyFingerprint": "{\"consensus\":\"2026-08-31T07:55:04.953232Z\",\"actuals\":\"2026-08-31T07:55:17.615927Z\",\"indicators\":\"2026-08-31T07:55:19.975Z\",\"sectorIndices\":\"2026-08-31T07:55:02.851Z\",\"sectorIndexDays\":250,\"stockCount\":76,\"mode\":\"live\",\"assets\":[\"63f6b23ba988cf3d\",\"3a8f0f3896814565\",\"c18dce943cfe3ca2\"]}",
+  "generatedAt": "2026-08-31T08:05:01.302Z",
+  "quotesGeneratedAt": "2026-08-31T08:05:01.302Z",
+  "heavyFingerprint": "{\"consensus\":\"2026-08-31T08:03:52.522966Z\",\"actuals\":\"2026-08-31T08:04:03.315754Z\",\"indicators\":\"2026-08-31T08:04:05.650Z\",\"sectorIndices\":\"2026-08-31T08:03:50.473Z\",\"sectorIndexDays\":250,\"stockCount\":76,\"mode\":\"live\",\"assets\":[\"63f6b23ba988cf3d\",\"f36e5590412b1183\",\"c18dce943cfe3ca2\"]}",
   "stockCount": 76,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
   "sources": {
     "quote": {
       "source": "kiwoom",
-      "updatedAt": "2026-08-31T07:59:01.764Z",
+      "updatedAt": "2026-08-31T08:04:50.295Z",
       "status": "ok"
     },
     "actuals": {
       "source": "OpenDART",
-      "updatedAt": "2026-08-31T07:55:17.615927Z",
+      "updatedAt": "2026-08-31T08:04:03.315754Z",
       "status": "ok"
     },
     "consensus": {
       "source": "ConsenDB.xlsx",
-      "updatedAt": "2026-08-31T07:55:04.953232Z",
+      "updatedAt": "2026-08-31T08:03:52.522966Z",
       "status": "partial"
     },
     "indicators": {
       "source": "한국은행 ECOS",
-      "updatedAt": "2026-08-31T07:55:19.975Z",
+      "updatedAt": "2026-08-31T08:04:05.650Z",
       "status": "ok"
     }
   },
