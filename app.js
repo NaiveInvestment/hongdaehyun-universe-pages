@@ -141,6 +141,8 @@ const state = {
   estimateBasis: "threeMonth",
   // 펼쳐 둔 해외 peer 묶음. 기본은 전부 접혀 있다(열 줄이면 종목표가 접힘선 아래로 밀린다).
   peerGroups: new Set(),
+  // 펼쳐 둔 지주사. 누르면 그 지주의 상장 자회사가 아래로 펼쳐진다.
+  holdcoOpen: new Set(),
   range: "ytd",
   theme: "dark",
   liveUpdates: new Map(),
@@ -1216,6 +1218,46 @@ function foreignPeerTable(sector) {
   </div>`;
 }
 
+// 지주사 NAV 종목별 표. 섹터 평균 타일만으로는 어느 지주가 얼마나 할인인지 알 수 없다.
+//
+// 세는 것: 상장 자회사 지분가치 = Σ(지분율 × 자회사 시총)
+// 안 세는 것: 비상장 자회사 · 지주사 본업(브랜드로열티·임대 등) · 순차입금
+//   앞의 둘은 NAV를 낮추는 쪽이라 할인을 덜 심하게 보이게 하고, 순차입금은 반대로 민다.
+//   그래서 "정확한 NAV"가 아니라 "상장분만 세었을 때의 값"이라고 화면에 적는다.
+function holdcoNavTable(sector) {
+  if (sector !== "지주") return "";
+  const payload = state.snapshot?.holdcoNav;
+  const rows = payload?.detail || [];
+  if (!rows.length) return "";
+  const body = rows.map((row) => {
+    const open = state.holdcoOpen.has(row.code);
+    const usable = Number.isFinite(row.discount);
+    const shown = usable ? row.discount : row.rawDiscount;
+    return `<tr class="peer-group" data-holdco="${escapeHtml(row.code)}" tabindex="0" role="button" aria-expanded="${open}">`
+      + `<td class="l"><i class="peer-caret">${open ? "▾" : "▸"}</i>${escapeHtml(row.name)}<small>상장 자회사 ${row.matchedCount}곳</small></td>`
+      + `<td>${formatNumber(row.marketCap)}</td>`
+      + `<td>${formatNumber(row.nav)}</td>`
+      + `<td class="${usable ? numberClass(shown) : "na"}">${usable ? formatPercent(shown, 1) : "산출 불가"}</td>`
+      + "</tr>"
+      + (open && row.matched.length
+        ? row.matched.map((child) => `<tr class="peer-member"><td class="l">${escapeHtml(child.name)}<small>지분 ${formatNumber(child.ratio, 1)}%</small></td>`
+          + `<td class="na">-</td><td>${formatNumber(child.value)}</td><td class="na">-</td></tr>`).join("")
+        : open ? `<tr class="peer-member"><td class="l na" colspan="4">이름으로 찾은 상장 자회사가 없습니다.</td></tr>` : "");
+  }).join("");
+  const usable = rows.filter((row) => Number.isFinite(row.discount)).length;
+  return `<div class="card" id="holdcoNav">
+    <div class="card-head"><h3>지주사 NAV 할인율</h3>
+      <span class="unit">상장 자회사 지분가치 기준 · ${rows.length}종목 중 ${usable}종목 산출 · 억원 · 종목을 누르면 자회사가 펼쳐집니다</span></div>
+    <div class="fin-wrap"><table class="fin peer">
+      <thead><tr><th class="l">종목</th><th>시가총액</th><th>상장 지분가치</th><th>할인율</th></tr></thead>
+      <tbody>${body}</tbody></table></div>
+    <p class="note">지분율 × 상장 자회사 시가총액만 더한 값입니다. <b>비상장 자회사·지주사 본업·순차입금은 빠져 있습니다.</b>
+      앞의 둘은 값을 낮춰 할인을 덜 심하게 보이게 하고 순차입금은 반대로 밉니다.
+      이름으로 자회사를 찾는 방식이라 놓칠 수는 있어도 없는 자회사를 만들지는 않으므로, 할인(음수)은 실제 할인의 하한으로 볼 수 있습니다.
+      플러스로 나오면 프리미엄이 아니라 자회사를 못 찾았다는 뜻이라 <b>산출 불가</b>로 둡니다.</p>
+  </div>`;
+}
+
 function indicatorTiles(sector) {
   const live = state.snapshot?.indicators?.sectors?.[sector] || [];
   // 2026-08-30: 공개본은 남에게 링크로 넘기는 화면이라 "후보" 카드를 띄우지 않는다.
@@ -1469,7 +1511,7 @@ function viewHtml() {
     // 2026-08-30: 섹터 타일 8개를 없앴다. 1D가 사이드바와 8/8 동일하고 스파크라인은 위 차트의 축소판이라
     // 101px를 쓰면서 새 정보가 없었다. YTD−K는 차트 끝점에서 읽힌다.
     ? `<div class="home-grid">${homeGroupChart()}</div>`
-    : `${sectorTrend(state.sector, stocks)}${foreignPeerTable(state.sector)}${indicatorTiles(state.sector)}`;
+    : `${sectorTrend(state.sector, stocks)}${foreignPeerTable(state.sector)}${holdcoNavTable(state.sector)}${indicatorTiles(state.sector)}`;
   return `<div class="topbar"><h2 id="viewTitle">${escapeHtml(title)}</h2></div>
     ${kpiStripHtml()}
     ${middle}
@@ -1888,6 +1930,13 @@ function toggleColumnGroup(key) {
 }
 
 
+function toggleHoldco(code) {
+  if (state.holdcoOpen.has(code)) state.holdcoOpen.delete(code);
+  else state.holdcoOpen.add(code);
+  renderView({ preserveScroll: true });
+  $(`[data-holdco="${code}"]`)?.focus();
+}
+
 function togglePeerGroup(group) {
   if (state.peerGroups.has(group)) state.peerGroups.delete(group);
   else state.peerGroups.add(group);
@@ -1922,6 +1971,8 @@ function bindEvents() {
     if (basis) return setEstimateBasis(basis.dataset.estimateBasis);
     const peerGroup = event.target.closest("[data-peer-group]");
     if (peerGroup) return togglePeerGroup(peerGroup.dataset.peerGroup);
+    const holdco = event.target.closest("[data-holdco]");
+    if (holdco) return toggleHoldco(holdco.dataset.holdco);
     const range = event.target.closest("[data-range]");
     if (range) { state.range = parseRangeValue(range.dataset.range); return renderView({ preserveScroll: true }); }
     const row = event.target.closest("tr[data-code]");
@@ -1932,6 +1983,8 @@ function bindEvents() {
     if (!["Enter", " "].includes(event.key)) return;
     const peerGroup = event.target.closest("[data-peer-group]");
     if (peerGroup) { event.preventDefault(); return togglePeerGroup(peerGroup.dataset.peerGroup); }
+    const holdco = event.target.closest("[data-holdco]");
+    if (holdco) { event.preventDefault(); return toggleHoldco(holdco.dataset.holdco); }
     const row = event.target.closest("tr[data-code]");
     if (row) { event.preventDefault(); location.hash = `#/stock/${row.dataset.code}`; }
   });
