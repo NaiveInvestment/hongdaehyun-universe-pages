@@ -1234,7 +1234,7 @@ function holdcoNavTable(sector) {
     const usable = Number.isFinite(row.discount);
     const shown = usable ? row.discount : row.rawDiscount;
     return `<tr class="peer-group" data-holdco="${escapeHtml(row.code)}" tabindex="0" role="button" aria-expanded="${open}">`
-      + `<td class="l"><i class="peer-caret">${open ? "▾" : "▸"}</i>${escapeHtml(row.name)}<small>상장 자회사 ${row.matchedCount}곳</small></td>`
+      + `<td class="l"><i class="peer-caret">${open ? "▾" : "▸"}</i>${escapeHtml(row.name)}<em>${row.matchedCount}곳</em></td>`
       + `<td>${formatNumber(row.marketCap)}</td>`
       + `<td>${formatNumber(row.nav)}</td>`
       + `<td>${formatNumber(row.unlistedBook)}</td>`
@@ -1242,7 +1242,7 @@ function holdcoNavTable(sector) {
       + `<td class="${numberClass(row.discountWithBook)}">${formatPercent(row.discountWithBook, 1)}</td>`
       + "</tr>"
       + (open && row.matched.length
-        ? row.matched.map((child) => `<tr class="peer-member"><td class="l">${escapeHtml(child.name)}<small>지분 ${formatNumber(child.ratio, 1)}%</small></td>`
+        ? row.matched.map((child) => `<tr class="peer-member"><td class="l">${escapeHtml(child.name)}<em>${formatNumber(child.ratio, 1)}%</em></td>`
           + `<td class="na">-</td><td>${formatNumber(child.value)}</td><td class="na">-</td><td class="na">-</td><td class="na">-</td></tr>`).join("")
         : open ? `<tr class="peer-member"><td class="l na" colspan="6">이름으로 찾은 상장 자회사가 없습니다.</td></tr>` : "");
   }).join("");
@@ -1250,7 +1250,7 @@ function holdcoNavTable(sector) {
   return `<div class="card" id="holdcoNav">
     <div class="card-head"><h3>지주사 NAV 할인율</h3>
       <span class="unit">${rows.length}종목 중 ${usable}종목 산출 · 억원 · 종목을 누르면 상장 자회사가 펼쳐집니다</span></div>
-    <div class="fin-wrap"><table class="fin peer">
+    <div class="fin-wrap"><table class="fin peer dense">
       <thead><tr><th class="l">종목</th><th>시가총액</th><th>상장 지분가치</th><th>비상장 장부가</th>
         <th>할인율<span class="col-sub">(상장분)</span></th><th>할인율<span class="col-sub">(장부가 포함)</span></th></tr></thead>
       <tbody>${body}</tbody></table></div>

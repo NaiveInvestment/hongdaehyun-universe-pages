@@ -490,3 +490,12 @@ table.fin { width: 100%; border-collapse: collapse; font-size: 11.5px; font-vari
 .fin.peer .peer-caret { margin-right: 5px; color: var(--muted); font-size: 9px; font-style: normal; }
 /* 묶음 아래로 들어간 종목은 한 칸 들여쓴다. 어느 묶음 소속인지 보이게. */
 .fin.peer tbody tr.peer-member td.l { padding-left: 18px; }
+
+/* 밀도 높은 표. 종목표와 같은 행 높이·글자 크기를 쓴다(2026-08-31 사용자 요청).
+   보조정보는 줄을 바꾸지 않고 이름 옆에 붙여 행이 두 배가 되지 않게 한다. */
+.fin.dense th, .fin.dense td { height: 26px; padding: 2px 6px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.fin.dense thead th { font-size: 10.5px; }
+.fin.dense td.l { text-align: left; font-weight: 700; }
+.fin.dense td.l em { margin-left: 6px; color: var(--muted); font-size: 10.5px; font-style: normal; font-weight: 600; }
+.fin.dense tbody tr.peer-member td.l { padding-left: 20px; font-weight: 500; }
+.fin.dense tbody td:not(:first-child) { border-left: 1px solid var(--line); }
