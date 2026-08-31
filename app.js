@@ -1264,8 +1264,8 @@ function holdcoNavTable(sector) {
       <span class="unit">${rows.length}종목 중 ${usable}종목 산출 · 억원 · 종목을 누르면 상장 자회사가 펼쳐집니다</span></div>
     <div class="fin-wrap"><table class="fin peer dense">
       <thead><tr><th class="l">종목</th>
-        <th>할인율<span class="col-sub">상장분만</span></th><th>할인율<span class="col-sub">장부가 포함</span></th>
-        <th>시가총액</th><th>상장 지분가치</th><th>순차입금<span class="col-sub">별도</span></th><th>비상장 장부가</th></tr></thead>
+        <th>상장 기준 할인율</th><th>장부가 포함 할인율</th>
+        <th>시가총액</th><th>상장 지분가치</th><th>순차입금 (별도)</th><th>비상장 장부가</th></tr></thead>
       <tbody>${body}</tbody></table></div>
     <p class="note">진짜 할인율은 두 값 사이에 있습니다. 왼쪽은 비상장 자회사를 0으로 본 하한, 오른쪽은 장부가로 세어 더한 값입니다.
       순차입금은 별도 기준이고 음수는 순현금입니다. <b>본업 가치와 손자회사(예: LS전선 → 가온전선)는 빠져 있습니다.</b></p>

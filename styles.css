@@ -527,3 +527,6 @@ table.fin { width: 100%; border-collapse: collapse; font-size: 11.5px; font-vari
 
 .fin.dense td.disc-spark { padding: 2px 6px; text-align: left; }
 .fin.dense td.disc-spark svg { vertical-align: middle; }
+
+/* 머리글이 작아 안 읽혔다(2026-08-31). 본문과 비슷한 크기로 올린다. */
+.fin.dense thead th { font-size: 12px; font-weight: 800; color: var(--muted); }
