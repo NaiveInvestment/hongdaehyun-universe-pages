@@ -1246,37 +1246,56 @@ function holdcoNavTable(sector) {
     const open = state.holdcoOpen.has(row.code);
     const usable = Number.isFinite(row.discount);
     const shown = usable ? row.discount : row.rawDiscount;
+    const adjusted = row.adjusted;
+    // 조정 할인율이 주 지표다. 나머지 둘은 그 값이 어디서 왔는지 가늠하는 보조선이라 작게 둔다.
+    // 리포트끼리 크게 어긋나면 중앙값만 보여주는 게 오해다. 롯데지주는 13.8%와 52.8%로 갈린다.
+    // 10%p 넘게 벌어지면 건수 대신 범위를 적어 "이 값은 폭이 넓다"를 먼저 보이게 한다.
+    const spread = adjusted ? adjusted.reports.map((report) => report.discount) : [];
+    const wide = spread.length > 1 && Math.max(...spread) - Math.min(...spread) >= 10;
+    const primary = adjusted?.median != null
+      ? `<td class="disc primary ${discountDepth(adjusted.median)}">${formatDiscount(adjusted.median)}`
+        + `<em>${wide ? `${formatDiscount(Math.min(...spread))}~${formatDiscount(Math.max(...spread))}` : `${adjusted.count}건`}</em></td>`
+      : `<td class="disc primary"><span class="na">—</span></td>`;
     return `<tr class="peer-group" data-holdco="${escapeHtml(row.code)}" tabindex="0" role="button" aria-expanded="${open}">`
       + `<td class="l"><i class="peer-caret">${open ? "▾" : "▸"}</i>${escapeHtml(row.name)}<em>${row.matchedCount}곳</em></td>`
+      + primary
       // 할인율은 손익이 아니라 수준값이다. 상승·하락 색(빨강·파랑)을 쓰면 "손해"처럼 읽힌다.
-      + `<td class="disc ${discountDepth(shown)}">${usable ? formatDiscount(shown) : '<span class="na">산출 불가</span>'}</td>`
-      + `<td class="disc ${discountDepth(row.discountWithBook)}">${formatDiscount(row.discountWithBook)}</td>`
+      + `<td class="disc sub">${usable ? formatDiscount(shown) : '<span class="na">산출 불가</span>'}</td>`
+      + `<td class="disc sub">${formatDiscount(row.discountWithBook)}</td>`
       + `<td>${formatNumber(row.marketCap)}</td>`
       + `<td>${formatNumber(row.grossNav)}</td>`
       + `<td class="${row.netDebt < 0 ? "positive" : ""}">${formatNumber(row.netDebt)}</td>`
       + `<td>${formatNumber(row.unlistedBook)}</td>`
       + "</tr>"
+      // 리포트 근거를 먼저 편다. 주 지표가 어느 애널리스트의 어떤 가정에서 나왔는지가 가장 궁금한 정보다.
+      + (open && adjusted
+        ? adjusted.reports.map((report) => `<tr class="peer-member"><td class="l">${escapeHtml(report.broker)} · ${escapeHtml(report.date)}<em>p.${report.page}</em></td>`
+          + `<td class="disc">${formatDiscount(report.discount)}</td>`
+          + `<td colspan="6" class="report-line">본업 ${formatNumber(report.ownBusiness)} · 비상장 ${formatNumber(report.unlisted)} · 순차입금 ${formatNumber(adjusted.netDebt)} · NAV ${formatNumber(report.nav)}`
+          + `<u>${escapeHtml(report.note || "")}</u></td></tr>`).join("")
+        : "")
       + (open && (row.series || []).length >= 3
         // 이제 위로 갈수록 할인이 깊다. 선만 보고 방향을 거꾸로 읽지 않도록 양끝 값을 같이 적는다.
-        ? `<tr class="peer-member"><td class="l">할인율 추이<em>${formatDiscount(row.series[0].value)} → ${formatDiscount(row.series.at(-1).value)}</em></td>`
-          + `<td colspan="6" class="disc-spark">${sparkline(row.series.map((point) => point.value), 320, 26)}</td></tr>`
+        ? `<tr class="peer-member"><td class="l">상장 기준 추이<em>${formatDiscount(row.series[0].value)} → ${formatDiscount(row.series.at(-1).value)}</em></td>`
+          + `<td colspan="7" class="disc-spark">${sparkline(row.series.map((point) => point.value), 320, 26)}</td></tr>`
         : "")
       + (open && row.matched.length
         ? row.matched.map((child) => `<tr class="peer-member"><td class="l">${escapeHtml(child.name)}<em>${formatNumber(child.ratio, 1)}%</em></td>`
-          + `<td class="na">-</td><td class="na">-</td><td class="na">-</td><td>${formatNumber(child.value)}</td><td class="na">-</td><td class="na">-</td></tr>`).join("")
-        : open ? `<tr class="peer-member"><td class="l na" colspan="7">이름으로 찾은 상장 자회사가 없습니다.</td></tr>` : "");
+          + `<td class="na">-</td><td class="na">-</td><td class="na">-</td><td class="na">-</td><td>${formatNumber(child.value)}</td><td class="na">-</td><td class="na">-</td></tr>`).join("")
+        : open ? `<tr class="peer-member"><td class="l na" colspan="8">이름으로 찾은 상장 자회사가 없습니다.</td></tr>` : "");
   }).join("");
-  const usable = rows.filter((row) => Number.isFinite(row.discount)).length;
+  const withReports = rows.filter((row) => row.adjusted?.median != null).length;
   return `<div class="card" id="holdcoNav">
     <div class="card-head"><h3>지주사 NAV 할인율</h3>
-      <span class="unit">${rows.length}종목 중 ${usable}종목 산출 · 억원 · 종목을 누르면 상장 자회사가 펼쳐집니다</span></div>
+      <span class="unit">조정 ${withReports}종목 · 리포트 ${payload?.reportsAsOf || "-"} 기준 · 억원 · 종목을 누르면 근거가 펼쳐집니다</span></div>
     <div class="fin-wrap"><table class="fin peer dense">
       <thead><tr><th class="l">종목</th>
-        <th>상장 기준 할인율</th><th>장부가 포함 할인율</th>
+        <th>조정 할인율</th><th>상장 기준</th><th>장부가 포함</th>
         <th>시가총액</th><th>상장 지분가치</th><th>순차입금 (별도)</th><th>비상장 장부가</th></tr></thead>
       <tbody>${body}</tbody></table></div>
-    <p class="note">할인율이 클수록 시총이 NAV보다 쌉니다. 진짜 값은 두 열 사이에 있고, 왼쪽은 비상장 자회사를 0으로 본 하한입니다.
-      순차입금은 별도 기준이고 음수는 순현금입니다. <b>본업 가치와 손자회사(예: LS전선 → 가온전선)는 빠져 있습니다.</b></p>
+    <p class="note">조정 할인율은 <b>상장 지분가치만 우리가 매일 계산하고, 본업·비상장·순차입금은 증권사 리포트 값</b>을 씁니다.
+      리포트별로 할인율을 낸 뒤 중앙값을 잡습니다. 리포트가 없는 종목은 “—”이고, 그때는 본업 가치가 빠져 실제보다 낮게 나옵니다.
+      옆 두 열은 우리 계산만으로 만든 하한입니다. <b>손자회사(예: LS전선 → 가온전선)는 빠져 있습니다.</b></p>
   </div>`;
 }
 

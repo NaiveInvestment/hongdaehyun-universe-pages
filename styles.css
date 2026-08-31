@@ -515,7 +515,14 @@ table.fin { width: 100%; border-collapse: collapse; font-size: 11.5px; font-vari
 .fin.dense td.l em { font-size: 11px; }
 .fin.dense thead th { font-size: 11px; }
 .fin.dense thead .col-sub { font-size: 9.5px; }
+/* 할인율 열이 셋이다. 하나만 크게 두고 나머지는 보조선으로 낮춘다.
+   조정 할인율(리포트 기준)이 주 지표고, 상장 기준·장부가 포함은 그 값의 하한을 가늠하는 참고값이다. */
 .fin.dense td.disc { font-size: 16px; font-weight: 850; letter-spacing: -0.2px; }
+.fin.dense td.disc.primary em { display: block; color: var(--faint); font-size: 10px; font-weight: 600; font-style: normal; letter-spacing: 0; }
+.fin.dense td.disc.sub { font-size: 12.5px; font-weight: 650; color: var(--muted); }
+.fin.dense td.disc.sub .na { font-size: 11px; }
+.fin.dense td.report-line { text-align: left; color: var(--muted); font-size: 11.5px; font-weight: 500; }
+.fin.dense td.report-line u { display: block; color: var(--faint); font-size: 10.5px; text-decoration: none; }
 /* 할인이 깊을수록 진하게. 상승·하락 팔레트가 아니라 한 색의 농도로만 표현한다. */
 .fin.dense td.disc.deep-3 { color: #ffb020; }
 .fin.dense td.disc.deep-2 { color: #ffc966; }
@@ -526,7 +533,12 @@ table.fin { width: 100%; border-collapse: collapse; font-size: 11.5px; font-vari
 :root[data-theme="light"] .fin.dense td.disc.deep-2 { color: #c2760a; }
 
 .fin.dense td.disc-spark { padding: 2px 6px; text-align: left; }
-.fin.dense td.disc-spark svg { vertical-align: middle; }
+/* path 에 fill/stroke 를 안 주면 브라우저 기본값(fill:black, stroke:none)이 먹어
+   추이선이 선이 아니라 검은 면으로 칠해진다. 지표 타일 스파크라인에는 이 규칙이 있는데
+   여기만 빠져 있었다(2026-08-31 발견). 폭은 viewBox와 같은 320px로 고정해 왼쪽에 붙인다. */
+.fin.dense td.disc-spark svg { display: block; width: 320px; height: 26px; vertical-align: middle; }
+.fin.dense td.disc-spark svg path { fill: none; stroke: #ffb020; stroke-width: 1.4; }
+:root[data-theme="light"] .fin.dense td.disc-spark svg path { stroke: #b45309; }
 
 /* 머리글이 작아 안 읽혔다(2026-08-31). 본문과 비슷한 크기로 올린다. */
 .fin.dense thead th { font-size: 12px; font-weight: 800; color: var(--muted); }
