@@ -1032,7 +1032,12 @@ function sectorTrend(sector, stocks) {
   const local = domesticSeries(sector);
   // 해외 peer가 있는 섹터는 국내선과 글로벌선을 함께 그린다(2026-08-30).
   // 합성선 하나만 그리면 국내 종목이 글로벌 테마를 따라가는지 아닌지가 보이지 않는다.
-  const hasPeers = local !== global && local?.values?.length;
+  //
+  // 판별은 서버가 준 foreignSectors로 한다. 객체 비교(local !== global)를 쓰면 안 된다 —
+  // 서버는 해외가 없을 때 같은 객체를 넣지만 JSON을 거치면 별개 객체가 되어 항상 참이 된다.
+  // 그래서 2026-08-31까지 희토류 말고 7섹터가 값이 똑같은 "글로벌/국내" 두 줄을 겹쳐 그리고 있었다.
+  const foreignSectors = state.snapshot?.sectorIndices?.foreignSectors;
+  const hasPeers = (foreignSectors ? foreignSectors.includes(sector) : local !== global) && local?.values?.length;
   const series = [];
   if (global?.values?.length) {
     series.push({
