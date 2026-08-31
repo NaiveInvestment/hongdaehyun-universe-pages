@@ -1223,6 +1223,13 @@ function foreignPeerTable(sector) {
 // 안 세는 것: 비상장 자회사 · 지주사 본업(브랜드로열티·임대 등) · 순차입금
 //   앞의 둘은 NAV를 낮추는 쪽이라 할인을 덜 심하게 보이게 하고, 순차입금은 반대로 민다.
 //   그래서 "정확한 NAV"가 아니라 "상장분만 세었을 때의 값"이라고 화면에 적는다.
+// 할인 깊이를 색 농도로 나눈다. 50% 넘게 할인이면 눈에 먼저 들어와야 한다.
+function discountDepth(value) {
+  if (!Number.isFinite(value)) return "";
+  const depth = Math.abs(value);
+  return depth >= 50 ? "deep-3" : depth >= 30 ? "deep-2" : "deep-1";
+}
+
 function holdcoNavTable(sector) {
   if (sector !== "지주") return "";
   const payload = state.snapshot?.holdcoNav;
@@ -1235,13 +1242,17 @@ function holdcoNavTable(sector) {
     return `<tr class="peer-group" data-holdco="${escapeHtml(row.code)}" tabindex="0" role="button" aria-expanded="${open}">`
       + `<td class="l"><i class="peer-caret">${open ? "▾" : "▸"}</i>${escapeHtml(row.name)}<em>${row.matchedCount}곳</em></td>`
       // 할인율은 손익이 아니라 수준값이다. 상승·하락 색(빨강·파랑)을 쓰면 "손해"처럼 읽힌다.
-      + `<td class="disc">${usable ? formatPercent(shown, 1) : '<span class="na">산출 불가</span>'}</td>`
-      + `<td class="disc">${formatPercent(row.discountWithBook, 1)}</td>`
+      + `<td class="disc ${discountDepth(shown)}">${usable ? formatPercent(shown, 1) : '<span class="na">산출 불가</span>'}</td>`
+      + `<td class="disc ${discountDepth(row.discountWithBook)}">${formatPercent(row.discountWithBook, 1)}</td>`
       + `<td>${formatNumber(row.marketCap)}</td>`
       + `<td>${formatNumber(row.grossNav)}</td>`
       + `<td class="${row.netDebt < 0 ? "positive" : ""}">${formatNumber(row.netDebt)}</td>`
       + `<td>${formatNumber(row.unlistedBook)}</td>`
       + "</tr>"
+      + (open && (row.series || []).length >= 3
+        ? `<tr class="peer-member"><td class="l">할인율 추이<em>${row.series.length}일</em></td>`
+          + `<td colspan="6" class="disc-spark">${sparkline(row.series.map((point) => point.value), 320, 26)}</td></tr>`
+        : "")
       + (open && row.matched.length
         ? row.matched.map((child) => `<tr class="peer-member"><td class="l">${escapeHtml(child.name)}<em>${formatNumber(child.ratio, 1)}%</em></td>`
           + `<td class="na">-</td><td class="na">-</td><td class="na">-</td><td>${formatNumber(child.value)}</td><td class="na">-</td><td class="na">-</td></tr>`).join("")
