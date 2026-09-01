@@ -1558,7 +1558,7 @@ function viewHtml() {
     // 101px를 쓰면서 새 정보가 없었다. YTD−K는 차트 끝점에서 읽힌다.
     ? `<div class="home-grid">${homeGroupChart()}</div>`
     : `${sectorTrend(state.sector, stocks)}${foreignPeerTable(state.sector)}${holdcoNavTable(state.sector)}${indicatorTiles(state.sector)}`;
-  return `<div class="topbar"><h2 id="viewTitle">${escapeHtml(title)}</h2></div>
+  return `<div class="topbar"><h1 id="viewTitle">${escapeHtml(title)}</h1></div>
     ${kpiStripHtml()}
     ${middle}
     ${tableHtml()}`;
