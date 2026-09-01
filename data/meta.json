@@ -1,32 +1,32 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-09-01T23:10:01.991Z",
+  "builtAt": "2026-09-01T23:15:02.041Z",
   "mode": "live",
-  "generatedAt": "2026-09-01T23:05:01.992Z",
-  "quotesGeneratedAt": "2026-09-01T23:10:01.932Z",
-  "heavyFingerprint": "{\"consensus\":\"2026-09-01T23:00:02.524754Z\",\"actuals\":\"2026-09-01T22:01:41.179110Z\",\"indicators\":\"2026-09-01T22:00:07.797Z\",\"holdcoNav\":\"2026-09-01T22:00:05.933Z\",\"sectorIndices\":\"2026-09-01T09:00:38.077Z\",\"sectorIndexDays\":250,\"stockCount\":76,\"mode\":\"live\",\"assets\":[\"63f6b23ba988cf3d\",\"43cd80c0db74ebd4\",\"e5a150901d1ff50c\"]}",
+  "generatedAt": "2026-09-01T23:13:05.479Z",
+  "quotesGeneratedAt": "2026-09-01T23:15:01.981Z",
+  "heavyFingerprint": "{\"consensus\":\"2026-09-01T23:11:04.570974Z\",\"actuals\":\"2026-09-01T23:11:19.358029Z\",\"indicators\":\"2026-09-01T23:11:21.676Z\",\"holdcoNav\":\"2026-09-01T23:11:20.167Z\",\"sectorIndices\":\"2026-09-01T23:11:02.658Z\",\"sectorIndexDays\":250,\"stockCount\":76,\"mode\":\"live\",\"assets\":[\"63f6b23ba988cf3d\",\"43cd80c0db74ebd4\",\"e5a150901d1ff50c\"],\"outputLogic\":[\"836d23a5c45d77d4\",\"a66a40eb61860da2\",\"7cb6f96ef880f278\"]}",
   "stockCount": 76,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
   "sources": {
     "quote": {
       "source": "kiwoom",
-      "updatedAt": "2026-09-01T23:09:33.104Z",
-      "status": "partial"
+      "updatedAt": "2026-09-01T23:14:02.469Z",
+      "status": "ok"
     },
     "actuals": {
       "source": "OpenDART",
-      "updatedAt": "2026-09-01T22:01:41.179110Z",
+      "updatedAt": "2026-09-01T23:11:19.358029Z",
       "status": "ok"
     },
     "consensus": {
       "source": "ConsenDB.xlsx",
-      "updatedAt": "2026-09-01T23:00:02.524754Z",
+      "updatedAt": "2026-09-01T23:11:04.570974Z",
       "status": "partial"
     },
     "indicators": {
       "source": "한국은행 ECOS",
-      "updatedAt": "2026-09-01T22:00:07.797Z",
+      "updatedAt": "2026-09-01T23:11:21.676Z",
       "status": "ok"
     }
   },
