@@ -378,6 +378,31 @@ function horizonsAvailable() {
   return false;
 }
 
+// 밸류에이션 기준별 계산은 서버가 시세와 함께 내려준다. 예전 서버가 아직 떠 있어
+// annual.horizons만 있고 valuation.horizons가 없으면 일반 화면의 전환기는 숨기고,
+// 기존 top-level 3M 값을 그대로 쓴다.
+function valuationHorizonsAvailable() {
+  for (const stock of state.snapshot?.stocks || []) {
+    for (const [period, record] of Object.entries(stock.annual || {})) {
+      if (record?.kind === "estimate") return Boolean(stock.valuation?.[period]?.horizons);
+    }
+  }
+  return false;
+}
+
+function valuationBasisTag() {
+  if (!valuationHorizonsAvailable()) return HORIZON_LABELS.threeMonth;
+  return HORIZON_LABELS[state.estimateBasis] || HORIZON_LABELS.threeMonth;
+}
+
+// 기준별 값이 실린 새 payload는 선택 기준만 사용하고, 그 기준이 비면 N/A로 둔다.
+// valuation.horizons가 없는 옛 payload에서만 기존 top-level(3M 평균) 값을 보존한다.
+function valuationResult(record, ratio, basis = state.estimateBasis) {
+  if (!record) return null;
+  if (!record.horizons) return record[ratio] ?? null;
+  return record.horizons[basis]?.[ratio] ?? null;
+}
+
 const CONSENSUS_METRICS = [
   { key: "revenue", label: "매출", metric: "revenue", className: "metric-wide-col" },
   { key: "op", label: "영업이익", metric: "operatingIncome", className: "metric-col" },
@@ -449,7 +474,7 @@ function buildColumnSections(sector = state.sector) {
     },
     {
       key: "valuation",
-      label: "밸류에이션",
+      label: `밸류에이션 · ${valuationBasisTag()}`,
       columns: [
         { key: "pe2026", label: "P/E 26E", sort: "valuation.2026.pe.value", className: "ratio-col", kind: "ratio", period: "2026", ratio: "pe" },
         { key: "pe2027", label: "P/E 27E", sort: "valuation.2027.pe.value", className: "ratio-col", kind: "ratio", period: "2027", ratio: "pe" },
@@ -554,7 +579,7 @@ function columnValue(stock, column) {
     case "quarterFinancial": return financialValue(stock.quarter?.[column.period], column.metric);
     case "revision": return consensusRevision(stock, column.period, column.metric);
     case "ratio": {
-      const result = stock.valuation?.[column.period]?.[column.ratio];
+      const result = valuationResult(stock.valuation?.[column.period], column.ratio);
       return result && result.status === "ok" ? result.value : null;
     }
     case "count": return contributorCount(stock, column.period, column.metric);
@@ -1407,7 +1432,7 @@ function bodyCell(stock, column, extraClass = "") {
     case "financial": return financialCell(stock.annual?.[column.period], column.metric, extraClass);
     case "quarterFinancial": return financialCell(stock.quarter?.[column.period], column.metric, extraClass);
     case "revision": return revisionCell(stock, column.period, column.metric, extraClass);
-    case "ratio": return `<td data-live-field="valuation.${column.period}.${column.ratio}" class="${extraClass}">${formatRatio(stock.valuation?.[column.period]?.[column.ratio], column.ratio)}</td>`;
+    case "ratio": return `<td data-live-field="valuation.${column.period}.${column.ratio}" class="${extraClass}">${formatRatio(valuationResult(stock.valuation?.[column.period], column.ratio), column.ratio)}</td>`;
     case "count": return `<td class="${extraClass}">${formatNumber(contributorCount(stock, column.period, column.metric))}</td>`;
     case "contributors": return `<td class="${extraClass}">${formatNumber(estimateContributors(stock, column.period))}</td>`;
     case "computed": return computedCell(stock, column, extraClass);
@@ -1426,6 +1451,10 @@ function sortValue(stock, key) {
   if (key.startsWith("revision.annual.")) {
     const [, , period, metric] = key.split(".");
     return consensusRevision(stock, period, metric);
+  }
+  if (/^valuation\.[^.]+\.(pe|pb|roe)\.value$/.test(key)) {
+    const [, period, ratio] = key.split(".");
+    return valuationResult(stock.valuation?.[period], ratio)?.value ?? null;
   }
   return getPath(stock, key);
 }
@@ -1520,7 +1549,7 @@ function tableHtml() {
     ? `<p class="pending-columns" id="pendingColumns">원천 연결 대기 열: ${PENDING_COLUMNS.map(({ label, pending }) => `${escapeHtml(label)} - ${escapeHtml(pending)}`).join(" · ")}</p>`
     : '<p class="pending-columns" id="pendingColumns"></p>';
 
-  const basisSwitch = state.columnGroups.has(CONSENSUS_VIEW_KEY) && horizonsAvailable()
+  const basisSwitch = (state.columnGroups.has(CONSENSUS_VIEW_KEY) ? horizonsAvailable() : valuationHorizonsAvailable())
     ? `<span class="basis-switch" role="group" aria-label="컨센서스 기준">`
       + ESTIMATE_BASES
         .map(({ key, label, hint }) => `<button type="button" data-estimate-basis="${key}" aria-pressed="${state.estimateBasis === key}" title="${escapeHtml(hint)}">${escapeHtml(label)}</button>`)
@@ -1708,7 +1737,12 @@ function drawerHtml(stock) {
   const ytd = stock.performance?.ytd;
   const relative = Number.isFinite(ytd) && Number.isFinite(kospiYtd) ? ytd - kospiYtd : null;
   const opRevision = consensusRevision(stock, "2026", profitMetricFor(stock.sector));
-  const valuation = stock.valuation?.["2026"] || {};
+  const valuation2026 = stock.valuation?.["2026"] || {};
+  const valuation2027 = stock.valuation?.["2027"] || {};
+  const pe2026 = valuationResult(valuation2026, "pe");
+  const pe2027 = valuationResult(valuation2027, "pe");
+  const pb2026 = valuationResult(valuation2026, "pb");
+  const roe2026 = valuationResult(valuation2026, "roe");
   const previousClose = stock.history?.at(-2)?.close ?? null;
   const change = Number.isFinite(stock.quote?.price) && Number.isFinite(previousClose) ? stock.quote.price - previousClose : null;
 
@@ -1723,8 +1757,8 @@ function drawerHtml(stock) {
       <span class="sub" id="detailMarketCap">시가총액 ${formatMarketCap(stock.quote?.marketCap)} · ${escapeHtml(sourceDisplayName("quote", stock.quote?.source))} · ${formatTimestamp(stock.quote?.observedAt)}</span>
     </div>
     <dl class="dgrid" id="drawerRatios">
-      <div><dt>P/E 26E</dt><dd data-live-field="valuation.2026.pe">${formatRatio(valuation.pe, "pe")}</dd><small>27E ${formatRatio(stock.valuation?.["2027"]?.pe, "pe")}</small></div>
-      <div><dt>P/B 26E</dt><dd data-live-field="valuation.2026.pb">${formatRatio(valuation.pb, "pb")}</dd><small>ROE ${formatRatio(valuation.roe, "roe")}</small></div>
+      <div><dt>P/E 26E</dt><dd data-live-field="valuation.2026.pe">${formatRatio(pe2026, "pe")}</dd><small>27E ${formatRatio(pe2027, "pe")} · ${valuationBasisTag()}</small></div>
+      <div><dt>P/B 26E</dt><dd data-live-field="valuation.2026.pb">${formatRatio(pb2026, "pb")}</dd><small>ROE ${formatRatio(roe2026, "roe")} · ${valuationBasisTag()}</small></div>
       <div><dt>${profitShortFor(stock.sector)} 26E 1M변화</dt><dd class="${numberClass(opRevision)}">${formatPercent(opRevision)}</dd><small>1M ÷ 3M − 1</small></div>
       <div><dt>YTD</dt><dd class="${numberClass(ytd)}" data-performance="ytd">${formatPercent(ytd)}</dd><small>vs KOSPI ${formatPercent(relative, 1)}</small></div>
       <div><dt>52주高比</dt><dd class="${numberClass(stock.performance?.drawdown52w)}" data-performance="drawdown52w">${formatPercent(stock.performance?.drawdown52w)}</dd><small>1Y ${formatPercent(stock.performance?.y1, 1)}</small></div>
@@ -1871,7 +1905,7 @@ function updateLiveRow(stock) {
   for (const period of ["2026", "2027"]) {
     for (const kind of ["pe", "pb", "roe"]) {
       const cell = row.querySelector(`[data-live-field="valuation.${period}.${kind}"]`);
-      if (cell) cell.textContent = formatRatio(stock.valuation?.[period]?.[kind], kind);
+      if (cell) cell.textContent = formatRatio(valuationResult(stock.valuation?.[period], kind), kind);
     }
   }
 }
@@ -1901,7 +1935,7 @@ function updateLiveDrawer(payload) {
   }
   for (const element of $$("#drawer [data-live-field^='valuation.']")) {
     const [, period, kind] = element.dataset.liveField.split(".");
-    element.textContent = formatRatio(state.detail.valuation?.[period]?.[kind], kind);
+    element.textContent = formatRatio(valuationResult(state.detail.valuation?.[period], kind), kind);
   }
   for (const element of $$("#drawer .source-line[data-source-keys]")) {
     element.textContent = sourceLine(element.dataset.sourceKeys.split(","));
@@ -1996,6 +2030,7 @@ function setEstimateBasis(basis) {
   state.estimateBasis = basis;
   writeStorage(ESTIMATE_BASIS_STORAGE_KEY, basis);
   renderView({ preserveScroll: true });
+  if (state.detailCode) renderDrawer();
   $(`[data-estimate-basis="${basis}"]`)?.focus();
 }
 
@@ -2191,6 +2226,8 @@ window.__hduTest = {
   // 옛 payload(기준별 값 없음)에서도 숫자가 그대로 나오는지 확인하는 회귀 검사용.
   financialValue: (record, metric, basis) => financialValue(record, metric, basis),
   horizonsAvailable: () => horizonsAvailable(),
+  valuationResult: (record, ratio, basis) => valuationResult(record, ratio, basis),
+  valuationHorizonsAvailable: () => valuationHorizonsAvailable(),
   simulateTick: (code, delta) => {
     const stock = state.snapshot?.stocks.find((item) => item.code === code);
     if (!stock) return null;

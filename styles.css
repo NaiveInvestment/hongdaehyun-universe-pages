@@ -200,7 +200,7 @@ ul { padding: 0; list-style: none; }
 /* ---- toolbar + table ---- */
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; }
 .toolbar .spacer { flex: 1; }
-/* 컨센서스 기준 전환(3M 평균 ↔ 최고 추정치). 보기 칩 옆에 붙는 작은 세그먼트. */
+/* 컨센서스·밸류에이션 기준 전환(1M 평균 / 3M 평균 / 3M 최고). 보기 칩 옆의 작은 세그먼트. */
 .basis-switch { display: inline-flex; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 999px; }
 .basis-switch button { height: 26px; padding: 0 12px; border: 0; background: transparent; color: var(--muted); font-size: 11.5px; font-weight: 700; cursor: pointer; }
 .basis-switch button + button { border-left: 1px solid var(--line-strong); }
