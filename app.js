@@ -128,6 +128,9 @@ const INDICATOR_CATALOG = {
 
 const state = {
   snapshot: null,
+  // 정적본의 무거운 전체 스냅샷 ID. snapshot.generatedAt은 시세 델타를 합칠 때
+  // 최신 시세 시각으로 바뀌므로, 전체 스냅샷 교체 판단에는 별도 값을 써야 한다.
+  staticSnapshotGeneratedAt: null,
   search: "",
   sector: "all",
   sortKey: "default",
@@ -2160,6 +2163,12 @@ async function initialize() {
   const response = await fetch(RUNTIME.snapshotUrl, { cache: "no-store" });
   if (!response.ok) throw new Error("스냅샷 API를 불러오지 못했습니다.");
   state.snapshot = await response.json();
+  if (RUNTIME.staticMode) {
+    state.staticSnapshotGeneratedAt = state.snapshot?.generatedAt || null;
+    // 공개본은 전체 스냅샷보다 quotes.json이 자주 갱신된다. 첫 화면부터 최신 가격을
+    // 보여 주고 60초 뒤까지 오전의 전체 스냅샷 가격을 노출하지 않는다.
+    await refreshStaticQuotes({ render: false });
+  }
   route();
   connectQuoteSocket();
   setInterval(flushLiveUpdates, 1000);
@@ -2183,22 +2192,22 @@ async function initialize() {
 
 // 정적 배포본 갱신. 가벼운 시세 델타만 읽어 스냅샷 위에 덮어쓴다.
 // 델타가 다른 전체 스냅샷을 가리키면(컨센·실적이 갱신됐다는 뜻) 그때만 스냅샷을 통째로 다시 받는다.
-async function refreshStaticQuotes() {
+async function refreshStaticQuotes({ render = true } = {}) {
   const response = await fetch(RUNTIME.quotesUrl, { cache: "no-store" });
   if (!response.ok) return;
   const quotes = await response.json();
-  if (quotes.snapshotGeneratedAt && quotes.snapshotGeneratedAt !== state.snapshot?.generatedAt) {
+  if (quotes.snapshotGeneratedAt && quotes.snapshotGeneratedAt !== state.staticSnapshotGeneratedAt) {
     const next = await fetch(RUNTIME.snapshotUrl, { cache: "no-store" });
     if (next.ok) {
       state.liveUpdates.clear();
       state.snapshot = await next.json();
-      renderSidebar();
-      renderView({ preserveScroll: true });
-      if (state.detailCode) loadDetail(state.detailCode);
-      return;
+      state.staticSnapshotGeneratedAt = state.snapshot?.generatedAt || null;
     }
   }
-  applyQuotesDelta(quotes);
+  // Pages CDN에서 전체 스냅샷과 델타가 서로 다른 배포 시점으로 보이면 섞지 않는다.
+  // 다음 60초 폴링에서 둘이 맞은 뒤 적용된다.
+  if (quotes.snapshotGeneratedAt && quotes.snapshotGeneratedAt !== state.staticSnapshotGeneratedAt) return;
+  applyQuotesDelta(quotes, { render });
 }
 
 // 시세 델타를 스냅샷에 병합한다. WebSocket 경로가 종목 하나씩 하는 일을 한 번에 하는 것이다.
@@ -2223,6 +2232,12 @@ function mergeQuotesDelta(snapshot, quotes) {
 //  - simulateTick: 장이 닫혀 체결이 없을 때도 틱 플래시 경로를 검사한다. 값은 되돌린다.
 window.__hduTest = {
   mergeQuotesDelta: (quotes) => applyQuotesDelta(quotes),
+  refreshStaticQuotes: () => refreshStaticQuotes(),
+  staticQuoteState: (code) => ({
+    baseGeneratedAt: state.staticSnapshotGeneratedAt,
+    displayedGeneratedAt: state.snapshot?.generatedAt || null,
+    price: state.snapshot?.stocks?.find((stock) => stock.code === code)?.quote?.price ?? null,
+  }),
   // 옛 payload(기준별 값 없음)에서도 숫자가 그대로 나오는지 확인하는 회귀 검사용.
   financialValue: (record, metric, basis) => financialValue(record, metric, basis),
   horizonsAvailable: () => horizonsAvailable(),
@@ -2243,12 +2258,14 @@ window.__hduTest = {
   },
 };
 
-function applyQuotesDelta(quotes) {
+function applyQuotesDelta(quotes, { render = true } = {}) {
   if (!state.snapshot) return;
   mergeQuotesDelta(state.snapshot, quotes);
   state.liveUpdates.clear();
-  renderSidebar();
-  renderView({ preserveScroll: true });
+  if (render) {
+    renderSidebar();
+    renderView({ preserveScroll: true });
+  }
   const fixture = state.snapshot?.mode === "fixture" ? "Fixture 검증 모드 · " : "";
   setConnection("delayed", `${fixture}지연 스냅샷 · ${formatTimestamp(state.snapshot?.generatedAt)} 기준`);
 }
