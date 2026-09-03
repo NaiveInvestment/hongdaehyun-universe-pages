@@ -808,15 +808,74 @@ function lineChart({ series, labels, width = 820, height = 250, rebase = true })
     + `<title>${escapeHtml(title)}</title>${grid}${ticks}${paths}${ends}</svg>`;
 }
 
-function sparkline(values = [], width = 120, height = 22) {
+// 스파크라인. dates가 있으면 x를 실제 날짜에 비례해 놓는다(2026-09-03).
+// 인덱스 등간격으로 그리면 주 1회꼴로 실리는 계열(나프타 CFR)의 빈 구간이 숨는다.
+function sparkline(values = [], width = 120, height = 22, dates = null) {
   const clean = values.filter(Number.isFinite);
   if (clean.length < 2) return "";
   const min = Math.min(...clean);
   const max = Math.max(...clean);
-  const x = (index) => 1 + (index / (values.length - 1)) * (width - 2);
+  const positions = sparkPositions(values.length, dates);
+  const x = (index) => 1 + positions[index] * (width - 2);
   const y = (value) => 2 + (1 - (value - min) / ((max - min) || 1)) * (height - 4);
   const path = values.map((value, index) => (Number.isFinite(value) ? `${index ? "L" : "M"}${x(index).toFixed(1)} ${y(value).toFixed(1)}` : "")).join(" ").trim();
   return `<svg viewBox="0 0 ${width} ${height}" aria-hidden="true"><path d="${path}"/></svg>`;
+}
+
+function sparkTime(date) {
+  if (typeof date !== "string" || !date) return NaN;
+  return Date.parse(`${date.length === 7 ? `${date}-01` : date}T00:00:00Z`);
+}
+
+// 각 점의 가로 위치(0~1). 날짜가 온전히 있고 증가하면 시간 비례, 아니면 인덱스 등간격으로 되돌아간다.
+function sparkPositions(count, dates) {
+  const byIndex = Array.from({ length: count }, (_, index) => (count > 1 ? index / (count - 1) : 0));
+  if (!Array.isArray(dates) || dates.length !== count || count < 2) return byIndex;
+  const times = dates.map(sparkTime);
+  const first = times[0];
+  const last = times.at(-1);
+  if (!times.every(Number.isFinite) || !(last > first)) return byIndex;
+  return times.map((time) => (time - first) / (last - first));
+}
+
+// x축 날짜 눈금(2026-09-03 사용자 지시). "최근 8일" 같은 창 길이 문구 대신 원천 데이터의 날짜를 그대로 적는다.
+// 첫·끝 날짜는 항상, 가운데는 시간상 중앙에 가장 가까운 실제 데이터 날짜를 그 시점의 위치에 놓는다.
+// 일별은 MM.DD(해가 바뀌는 구간이면 첫 눈금에 YY.를 붙인다), 월별은 YY.MM.
+function sparkAxisLabels(dates = [], cycle = "D") {
+  const valid = (Array.isArray(dates) ? dates : []).filter((date) => typeof date === "string" && date);
+  if (!valid.length) return [];
+  const label = (date, withYear) => (cycle === "D" && date.length >= 10
+    ? (withYear ? `${date.slice(2, 4)}.${date.slice(5, 7)}.${date.slice(8, 10)}` : `${date.slice(5, 7)}.${date.slice(8, 10)}`)
+    : `${date.slice(2, 4)}.${date.slice(5, 7)}`);
+  const first = valid[0];
+  const last = valid.at(-1);
+  if (valid.length === 1) return [{ edge: "start", at: 0, text: label(first, true) }];
+  const crossesYear = first.slice(0, 4) !== last.slice(0, 4);
+  const positions = sparkPositions(valid.length, valid);
+  const ticks = [{ edge: "start", at: 0, text: label(first, crossesYear) }];
+  let mid = -1;
+  let best = Infinity;
+  positions.forEach((position, index) => {
+    const distance = Math.abs(position - 0.5);
+    if (distance < best) { best = distance; mid = index; }
+  });
+  // 양끝 25% 안쪽에 있으면 첫·끝 눈금과 겹치므로 가운데 눈금을 뺀다.
+  if (mid > 0 && mid < valid.length - 1 && positions[mid] >= 0.25 && positions[mid] <= 0.75) {
+    ticks.push({ edge: "mid", at: positions[mid], text: label(valid[mid], crossesYear && valid[mid].slice(0, 4) !== last.slice(0, 4)) });
+  }
+  ticks.push({ edge: "end", at: 1, text: label(last, false) });
+  return ticks;
+}
+
+function sparkAxis(dates, cycle) {
+  const ticks = sparkAxisLabels(dates, cycle);
+  if (!ticks.length) return "";
+  return `<span class="ind-axis">${ticks.map((tick) =>
+    `<i data-edge="${tick.edge}" style="left:${(tick.at * 100).toFixed(1)}%">${escapeHtml(tick.text)}</i>`).join("")}</span>`;
+}
+
+function sameDates(a = [], b = []) {
+  return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((date, index) => date === b[index]);
 }
 
 // 분기 영업이익: 확정 실적 막대 + 추정 막대(점선) + 발표 전 3M 컨센 가로선.
@@ -1130,39 +1189,48 @@ function indicatorDigits(tile) {
   return tile.cycle === "D" ? 3 : 2;
 }
 
-// 스파크라인이 몇 개월치인지 적는다. 없으면 선이 30일인지 2년인지 알 길이 없다(2026-08-30 사용자 지적).
-// 실제 데이터의 첫 날짜와 끝 날짜로 계산한다 — 창 길이를 박아 두면 적재가 짧은 원천에서 거짓말이 된다.
-function indicatorSpanLabel(tile) {
-  const dates = tile.lines.flatMap((line) => line.sparkDates || []).filter(Boolean).sort();
-  if (dates.length < 2) return dates.length ? "1개 시점" : "";
-  const first = dates[0];
-  const last = dates.at(-1);
-  const days = Math.round((Date.parse(`${last}T00:00:00Z`) - Date.parse(`${first}T00:00:00Z`)) / 86400000);
-  if (!Number.isFinite(days) || days <= 0) return "";
-  if (days < 60) return `최근 ${days}일`;
-  const months = Math.round(days / 30.4);
-  if (months < 24) return `최근 ${months}개월`;
-  return `최근 ${(days / 365).toFixed(1)}년`;
+// 관련 수혜 종목(2026-09-03 사용자 지시). 서버 정의의 묶음(tier)을 그대로 받아 묶음 사이는 ">", 묶음 안은 반점으로 잇는다.
+// 정렬은 서버가 가나다순으로 끝내 보낸다. 유니버스 종목이면 드로어로 링크하고, 필드가 없는 옛 payload에서는 줄을 만들지 않는다.
+function beneficiaryLine(tile) {
+  const tiers = Array.isArray(tile.beneficiaries)
+    ? tile.beneficiaries.filter((tier) => Array.isArray(tier) && tier.length)
+    : [];
+  if (!tiers.length) return "";
+  const codeByName = new Map((state.snapshot?.stocks || []).map((stock) => [stock.name, stock.code]));
+  const name = (label) => (codeByName.has(label)
+    ? `<a href="#/stock/${codeByName.get(label)}">${escapeHtml(label)}</a>`
+    : escapeHtml(label));
+  const text = tiers.map((tier) => tier.map(name).join(", ")).join(" &gt; ");
+  const direction = tile.direction ? `(${escapeHtml(tile.direction)})` : "";
+  return `<small class="ind-ben">관련 수혜 종목${direction}: ${text}</small>`;
 }
 
 function indicatorTile(tile) {
-  const rows = tile.lines.map((line) => `<div class="ind-line">
+  // 계열이 여럿이고 날짜가 전부 같으면 x축 눈금은 마지막 줄 아래 한 번만 둔다. 다르면 줄마다 둔다.
+  const shared = tile.lines.length > 1 && tile.lines.every((line) => sameDates(line.sparkDates, tile.lines[0].sparkDates));
+  const rows = tile.lines.map((line, index) => {
+    const axis = !shared || index === tile.lines.length - 1 ? sparkAxis(line.sparkDates, tile.cycle) : "";
+    return `<div class="ind-line">
     ${line.label ? `<em>${escapeHtml(line.label)}</em>` : ""}
     <b>${line.latest == null ? "-" : formatNumber(line.latest, indicatorDigits(tile))}<u>${escapeHtml(tile.unit)}</u></b>
     <span class="${numberClass(line.change)}">${formatIndicatorChange(line.change, tile.changeMode)}</span>
-    <span class="ind-spark">${sparkline(line.spark, 84, 20)}</span>
-  </div>`).join("");
+    <span class="ind-spark">${sparkline(line.spark, 84, 20, line.sparkDates)}</span>
+    ${axis}
+  </div>`;
+  }).join("");
   // 원천 코드(121Y006/BECBLA01 …)는 읽는 사람에게 뜻이 없다. 화면에서 빼고 툴팁으로만 남긴다.
-  // 출처를 지우는 게 아니라 안 보이는 데로 옮기는 것이다.
+  // 출처를 지우는 게 아니라 안 보이는 데로 옮기는 것이다. 수혜 종목 순서의 근거도 툴팁에 둔다.
   const title = `${tile.name} ${tile.lines.map((line) => `${line.label ? `${line.label} ` : ""}${line.latest ?? "-"}${tile.unit}`).join(", ")}`
     + `
-${tile.sources.join(" · ")}`;
-  const span = indicatorSpanLabel(tile);
-  const footer = [span, tile.note].filter(Boolean).join(" · ");
+${tile.sources.join(" · ")}`
+    + (tile.basis ? `
+수혜 순서 근거: ${tile.basis}` : "");
+  // "최근 N일" 문구는 2026-09-03에 뺐다. 기간은 스파크라인 아래 날짜 눈금이 말한다.
   return `<li class="is-live" data-indicator="${escapeHtml(tile.key)}" title="${escapeHtml(title)}">
     <b>${escapeHtml(tile.name)}<u>${escapeHtml(indicatorPeriodLabel(tile))}</u></b>
     ${rows}
-    <i>${escapeHtml(footer)}</i>
+    ${beneficiaryLine(tile)}
+    ${tile.note ? `<i>${escapeHtml(tile.note)}</i>` : ""}
   </li>`;
 }
 
@@ -2243,6 +2311,9 @@ window.__hduTest = {
   horizonsAvailable: () => horizonsAvailable(),
   valuationResult: (record, ratio, basis) => valuationResult(record, ratio, basis),
   valuationHorizonsAvailable: () => valuationHorizonsAvailable(),
+  // 스파크라인 x축: 날짜 비례 위치와 눈금 문구(2026-09-03).
+  sparkPositions: (count, dates) => sparkPositions(count, dates),
+  sparkAxisLabels: (dates, cycle) => sparkAxisLabels(dates, cycle),
   simulateTick: (code, delta) => {
     const stock = state.snapshot?.stocks.find((item) => item.code === code);
     if (!stock) return null;

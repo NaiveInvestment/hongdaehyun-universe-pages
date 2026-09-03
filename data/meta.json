@@ -1,32 +1,32 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-09-03T02:30:02.456Z",
+  "builtAt": "2026-09-03T02:35:02.499Z",
   "mode": "live",
-  "generatedAt": "2026-09-03T02:30:02.282Z",
-  "quotesGeneratedAt": "2026-09-03T02:30:02.282Z",
-  "heavyFingerprint": "{\"consensus\":\"2026-09-02T23:00:01.830329Z\",\"actuals\":\"2026-09-02T22:50:55.370719Z\",\"indicators\":\"2026-09-02T22:50:57.632Z\",\"holdcoNav\":\"2026-09-02T22:50:56.061Z\",\"sectorIndices\":\"2026-09-02T22:50:39.153Z\",\"sectorIndexDays\":250,\"stockCount\":76,\"mode\":\"live\",\"assets\":[\"63f6b23ba988cf3d\",\"b9354e4775551bec\",\"68bd31fdb32e52c6\"],\"outputLogic\":[\"879f8451187f4393\",\"a66a40eb61860da2\",\"c7f563d82efd77d4\"]}",
+  "generatedAt": "2026-09-03T02:35:02.318Z",
+  "quotesGeneratedAt": "2026-09-03T02:35:02.318Z",
+  "heavyFingerprint": "{\"consensus\":\"2026-09-03T02:31:25.962266Z\",\"actuals\":\"2026-09-03T02:31:38.896967Z\",\"indicators\":\"2026-09-03T02:31:41.332Z\",\"holdcoNav\":\"2026-09-03T02:31:39.602Z\",\"sectorIndices\":\"2026-09-03T02:31:24.173Z\",\"sectorIndexDays\":250,\"stockCount\":76,\"mode\":\"live\",\"assets\":[\"63f6b23ba988cf3d\",\"c3900f4c22048f20\",\"68bd31fdb32e52c6\"],\"outputLogic\":[\"879f8451187f4393\",\"a66a40eb61860da2\",\"c7f563d82efd77d4\"]}",
   "stockCount": 76,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
   "sources": {
     "quote": {
       "source": "kiwoom",
-      "updatedAt": "2026-09-03T02:29:40.519Z",
-      "status": "partial"
+      "updatedAt": "2026-09-03T02:34:24.004Z",
+      "status": "ok"
     },
     "actuals": {
       "source": "OpenDART",
-      "updatedAt": "2026-09-02T22:50:55.370719Z",
+      "updatedAt": "2026-09-03T02:31:38.896967Z",
       "status": "ok"
     },
     "consensus": {
       "source": "ConsenDB.xlsx",
-      "updatedAt": "2026-09-02T23:00:01.830329Z",
+      "updatedAt": "2026-09-03T02:31:25.962266Z",
       "status": "partial"
     },
     "indicators": {
       "source": "한국은행 ECOS",
-      "updatedAt": "2026-09-02T22:50:57.632Z",
+      "updatedAt": "2026-09-03T02:31:41.332Z",
       "status": "ok"
     }
   },
