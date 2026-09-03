@@ -819,7 +819,9 @@ function sparkline(values = [], width = 120, height = 22, dates = null) {
   const x = (index) => 1 + positions[index] * (width - 2);
   const y = (value) => 2 + (1 - (value - min) / ((max - min) || 1)) * (height - 4);
   const path = values.map((value, index) => (Number.isFinite(value) ? `${index ? "L" : "M"}${x(index).toFixed(1)} ${y(value).toFixed(1)}` : "")).join(" ").trim();
-  return `<svg viewBox="0 0 ${width} ${height}" aria-hidden="true"><path d="${path}"/></svg>`;
+  // preserveAspectRatio="none": 컨테이너 폭에 맞게 늘려 아래 날짜 눈금(백분율 위치)과 같은 축을 쓴다.
+  // 비율을 지키면 viewBox 폭(84px)으로 가운데 몰려 눈금과 어긋난다. 선 굵기는 non-scaling-stroke로 유지한다.
+  return `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true"><path d="${path}" vector-effect="non-scaling-stroke"/></svg>`;
 }
 
 function sparkTime(date) {
@@ -867,11 +869,14 @@ function sparkAxisLabels(dates = [], cycle = "D") {
   return ticks;
 }
 
+// CSP가 style-src 'self'라 인라인 style로 위치를 줄 수 없다. SVG text의 x 백분율은 속성이라 통과한다.
 function sparkAxis(dates, cycle) {
   const ticks = sparkAxisLabels(dates, cycle);
   if (!ticks.length) return "";
-  return `<span class="ind-axis">${ticks.map((tick) =>
-    `<i data-edge="${tick.edge}" style="left:${(tick.at * 100).toFixed(1)}%">${escapeHtml(tick.text)}</i>`).join("")}</span>`;
+  const anchor = { start: "start", mid: "middle", end: "end" };
+  const range = ticks.length > 1 ? `${ticks[0].text}~${ticks.at(-1).text}` : ticks[0].text;
+  return `<svg class="ind-axis" width="100%" height="12" role="img" aria-label="기간 ${escapeHtml(range)}">${ticks.map((tick) =>
+    `<text data-edge="${tick.edge}" x="${(tick.at * 100).toFixed(1)}%" y="10" text-anchor="${anchor[tick.edge]}">${escapeHtml(tick.text)}</text>`).join("")}</svg>`;
 }
 
 function sameDates(a = [], b = []) {
@@ -1199,7 +1204,7 @@ function beneficiaryLine(tile) {
   const codeByName = new Map((state.snapshot?.stocks || []).map((stock) => [stock.name, stock.code]));
   const name = (label) => (codeByName.has(label)
     ? `<a href="#/stock/${codeByName.get(label)}">${escapeHtml(label)}</a>`
-    : escapeHtml(label));
+    : `<span>${escapeHtml(label)}</span>`);
   const text = tiers.map((tier) => tier.map(name).join(", ")).join(" &gt; ");
   const direction = tile.direction ? `(${escapeHtml(tile.direction)})` : "";
   return `<small class="ind-ben">관련 수혜 종목${direction}: ${text}</small>`;
