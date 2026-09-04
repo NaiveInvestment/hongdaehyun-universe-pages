@@ -315,6 +315,7 @@ function sourceDisplayName(key, sourceName) {
 
 function sourceHealthStatus(source, key = null) {
   if (!source || !source.status) return { label: "미적재", className: "not-loaded" };
+  if (source.status === "not_loaded") return { label: "미적재", className: "not-loaded" };
   if (source.status === "fixture") return key === "quote" && RUNTIME.staticMode
     ? { label: "FIXTURE, 5분 지연", className: "stale" }
     : { label: "FIXTURE", className: "partial" };
@@ -1298,7 +1299,7 @@ function indicatorTile(tile) {
   // 출처를 지우는 게 아니라 안 보이는 데로 옮기는 것이다. 수혜 종목 순서의 근거도 툴팁에 둔다.
   const title = `${tile.name} ${tile.lines.map((line) => `${line.label ? `${line.label} ` : ""}${line.latest ?? "-"}${tile.unit}`).join(", ")}`
     + `
-${tile.sources.join(" · ")}`
+${tile.sources.join(", ")}`
     + (tile.basis ? `
 수혜 순서 근거: ${tile.basis}` : "");
   // "최근 N일" 문구는 2026-09-03에 뺐다. 기간은 스파크라인 아래 날짜 눈금이 말한다.
@@ -1996,7 +1997,14 @@ async function loadDetail(code) {
     if (!response.ok) throw new Error(response.status === 404 ? "Universe에 없는 종목입니다." : "상세 API 오류");
     const stock = await response.json();
     if (state.detailCode !== code) return;
-    if (state.snapshot && stock.sources) state.snapshot.sources = stock.sources;
+    if (state.snapshot && stock.sources) {
+      const currentQuote = state.snapshot.sources?.quote;
+      const detailQuote = stock.sources.quote;
+      const currentTime = Date.parse(currentQuote?.updatedAt || 0) || 0;
+      const detailTime = Date.parse(detailQuote?.updatedAt || 0) || 0;
+      const quote = RUNTIME.staticMode && currentTime >= detailTime ? currentQuote : detailQuote;
+      state.snapshot.sources = { ...state.snapshot.sources, ...stock.sources, ...(quote ? { quote } : {}) };
+    }
     const latest = state.snapshot?.stocks?.find((item) => item.code === code);
     state.detail = mergeLatestMarketData(stock, latest);
     state.detailLoading = false;
@@ -2423,12 +2431,15 @@ window.__hduTest = {
     d1Change: dailyChangeAmount(state.detail || {}),
     displayedPrice: $("#detailPrice")?.textContent.trim() || null,
     displayedChange: $("#detailChange")?.textContent.trim() || null,
+    sourceUpdatedAt: state.snapshot?.sources?.quote?.updatedAt || null,
+    sourceLine: $("#drawer .source-line")?.textContent.trim() || null,
   }),
   // 옛 payload(기준별 값 없음)에서도 숫자가 그대로 나오는지 확인하는 회귀 검사용.
   financialValue: (record, metric, basis) => financialValue(record, metric, basis),
   horizonsAvailable: () => horizonsAvailable(),
   valuationResult: (record, ratio, basis) => valuationResult(record, ratio, basis),
   valuationHorizonsAvailable: () => valuationHorizonsAvailable(),
+  sourceHealthStatus: (source, key) => sourceHealthStatus(source, key),
   // 스파크라인 x축: 날짜 비례 위치와 눈금 문구(2026-09-03).
   sparkPositions: (count, dates) => sparkPositions(count, dates),
   sparkAxisLabels: (dates, cycle) => sparkAxisLabels(dates, cycle),
