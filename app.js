@@ -337,11 +337,15 @@ function sourceHealthStatus(source, key = null) {
 
 function sourceHealthBadge(label, source, key = null, fallbackSource = "") {
   const health = sourceHealthStatus(source, key);
-  const rawProvider = typeof source?.source === "string" ? source.source : fallbackSource;
+  const nestedSource = source?.source && typeof source.source === "object" ? source.source : null;
+  const rawProvider = typeof source?.source === "string"
+    ? source.source
+    : nestedSource?.provider || source?.provider || fallbackSource;
   const provider = sourceDisplayName(key, rawProvider);
-  const updated = source?.updatedAt ? formatTimestamp(source.updatedAt) : "기준시각 없음";
+  const timestamp = source?.updatedAt || source?.loadedAt || nestedSource?.updatedAt || nestedSource?.loadedAt;
+  const updated = timestamp ? formatTimestamp(timestamp) : "기준시각 없음";
   const title = `${label}, ${provider}, ${updated}, ${health.label}`;
-  return `<span class="source-health__item is-${health.className}" title="${escapeHtml(title)}">${escapeHtml(label)} ${escapeHtml(health.label)}</span>`;
+  return `<span class="source-health__item is-${health.className}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">${escapeHtml(label)} ${escapeHtml(health.label)}</span>`;
 }
 
 function sourceLine(keys) {
@@ -1148,10 +1152,13 @@ function homeGroupChart() {
   const chart = lineChart({ series: [...shownSeries, ...benchmarkSeriesFor(dates)], labels: dates, ...box });
   const expandLabel = state.homeChartExpanded ? "핵심 4개" : "전체 10개";
   const expandAria = state.homeChartExpanded ? "기간 상위와 하위 섹터만 보기" : "모든 섹터와 벤치마크 보기";
+  const mobileNote = state.homeChartExpanded
+    ? "8개 섹터와 KOSPI, KOSDAQ을 모두 표시합니다."
+    : "기간 수익률 상위와 하위 섹터, KOSPI, KOSDAQ을 표시합니다.";
   return `<div class="card" id="homeGroupChart">
     <div class="card-head"><h2>8섹터 상대주가 vs 벤치마크</h2>
       <span class="tools">${rangeButtons()}<button class="btn tiny home-chart-toggle" type="button" data-home-chart-expand aria-expanded="${state.homeChartExpanded}" aria-label="${expandAria}">${expandLabel}</button></span></div>
-    <p class="home-chart-mobile-note">기간 수익률 상위와 하위 섹터, KOSPI, KOSDAQ을 표시합니다.</p>
+    <p class="home-chart-mobile-note">${mobileNote}</p>
     ${chart}
     <div class="chart-legend">${shownSeries.map((item) => `<span><i class="${item.legendClass}"></i>${escapeHtml(item.name)}</span>`).join("")}
       <span><i class="ctx"></i>KOSPI</span><span><i class="ctx2"></i>KOSDAQ</span>
@@ -1171,7 +1178,7 @@ function sectorExceptions(stocks) {
     + `<span class="num ${numberClass(value)}">${formatPercent(value, 1)}</span></li>`;
   // 2026-08-27: 네 묶음을 한 줄로 세우면 카드가 368px가 되고, .sec-grid 높이를 이쪽이 결정해
   // 차트를 줄여도 종목표가 올라오지 않는다. 2×2로 접어 절반 높이로 만든다.
-  const block = (label, rows) => `<section class="exc-block"><h4>${label}</h4><ul class="exc">`
+  const block = (label, rows) => `<section class="exc-block"><h3>${label}</h3><ul class="exc">`
     + (rows.length ? rows.join("") : '<li><span class="na">해당 없음</span><span class="num na">-</span></li>')
     + "</ul></section>";
   return `<div class="exc-grid">
@@ -1565,7 +1572,7 @@ function computedCell(stock, column, extraClass = "") {
 function bodyCell(stock, column, extraClass = "") {
   switch (column.kind) {
     case "sector": return `<td class="${extraClass}">${escapeHtml(stock.sector)}</td>`;
-    case "name": return `<td class="${extraClass}"><span class="stock-name" title="${escapeHtml(stock.name)}">${escapeHtml(stock.name)}</span></td>`;
+    case "name": return `<td class="${extraClass}"><a class="stock-name" href="#/stock/${stock.code}" aria-controls="drawer" aria-label="${escapeHtml(`${stock.name}, ${stock.code}, 상세 열기`)}" title="${escapeHtml(stock.name)}">${escapeHtml(stock.name)}</a></td>`;
     case "price": return `<td data-live-field="quote.price" class="${extraClass}">${formatPrice(stock.quote?.price)}</td>`;
     case "marketCap": return `<td data-live-field="quote.${column.field}" class="${extraClass}">${formatNumber(stock.quote?.[column.field])}</td>`;
     case "return": return performanceCell(stock, column.period, extraClass);
@@ -1677,7 +1684,7 @@ function tableHtml() {
     previousSector = stock.sector;
     const cells = sections.flatMap((section) =>
       section.columns.map((column, index) => bodyCell(stock, column, section.key === "identity" ? "" : columnEdgeClass(column, index)))).join("");
-    return `<tr data-code="${stock.code}" data-market="${marketForStock(stock)}" tabindex="0" aria-selected="${state.detailCode === stock.code}" aria-controls="drawer" aria-label="${escapeHtml(`${stock.name}, ${stock.code}, 상세 열기`)}" class="${sectorStart ? "sector-start" : ""}">${cells}</tr>`;
+    return `<tr data-code="${stock.code}" data-market="${marketForStock(stock)}" aria-selected="${state.detailCode === stock.code}" class="${sectorStart ? "sector-start" : ""}">${cells}</tr>`;
   }).join("") || `<tr><td colspan="${visibleColumnCount(sections)}" class="empty-state">검색 결과가 없습니다.</td></tr>`;
 
   // 안내에는 지금 켜져 있는 열그룹만 적는다. 접혀 있는 열까지 적으면 무엇이 사라졌는지 흐려진다.
@@ -2158,7 +2165,7 @@ function route() {
     else renderDrawer();
   } else {
     renderDrawer();
-    if (previousCode) requestAnimationFrame(() => $(`#tableBody tr[data-code="${previousCode}"]`)?.focus({ preventScroll: true }));
+    if (previousCode) requestAnimationFrame(() => $(`#tableBody tr[data-code="${previousCode}"] .stock-name`)?.focus({ preventScroll: true }));
   }
 }
 
@@ -2232,6 +2239,7 @@ function bindEvents() {
     }
     const range = event.target.closest("[data-range]");
     if (range) { state.range = parseRangeValue(range.dataset.range); return renderView({ preserveScroll: true }); }
+    if (event.target.closest("a.stock-name")) return;
     const row = event.target.closest("tr[data-code]");
     if (row) location.hash = `#/stock/${row.dataset.code}`;
   });
@@ -2242,8 +2250,6 @@ function bindEvents() {
     if (peerGroup) { event.preventDefault(); return togglePeerGroup(peerGroup.dataset.peerGroup); }
     const holdco = event.target.closest("[data-holdco]");
     if (holdco) { event.preventDefault(); return toggleHoldco(holdco.dataset.holdco); }
-    const row = event.target.closest("tr[data-code]");
-    if (row) { event.preventDefault(); location.hash = `#/stock/${row.dataset.code}`; }
   });
 
   $("#drawer").addEventListener("click", (event) => {
