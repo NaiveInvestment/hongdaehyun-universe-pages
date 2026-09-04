@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-09-04T01:05:01.778Z",
+  "builtAt": "2026-09-04T01:10:01.770Z",
   "mode": "live",
-  "generatedAt": "2026-09-04T01:05:01.543Z",
-  "quotesGeneratedAt": "2026-09-04T01:05:01.543Z",
-  "heavyFingerprint": "{\"consensus\":\"2026-09-03T23:00:02.116013Z\",\"actuals\":\"2026-09-03T22:01:37.783609Z\",\"indicators\":\"2026-09-03T22:00:08.144Z\",\"holdcoNav\":\"2026-09-03T22:00:06.217Z\",\"sectorIndices\":\"2026-09-03T09:00:37.345Z\",\"sectorIndexDays\":250,\"stockCount\":76,\"mode\":\"live\",\"assets\":[\"466355984d9ae9ec\",\"3d63dd26fb379aaa\",\"bc5c1046519a009f\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"5f63d9572b9e1f74\"]}",
+  "generatedAt": "2026-09-04T01:10:01.561Z",
+  "quotesGeneratedAt": "2026-09-04T01:10:01.561Z",
+  "heavyFingerprint": "{\"consensus\":\"2026-09-03T23:00:02.116013Z\",\"actuals\":\"2026-09-03T22:01:37.783609Z\",\"indicators\":\"2026-09-03T22:00:08.144Z\",\"holdcoNav\":\"2026-09-03T22:00:06.217Z\",\"sectorIndices\":\"2026-09-03T09:00:37.345Z\",\"sectorIndexDays\":250,\"stockCount\":76,\"mode\":\"live\",\"assets\":[\"466355984d9ae9ec\",\"4b7717de27895f80\",\"bc5c1046519a009f\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"5f63d9572b9e1f74\"]}",
   "stockCount": 76,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
   "sources": {
     "quote": {
       "source": "kiwoom",
-      "updatedAt": "2026-09-04T01:04:33.876Z",
+      "updatedAt": "2026-09-04T01:09:33.873Z",
       "status": "partial"
     },
     "actuals": {

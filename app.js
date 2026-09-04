@@ -306,6 +306,7 @@ function sourceStatus(source, key = null) {
 
 function sourceDisplayName(key, sourceName) {
   const source = String(sourceName || "").trim();
+  if (key === "quote" && source.toLowerCase() === "fixture") return RUNTIME.staticMode ? "Fixture 시세, 공개본 5분 지연" : "Fixture 시세";
   if (key === "quote" && source.toLowerCase() === "kiwoom") return RUNTIME.staticMode ? "Kiwoom KRX, 공개본 5분 지연" : "Kiwoom KRX 실시간";
   if (key === "quote" && source.toLowerCase() === "toss") return RUNTIME.staticMode ? "토스 통합시세, 공개본 5분 지연" : "토스 통합시세(KRX+NXT)";
   if (key === "quote" && source.toLowerCase() === "naver") return RUNTIME.staticMode ? "Naver KRX, 공개본 5분 지연" : "Naver KRX 지연";
@@ -313,19 +314,22 @@ function sourceDisplayName(key, sourceName) {
 }
 
 function sourceHealthStatus(source, key = null) {
-  if (!source) return { label: "미적재", className: "not-loaded" };
-  if (source.status === "fixture") return { label: "FIXTURE", className: "partial" };
+  if (!source || !source.status) return { label: "미적재", className: "not-loaded" };
+  if (source.status === "fixture") return key === "quote" && RUNTIME.staticMode
+    ? { label: "FIXTURE, 5분 지연", className: "stale" }
+    : { label: "FIXTURE", className: "partial" };
   if (source.status === "not_configured") return { label: "미설정", className: "partial" };
   if (source.status === "error") return { label: "오류", className: "error" };
 
   const labels = [];
   if (source.status === "partial") labels.push("일부");
   if (source.stale) labels.push("갱신 지연");
+  if (source.delayed && !RUNTIME.staticMode) labels.push("지연");
   if (key === "quote" && RUNTIME.staticMode) labels.push("5분 지연");
   if (!labels.length) labels.push(sourceStatus(source, key).label);
   return {
     label: [...new Set(labels)].join(", "),
-    className: source.stale || (key === "quote" && RUNTIME.staticMode)
+    className: source.stale || source.delayed || (key === "quote" && RUNTIME.staticMode)
       ? "stale"
       : source.status === "partial" ? "partial" : "ok",
   };
@@ -333,7 +337,8 @@ function sourceHealthStatus(source, key = null) {
 
 function sourceHealthBadge(label, source, key = null, fallbackSource = "") {
   const health = sourceHealthStatus(source, key);
-  const provider = sourceDisplayName(key, source?.source || fallbackSource);
+  const rawProvider = typeof source?.source === "string" ? source.source : fallbackSource;
+  const provider = sourceDisplayName(key, rawProvider);
   const updated = source?.updatedAt ? formatTimestamp(source.updatedAt) : "기준시각 없음";
   const title = `${label}, ${provider}, ${updated}, ${health.label}`;
   return `<span class="source-health__item is-${health.className}" title="${escapeHtml(title)}">${escapeHtml(label)} ${escapeHtml(health.label)}</span>`;
