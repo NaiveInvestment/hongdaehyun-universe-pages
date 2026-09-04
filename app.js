@@ -145,6 +145,8 @@ const state = {
   peerGroups: new Set(),
   // 펼쳐 둔 지주사. 누르면 그 지주의 상장 자회사가 아래로 펼쳐진다.
   holdcoOpen: new Set(),
+  // 좁은 화면에서는 비교선이 겹치지 않도록 기간 상위와 하위 섹터만 먼저 보여 준다.
+  homeChartExpanded: false,
   range: "ytd",
   theme: "dark",
   liveUpdates: new Map(),
@@ -245,6 +247,11 @@ function formatPercent(value, digits = 1) {
   return `${value > 0 ? "+" : ""}${Number(value).toFixed(digits)}%`;
 }
 
+function formatPercentagePoint(value, digits = 1) {
+  if (value == null || !Number.isFinite(value)) return "-";
+  return `${value > 0 ? "+" : ""}${Number(value).toFixed(digits)}%p`;
+}
+
 function formatSignedNumber(value) {
   if (value == null || !Number.isFinite(value)) return "-";
   return `${value > 0 ? "+" : ""}${Math.round(value).toLocaleString("ko-KR")}`;
@@ -299,16 +306,43 @@ function sourceStatus(source, key = null) {
 
 function sourceDisplayName(key, sourceName) {
   const source = String(sourceName || "").trim();
-  if (key === "quote" && source.toLowerCase() === "kiwoom") return "Kiwoom KRX 실시간";
-  if (key === "quote" && source.toLowerCase() === "toss") return "토스 통합시세(KRX+NXT)";
-  if (key === "quote" && source.toLowerCase() === "naver") return "Naver KRX 지연";
+  if (key === "quote" && source.toLowerCase() === "kiwoom") return RUNTIME.staticMode ? "Kiwoom KRX, 공개본 5분 지연" : "Kiwoom KRX 실시간";
+  if (key === "quote" && source.toLowerCase() === "toss") return RUNTIME.staticMode ? "토스 통합시세, 공개본 5분 지연" : "토스 통합시세(KRX+NXT)";
+  if (key === "quote" && source.toLowerCase() === "naver") return RUNTIME.staticMode ? "Naver KRX, 공개본 5분 지연" : "Naver KRX 지연";
   return source || "미적재";
+}
+
+function sourceHealthStatus(source, key = null) {
+  if (!source) return { label: "미적재", className: "not-loaded" };
+  if (source.status === "fixture") return { label: "FIXTURE", className: "partial" };
+  if (source.status === "not_configured") return { label: "미설정", className: "partial" };
+  if (source.status === "error") return { label: "오류", className: "error" };
+
+  const labels = [];
+  if (source.status === "partial") labels.push("일부");
+  if (source.stale) labels.push("갱신 지연");
+  if (key === "quote" && RUNTIME.staticMode) labels.push("5분 지연");
+  if (!labels.length) labels.push(sourceStatus(source, key).label);
+  return {
+    label: [...new Set(labels)].join(", "),
+    className: source.stale || (key === "quote" && RUNTIME.staticMode)
+      ? "stale"
+      : source.status === "partial" ? "partial" : "ok",
+  };
+}
+
+function sourceHealthBadge(label, source, key = null, fallbackSource = "") {
+  const health = sourceHealthStatus(source, key);
+  const provider = sourceDisplayName(key, source?.source || fallbackSource);
+  const updated = source?.updatedAt ? formatTimestamp(source.updatedAt) : "기준시각 없음";
+  const title = `${label}, ${provider}, ${updated}, ${health.label}`;
+  return `<span class="source-health__item is-${health.className}" title="${escapeHtml(title)}">${escapeHtml(label)} ${escapeHtml(health.label)}</span>`;
 }
 
 function sourceLine(keys) {
   return keys.map((key) => {
     const source = state.snapshot?.sources?.[key] || {};
-    const status = sourceStatus(source, key);
+    const status = sourceHealthStatus(source, key);
     return `${SOURCE_LABELS[key]} ${escapeHtml(sourceDisplayName(key, source.source))} · ${formatTimestamp(source.updatedAt)} · ${status.label}`;
   }).join(" / ");
 }
