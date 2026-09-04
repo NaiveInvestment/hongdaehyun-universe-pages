@@ -1793,6 +1793,30 @@ function drawerFilings(stock) {
       : "-"}</span></li>`).join("")}</ul>`;
 }
 
+// A static stock detail file is rebuilt less often than the lightweight quote
+// delta. Always overlay the latest market fields from the list snapshot before
+// showing or refreshing the drawer.
+function mergeLatestMarketData(stock, latest) {
+  if (!stock || !latest) return stock;
+  if (latest.quote) stock.quote = { ...stock.quote, ...latest.quote };
+  if (latest.performance) stock.performance = latest.performance;
+  if (latest.valuation) stock.valuation = latest.valuation;
+  return stock;
+}
+
+function dailyChangeAmount(stock) {
+  const explicit = stock.performance?.d1Change;
+  if (Number.isFinite(explicit)) return explicit;
+  // Backward-compatible fallback for an older payload. It derives the amount
+  // from the displayed d1 itself, never from an ambiguous history position.
+  const price = stock.quote?.price;
+  const rate = stock.performance?.d1;
+  const factor = 1 + (rate / 100);
+  return Number.isFinite(price) && Number.isFinite(rate) && factor > 0
+    ? price - (price / factor)
+    : null;
+}
+
 function drawerHtml(stock) {
   const dates = windowSlice(indexDates());
   const aligned = windowSlice(alignHistory(stock.history, indexDates()));
@@ -1819,8 +1843,7 @@ function drawerHtml(stock) {
   const pe2027 = valuationResult(valuation2027, "pe");
   const pb2026 = valuationResult(valuation2026, "pb");
   const roe2026 = valuationResult(valuation2026, "roe");
-  const previousClose = stock.history?.at(-2)?.close ?? null;
-  const change = Number.isFinite(stock.quote?.price) && Number.isFinite(previousClose) ? stock.quote.price - previousClose : null;
+  const change = dailyChangeAmount(stock);
 
   return `<div class="drawer-inner">
     <div class="drawer-head">
@@ -1900,7 +1923,8 @@ async function loadDetail(code) {
     const stock = await response.json();
     if (state.detailCode !== code) return;
     if (state.snapshot && stock.sources) state.snapshot.sources = stock.sources;
-    state.detail = stock;
+    const latest = state.snapshot?.stocks?.find((item) => item.code === code);
+    state.detail = mergeLatestMarketData(stock, latest);
     state.detailLoading = false;
     renderDrawer();
   } catch (error) {
@@ -1999,8 +2023,7 @@ function updateLiveDrawer(payload) {
     marketCap.textContent = `시가총액 ${formatMarketCap(state.detail.quote?.marketCap)} · ${sourceDisplayName("quote", state.detail.quote?.source)} · ${formatTimestamp(state.detail.quote?.observedAt)}`;
   }
   if (change) {
-    const previousClose = state.detail.history?.at(-2)?.close ?? null;
-    const delta = Number.isFinite(state.detail.quote?.price) && Number.isFinite(previousClose) ? state.detail.quote.price - previousClose : null;
+    const delta = dailyChangeAmount(state.detail);
     change.textContent = `${formatSignedNumber(delta)} (${formatPercent(state.detail.performance?.d1, 2)})`;
     change.className = `chg ${numberClass(state.detail.performance?.d1)}`;
   }
@@ -2290,9 +2313,7 @@ function mergeQuotesDelta(snapshot, quotes) {
   for (const incoming of quotes.stocks) {
     const stock = byCode.get(incoming.code);
     if (!stock) continue;
-    if (incoming.quote) stock.quote = { ...stock.quote, ...incoming.quote };
-    if (incoming.performance) stock.performance = incoming.performance;
-    if (incoming.valuation) stock.valuation = incoming.valuation;
+    mergeLatestMarketData(stock, incoming);
   }
   if (quotes.sources?.quote) snapshot.sources = { ...snapshot.sources, quote: quotes.sources.quote };
   if (quotes.marketBreadth) snapshot.marketBreadth = quotes.marketBreadth;
@@ -2310,6 +2331,15 @@ window.__hduTest = {
     baseGeneratedAt: state.staticSnapshotGeneratedAt,
     displayedGeneratedAt: state.snapshot?.generatedAt || null,
     price: state.snapshot?.stocks?.find((stock) => stock.code === code)?.quote?.price ?? null,
+  }),
+  detailQuoteState: () => ({
+    code: state.detailCode,
+    price: state.detail?.quote?.price ?? null,
+    d1: state.detail?.performance?.d1 ?? null,
+    d1Base: state.detail?.performance?.d1Base ?? null,
+    d1Change: dailyChangeAmount(state.detail || {}),
+    displayedPrice: $("#detailPrice")?.textContent.trim() || null,
+    displayedChange: $("#detailChange")?.textContent.trim() || null,
   }),
   // 옛 payload(기준별 값 없음)에서도 숫자가 그대로 나오는지 확인하는 회귀 검사용.
   financialValue: (record, metric, basis) => financialValue(record, metric, basis),
@@ -2338,9 +2368,20 @@ function applyQuotesDelta(quotes, { render = true } = {}) {
   if (!state.snapshot) return;
   mergeQuotesDelta(state.snapshot, quotes);
   state.liveUpdates.clear();
+  const latestDetail = state.detailCode
+    ? state.snapshot.stocks?.find((stock) => stock.code === state.detailCode)
+    : null;
+  if (state.detail && latestDetail) mergeLatestMarketData(state.detail, latestDetail);
   if (render) {
     renderSidebar();
     renderView({ preserveScroll: true });
+    if (state.detail && latestDetail) {
+      updateLiveDrawer({
+        quote: { ...latestDetail.quote, code: latestDetail.code },
+        performance: latestDetail.performance,
+        valuation: latestDetail.valuation,
+      });
+    }
   }
   const fixture = state.snapshot?.mode === "fixture" ? "Fixture 검증 모드 · " : "";
   setConnection("delayed", `${fixture}지연 스냅샷 · ${formatTimestamp(state.snapshot?.generatedAt)} 기준`);
