@@ -144,6 +144,8 @@ ul { padding: 0; list-style: none; }
 .card-head .unit { color: var(--muted); font-size: 11px; }
 .card-head .tools { display: inline-flex; flex-wrap: wrap; gap: 3px; }
 .card-head .tools .gap { width: 8px; }
+.home-chart-toggle { display: none; align-items: center; }
+.home-chart-mobile-note { display: none; margin-bottom: 4px; color: var(--muted); font-size: 10.5px; }
 .tiles { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; margin-bottom: 10px; }
 .tile { display: block; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
 .tile:hover { border-color: var(--line-strong); }
@@ -481,6 +483,9 @@ table.fin { width: 100%; border-collapse: collapse; font-size: 11.5px; font-vari
   .mobile-nav { margin-inline: -12px; padding-inline: 12px; }
   .sidebar .search { min-height: 44px; }
   .mobile-nav a, .btn.tiny, .basis-switch button, .column-chip { min-height: 44px; }
+  .source-health { flex-basis: 100%; }
+  .home-chart-toggle { display: inline-flex; }
+  .home-chart-mobile-note { display: block; }
   .kpis, .tiles, .ind { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   /* 두 칸 타일에서는 가운데 날짜 눈금이 양끝과 겹친다. 첫·끝만 남긴다. */
   .ind li.is-live .ind-axis text[data-edge="mid"] { display: none; }

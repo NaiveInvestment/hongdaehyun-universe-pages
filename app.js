@@ -977,12 +977,20 @@ function renderSidebar() {
     + `<span class="chg ${numberClass(item.d1)}">${formatPercent(item.d1, 1)}</span></a></li>`).join("");
   $("#mobileNav").innerHTML = items.map((item) => `<a href="${item.href}"${state.sector === item.key ? ' aria-current="page"' : ""}>${escapeHtml(item.label)}</a>`).join("");
 
-  // 원천 이름(컨센 ConsenDB · 실적 OpenDART)은 화면에서 뺐다. 읽는 사람이 매번 볼 문장이 아니다.
-  // 다만 이 자리는 fixture 경고와 공개본 "실시간 아님" 표시를 이고 있다. 그 둘은 지우면 안 되므로 남긴다.
+  // 핵심 원천은 "정상 / 일부 / 갱신 지연"을 분리해 보여 준다. partial을 stale로 뭉치면
+  // 방금 갱신됐지만 커버리지만 낮은 데이터와 실제로 오래된 데이터를 구분할 수 없다.
+  const sources = state.snapshot?.sources || {};
+  const breadth = state.snapshot?.marketBreadth || null;
+  const health = [
+    sourceHealthBadge("시세", sources.quote, "quote"),
+    sourceHealthBadge("컨센", sources.consensus, "consensus"),
+    sourceHealthBadge("시장폭", breadth, null, "Naver 시장 전체"),
+  ];
   const warnings = [];
-  if (state.snapshot?.mode === "fixture") warnings.push("고정 fixture 검증 데이터 · 투자 판단 사용 금지");
+  if (state.snapshot?.mode === "fixture") warnings.push("고정 fixture 검증 데이터, 투자 판단 사용 금지");
   if (RUNTIME.staticMode) warnings.push("실시간 아님(지연 스냅샷)");
-  $("#sourceFoot").textContent = warnings.join(" · ");
+  $("#sourceFoot").innerHTML = health.join("")
+    + warnings.map((warning) => `<span class="source-health__warning">${escapeHtml(warning)}</span>`).join("");
   $("#lastUpdated").textContent = `최근 갱신 ${formatTimestamp(state.snapshot?.generatedAt)}`;
 }
 
@@ -995,7 +1003,6 @@ function kpiStripHtml() {
   const kosdaq = state.snapshot?.marketBreadth?.indices?.KOSDAQ;
   const scope = state.sector === "all" ? "커버리지" : state.sector;
   const weightedD1 = weightedPerformance(stocks, "d1");
-  const direction = directionCounts(stocks, "d1");
   // 2026-08-30 사용자 결정: KPI 6칸을 "지금·오늘·이번 주에 어느 섹터·종목을 봐야 하나"로 바꿨다.
   //
   // 뺀 것과 이유
@@ -1045,6 +1052,10 @@ function kpiStripHtml() {
   const d1Sector = extremeSector("d1");
   const d5Sector = extremeSector("d5");
   const weightedD5 = weightedPerformance(stocks, "d5");
+  const directionD5 = directionCounts(stocks, "d5");
+  const relativeToKospi = Number.isFinite(weightedD1) && Number.isFinite(kospi?.d1)
+    ? weightedD1 - kospi.d1
+    : null;
 
   return `<dl class="kpis" id="kpis">
     <div class="kpi" id="kpiMarket"><dt>지수 <u>KOSPI · KOSDAQ</u></dt>
@@ -1057,13 +1068,13 @@ function kpiStripHtml() {
     <div class="kpi"><dt>오늘 <u>섹터</u></dt>
       ${showSectorExtremes
         ? pair(sectorLine(d1Sector.best, "positive"), sectorLine(d1Sector.worst, "negative"))
-        : pair(`<span class="${numberClass(weightedD1)}">${escapeHtml(scope)} ${formatPercent(weightedD1, 1)}</span>`, "섹터 1개")}</div>
+        : pair(`<span class="${numberClass(weightedD1)}">${escapeHtml(scope)} ${formatPercent(weightedD1, 1)}</span>`, `KOSPI 대비 ${formatPercentagePoint(relativeToKospi)}`)}</div>
     <div class="kpi"><dt>오늘 <u>종목</u></dt>
       ${pair(stockLine(d1Stock.best, "d1", "positive"), stockLine(d1Stock.worst, "d1", "negative"))}</div>
     <div class="kpi"><dt>주간 5D <u>섹터</u></dt>
       ${showSectorExtremes
         ? pair(sectorLine(d5Sector.best, "positive"), sectorLine(d5Sector.worst, "negative"))
-        : pair(`<span class="${numberClass(weightedD5)}">${escapeHtml(scope)} ${formatPercent(weightedD5, 1)}</span>`, "섹터 1개")}</div>
+        : pair(`<span class="${numberClass(weightedD5)}">${escapeHtml(scope)} ${formatPercent(weightedD5, 1)}</span>`, `상승 ${directionD5.up}, 하락 ${directionD5.down}`)}</div>
     <div class="kpi"><dt>주간 5D <u>종목</u></dt>
       ${pair(stockLine(d5Stock.best, "d5", "positive"), stockLine(d5Stock.worst, "d5", "negative"))}</div>
   </dl>`;
@@ -1110,20 +1121,34 @@ function benchmarkSeriesFor(dates) {
 // 8섹터 + KOSPI + KOSDAQ = 10선이다.
 function homeGroupChart() {
   const dates = windowSlice(indexDates());
-  if (dates.length < 2) return `<div class="card"><div class="card-head"><h3>섹터 상대주가</h3></div><p class="empty-state">섹터 지수를 만들 일봉이 아직 없습니다.</p></div>`;
+  if (dates.length < 2) return `<div class="card"><div class="card-head"><h2>섹터 상대주가</h2></div><p class="empty-state">섹터 지수를 만들 일봉이 아직 없습니다.</p></div>`;
   const series = SECTOR_ORDER.map((sector, index) => {
     const entry = sectorSeries(sector);
     return entry && entry.values.length
-      ? { name: sector, short: sector, values: windowSlice(entry.values), cls: `s-${index + 1}`, members: entry.members }
+      ? { name: sector, short: sector, values: windowSlice(entry.values), cls: `s-${index + 1}`, legendClass: `s${index + 1}`, members: entry.members }
       : null;
   }).filter(Boolean);
+  const compact = window.matchMedia("(max-width: 640px)").matches && !state.homeChartExpanded;
+  const ranked = series.map((item) => {
+    const values = item.values.filter(Number.isFinite);
+    const first = values[0];
+    const last = values.at(-1);
+    return { item, value: values.length > 1 && first !== 0 ? ((last / first) - 1) * 100 : null };
+  }).filter(({ value }) => Number.isFinite(value)).sort((left, right) => right.value - left.value);
+  const compactNames = new Set([ranked[0]?.item.name, ranked.at(-1)?.item.name].filter(Boolean));
+  const shownSeries = compact && compactNames.size > 1
+    ? series.filter(({ name }) => compactNames.has(name))
+    : series;
   const box = chartBox({ width: 900, height: 300 }, { width: 430, height: 300 });
-  const chart = lineChart({ series: [...series, ...benchmarkSeriesFor(dates)], labels: dates, ...box });
+  const chart = lineChart({ series: [...shownSeries, ...benchmarkSeriesFor(dates)], labels: dates, ...box });
+  const expandLabel = state.homeChartExpanded ? "핵심 4개" : "전체 10개";
+  const expandAria = state.homeChartExpanded ? "기간 상위와 하위 섹터만 보기" : "모든 섹터와 벤치마크 보기";
   return `<div class="card" id="homeGroupChart">
-    <div class="card-head"><h3>8섹터 상대주가 vs 벤치마크</h3>
-      <span class="tools">${rangeButtons()}</span></div>
+    <div class="card-head"><h2>8섹터 상대주가 vs 벤치마크</h2>
+      <span class="tools">${rangeButtons()}<button class="btn tiny home-chart-toggle" type="button" data-home-chart-expand aria-expanded="${state.homeChartExpanded}" aria-label="${expandAria}">${expandLabel}</button></span></div>
+    <p class="home-chart-mobile-note">기간 수익률 상위와 하위 섹터, KOSPI, KOSDAQ을 표시합니다.</p>
     ${chart}
-    <div class="chart-legend">${SECTOR_ORDER.map((sector, index) => `<span><i class="s${index + 1}"></i>${escapeHtml(sector)}</span>`).join("")}
+    <div class="chart-legend">${shownSeries.map((item) => `<span><i class="${item.legendClass}"></i>${escapeHtml(item.name)}</span>`).join("")}
       <span><i class="ctx"></i>KOSPI</span><span><i class="ctx2"></i>KOSDAQ</span>
       <span class="unit">기간 시작 = 100 · 동일가중 · 일별 종가</span></div>
   </div>`;
@@ -1186,14 +1211,14 @@ function sectorTrend(sector, stocks) {
     : `<span><i></i>${escapeHtml(sector)} 섹터(동일가중 ${global?.members ?? 0}종목${excluded})</span>`;
   return `<div class="sec-grid">
     <div class="card" id="sectorTrendCard">
-      <div class="card-head"><h3>${escapeHtml(sector)} 섹터 지수 vs 벤치마크</h3>
+      <div class="card-head"><h2>${escapeHtml(sector)} 섹터 지수 vs 벤치마크</h2>
         <span class="tools">${rangeButtons()}</span></div>
       ${chart}
       <div class="chart-legend">${globalLabel}
         <span><i class="ctx"></i>KOSPI</span><span><i class="ctx2"></i>KOSDAQ</span>
         <span class="unit">기간 시작 = 100 · 동일가중 · 일별 종가</span></div>
     </div>
-    <div class="card"><div class="card-head"><h3>섹터 내 예외</h3><span class="unit">${stocks.length}종목</span></div>${sectorExceptions(stocks)}</div>
+    <div class="card"><div class="card-head"><h2>섹터 내 예외</h2><span class="unit">${stocks.length}종목</span></div>${sectorExceptions(stocks)}</div>
   </div>`;
 }
 
@@ -1346,7 +1371,7 @@ function foreignPeerTable(sector) {
     ? `${peers.length}종목 중 ${loaded.length}종목 수신`
     : `${peers.length}종목`;
   return `<div class="card" id="foreignPeers">
-    <div class="card-head"><h3>${escapeHtml(sector)} 해외 peer</h3>
+    <div class="card-head"><h2>${escapeHtml(sector)} 해외 peer</h2>
       <span class="unit">Yahoo Finance · 일별 종가 · ${escapeHtml(note)}${grouped ? " · 묶음을 누르면 종목이 펼쳐집니다" : ""}</span></div>
     <div class="fin-wrap"><table class="fin peer">
       <thead><tr><th class="l">종목</th><th>주가</th>${PEER_COLUMNS.map(([, label]) => `<th>${label}</th>`).join("")}</tr></thead>
@@ -1426,7 +1451,7 @@ function holdcoNavTable(sector) {
   }).join("");
   const withReports = rows.filter((row) => row.adjusted?.median != null).length;
   return `<div class="card" id="holdcoNav">
-    <div class="card-head"><h3>지주사 NAV 할인율</h3>
+    <div class="card-head"><h2>지주사 NAV 할인율</h2>
       <span class="unit">조정 ${withReports}종목 · 리포트 ${payload?.reportsAsOf || "-"} 기준 · 억원 · 종목을 누르면 근거가 펼쳐집니다</span></div>
     <div class="fin-wrap"><table class="fin peer dense">
       <thead><tr><th class="l">종목</th>
@@ -1454,11 +1479,11 @@ function indicatorTiles(sector) {
     const providerNames = { ecos: "한국은행 ECOS", sunsirs: "생의사 중국 현물·국제유가", breadth: "Naver 시장 전체", holdco: "OpenDART 출자현황 × 시총", koreaap: "한국자산평가 민평" };
     const providers = [...new Set(live.map((tile) => providerNames[tile.provider] || tile.provider).filter(Boolean))];
     const note = providers.join(" · ") + (state.snapshot?.indicators?.sampleKey ? " · 공개 sample 키(요청당 10행 제한)" : "");
-    return `<div class="ind-head"><h3>${escapeHtml(sector)} 트래킹 지표</h3>
+    return `<div class="ind-head"><h2>${escapeHtml(sector)} 트래킹 지표</h2>
         <span>${escapeHtml(note)} · 기준 ${escapeHtml(formatTimestamp(source.updatedAt || state.snapshot?.indicators?.loadedAt))}${source.stale ? " · 갱신 지연" : ""}</span></div>
       <ul class="ind" id="indicatorTiles">${live.map(indicatorTile).join("")}${pending.map(pendingIndicatorTile).join("")}</ul>`;
   }
-  return `<div class="ind-head"><h3>${escapeHtml(sector)} 트래킹 지표</h3>
+  return `<div class="ind-head"><h2>${escapeHtml(sector)} 트래킹 지표</h2>
       <span>${escapeHtml(indicatorWaitingNote(source))}</span></div>
     <ul class="ind" id="indicatorTiles">${items.map(pendingIndicatorTile).join("")}</ul>`;
 }
@@ -1647,7 +1672,7 @@ function tableHtml() {
     previousSector = stock.sector;
     const cells = sections.flatMap((section) =>
       section.columns.map((column, index) => bodyCell(stock, column, section.key === "identity" ? "" : columnEdgeClass(column, index)))).join("");
-    return `<tr data-code="${stock.code}" data-market="${marketForStock(stock)}" tabindex="0" aria-selected="${state.detailCode === stock.code}" class="${sectorStart ? "sector-start" : ""}">${cells}</tr>`;
+    return `<tr data-code="${stock.code}" data-market="${marketForStock(stock)}" tabindex="0" aria-selected="${state.detailCode === stock.code}" aria-controls="drawer" aria-label="${escapeHtml(`${stock.name}, ${stock.code}, 상세 열기`)}" class="${sectorStart ? "sector-start" : ""}">${cells}</tr>`;
   }).join("") || `<tr><td colspan="${visibleColumnCount(sections)}" class="empty-state">검색 결과가 없습니다.</td></tr>`;
 
   // 안내에는 지금 켜져 있는 열그룹만 적는다. 접혀 있는 열까지 적으면 무엇이 사라졌는지 흐려진다.
@@ -1934,6 +1959,7 @@ function renderDrawer() {
   if (!state.detailCode) {
     drawer.hidden = true;
     drawer.innerHTML = "";
+    drawer.removeAttribute("aria-labelledby");
     main.classList.remove("has-drawer");
     document.title = state.sector === "all" ? "홍대현 Universe" : `${state.sector} · 홍대현 Universe`;
     return;
@@ -1941,10 +1967,12 @@ function renderDrawer() {
   drawer.hidden = false;
   main.classList.add("has-drawer");
   if (state.detailLoading || !state.detail) {
+    drawer.removeAttribute("aria-labelledby");
     drawer.innerHTML = '<div class="loading-shell">종목 상세를 불러오는 중입니다.</div>';
     return;
   }
   drawer.innerHTML = drawerHtml(state.detail);
+  drawer.setAttribute("aria-labelledby", "drawerName");
   document.title = `${state.detail.name} · 홍대현 Universe`;
 }
 
@@ -1961,12 +1989,15 @@ async function loadDetail(code) {
     state.detail = mergeLatestMarketData(stock, latest);
     state.detailLoading = false;
     renderDrawer();
+    requestAnimationFrame(() => $("#closeDrawer")?.focus({ preventScroll: true }));
   } catch (error) {
     state.detailLoading = false;
     state.detail = null;
-    $("#drawer").innerHTML = `<div class="drawer-inner"><div class="drawer-head"><div><h2>불러오지 못했습니다</h2></div>`
+    $("#drawer").setAttribute("aria-labelledby", "drawerErrorTitle");
+    $("#drawer").innerHTML = `<div class="drawer-inner"><div class="drawer-head"><div><h2 id="drawerErrorTitle">불러오지 못했습니다</h2></div>`
       + `<button class="close" id="closeDrawer" type="button" aria-label="종목 상세 닫기">×</button></div>`
       + `<p class="empty-state">${escapeHtml(error.message)}</p></div>`;
+    requestAnimationFrame(() => $("#closeDrawer")?.focus({ preventScroll: true }));
   }
 }
 
@@ -2122,6 +2153,7 @@ function route() {
     else renderDrawer();
   } else {
     renderDrawer();
+    if (previousCode) requestAnimationFrame(() => $(`#tableBody tr[data-code="${previousCode}"]`)?.focus({ preventScroll: true }));
   }
 }
 
@@ -2187,6 +2219,12 @@ function bindEvents() {
     if (peerGroup) return togglePeerGroup(peerGroup.dataset.peerGroup);
     const holdco = event.target.closest("[data-holdco]");
     if (holdco) return toggleHoldco(holdco.dataset.holdco);
+    const homeChartExpand = event.target.closest("[data-home-chart-expand]");
+    if (homeChartExpand) {
+      state.homeChartExpanded = !state.homeChartExpanded;
+      renderView({ preserveScroll: true });
+      return requestAnimationFrame(() => $("[data-home-chart-expand]")?.focus());
+    }
     const range = event.target.closest("[data-range]");
     if (range) { state.range = parseRangeValue(range.dataset.range); return renderView({ preserveScroll: true }); }
     const row = event.target.closest("tr[data-code]");
