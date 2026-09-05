@@ -67,6 +67,7 @@ ul { padding: 0; list-style: none; }
 .nav a .chg { min-width: 50px; text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
 .nav a:hover { background: var(--surface-2); color: var(--ink); }
 .nav a[aria-current="page"] { background: var(--surface-3); color: var(--ink); box-shadow: inset 3px 0 0 var(--accent); }
+.nav a[aria-current="page"] small { color: var(--muted); }
 .side-foot { display: grid; gap: 8px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
 .source-health { display: flex; flex-wrap: wrap; gap: 4px; }
 .source-health:empty { display: none; }

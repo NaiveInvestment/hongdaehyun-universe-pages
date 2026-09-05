@@ -1,32 +1,32 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-09-04T11:15:00.872Z",
+  "builtAt": "2026-09-05T08:13:57.830Z",
   "mode": "live",
-  "generatedAt": "2026-09-04T09:05:01.346Z",
-  "quotesGeneratedAt": "2026-09-04T11:15:00.814Z",
-  "heavyFingerprint": "{\"consensus\":\"2026-09-04T03:00:01.891163Z\",\"actuals\":\"2026-09-04T01:14:18.583687Z\",\"indicators\":\"2026-09-04T07:00:09.842Z\",\"holdcoNav\":\"2026-09-04T07:00:07.879Z\",\"sectorIndices\":\"2026-09-04T09:00:37.000Z\",\"sectorIndexDays\":250,\"stockCount\":76,\"mode\":\"live\",\"assets\":[\"e02030acb3ecd810\",\"afbd7b1cdbf697b0\",\"537259e957db04b6\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"5f63d9572b9e1f74\"]}",
+  "generatedAt": "2026-09-05T08:13:57.580Z",
+  "quotesGeneratedAt": "2026-09-05T08:13:57.580Z",
+  "heavyFingerprint": "{\"consensus\":\"2026-09-05T08:07:39.148324Z\",\"actuals\":\"2026-09-05T08:09:07.226188Z\",\"indicators\":\"2026-09-05T08:09:09.704Z\",\"holdcoNav\":\"2026-09-05T08:09:07.958Z\",\"sectorIndices\":\"2026-09-05T08:07:37.254Z\",\"sectorIndexDays\":250,\"stockCount\":76,\"mode\":\"live\",\"assets\":[\"e02030acb3ecd810\",\"5ac8b68fff2211f3\",\"a6224dd2e7f56f8e\",\"a9f8260304e2bfb7\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"a016b9bc182c1b5c\"]}",
   "stockCount": 76,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
   "sources": {
     "quote": {
-      "source": "kiwoom",
-      "updatedAt": "2026-09-04T10:59:58.301Z",
-      "status": "ok"
+      "source": "naver",
+      "updatedAt": "2026-09-05T08:07:38.198Z",
+      "status": "partial"
     },
     "actuals": {
       "source": "OpenDART",
-      "updatedAt": "2026-09-04T01:14:18.583687Z",
+      "updatedAt": "2026-09-05T08:09:07.226188Z",
       "status": "ok"
     },
     "consensus": {
       "source": "ConsenDB.xlsx",
-      "updatedAt": "2026-09-04T03:00:01.891163Z",
+      "updatedAt": "2026-09-05T08:07:39.148324Z",
       "status": "partial"
     },
     "indicators": {
       "source": "한국은행 ECOS",
-      "updatedAt": "2026-09-04T07:00:09.842Z",
+      "updatedAt": "2026-09-05T08:09:09.704Z",
       "status": "ok"
     }
   },

@@ -1,3 +1,4 @@
+import { quoteVenue, combinedQuoteVenue, quoteSourceName, quoteFreshness, resolveDisplayPeriods } from "./view-model.js?v=a6224dd2e7f5";
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
@@ -21,14 +22,14 @@ const RUNTIME = (() => {
 const SECTOR_ORDER = ["금융", "보험", "증권", "지주", "AI/SW", "정유", "화학", "희토류"];
 // universe.js의 HOME_SECTOR_GROUPS와 같은 묶음. 홈 비교 차트에서만 4그룹으로 압축한다.
 const HOME_GROUPS = [
-  { label: "금융·지주·보험·증권", short: "금융권", sectors: ["금융", "지주", "보험", "증권"] },
+  { label: "금융, 지주, 보험, 증권", short: "금융권", sectors: ["금융", "지주", "보험", "증권"] },
   { label: "AI/SW", short: "AI/SW", sectors: ["AI/SW"] },
-  { label: "정유·화학", short: "정유화학", sectors: ["정유", "화학"] },
+  { label: "정유, 화학", short: "정유화학", sectors: ["정유", "화학"] },
   { label: "희토류", short: "희토류", sectors: ["희토류"] },
 ];
 const KOSDAQ_CODES = new Set(["093320", "067160", "124500", "030520", "042000", "078020", "127120"]);
 // 2026-08-26 확정: 연간 컨센서스는 3개(26E·27E·28E)까지 보여준다. 2025는 확정 실적 비교용이다.
-const ANNUALS = [["2024", "2024"], ["2025", "2025"], ["2026", "2026E"], ["2027", "2027E"], ["2028", "2028E"]];
+
 // 분기는 확정 실적 8개 + 추정 4개.
 const QUARTER_ESTIMATE_COUNT = 4;
 const QUARTER_HISTORY_COUNT = 4;
@@ -60,9 +61,9 @@ const INDICATOR_CATALOG = {
   "금융": [
     { name: "국고채 3년", source: "한은 ECOS 817Y002", cycle: "일", state: "fixed" },
     { name: "기준금리", source: "ECOS 722Y001", cycle: "일", state: "fixed" },
-    { name: "예대금리차", source: "ECOS 121Y006·121Y002 / 121Y015·121Y013", cycle: "월", state: "fixed" },
+    { name: "예대금리차", source: "ECOS 121Y006, 121Y002 / 121Y015, 121Y013", cycle: "월", state: "fixed" },
     { name: "은행 연체율", source: "ECOS 901Y054", cycle: "월", state: "fixed" },
-    { name: "은행채 AAA 1년", source: "한국자산평가 민평 E130 · 산금채 E110", cycle: "일", state: "fixed" },
+    { name: "은행채 AAA 1년", source: "한국자산평가 민평 E130, 산금채 E110", cycle: "일", state: "fixed" },
     { name: "CD 91일", source: "ECOS 817Y002", cycle: "일", state: "fixed" },
   ],
   "보험": [
@@ -99,17 +100,17 @@ const INDICATOR_CATALOG = {
     { name: "앱 MAU", source: "모바일인덱스 (일부 유료)", cycle: "월", state: "paid" },
   ],
   "정유": [
-    { name: "국제유가", source: "생의사 원유 정보 (WTI·Brent)", cycle: "일", state: "fixed" },
+    { name: "국제유가", source: "생의사 원유 정보 (WTI, Brent)", cycle: "일", state: "fixed" },
     { name: "미국 원유재고", source: "생의사 원유 정보 (EIA 주간)", cycle: "주", state: "fixed" },
-    { name: "두바이유", source: "무료 원천 없음 · Brent로 대체 중", cycle: "일", state: "paid" },
-    { name: "싱가포르 제품가·크랙", source: "오피넷 CSV 자체 산출", cycle: "일", state: "auto" },
+    { name: "두바이유", source: "무료 원천 없음, Brent로 대체 중", cycle: "일", state: "paid" },
+    { name: "싱가포르 제품가, 크랙", source: "오피넷 CSV 자체 산출", cycle: "일", state: "auto" },
     { name: "복합정제마진", source: "Platts (무료 없음)", cycle: "주", state: "paid" },
     { name: "사우디 OSP", source: "Reuters 기사 파싱", cycle: "월", state: "auto" },
   ],
   "화학": [
-    { name: "폴리에틸렌", source: "SunSirs 295·334·435", cycle: "일", state: "fixed" },
+    { name: "폴리에틸렌", source: "SunSirs 295, 334, 435", cycle: "일", state: "fixed" },
     { name: "폴리프로필렌", source: "SunSirs 718", cycle: "일", state: "fixed" },
-    { name: "합성고무", source: "SunSirs 358·388", cycle: "일", state: "fixed" },
+    { name: "합성고무", source: "SunSirs 358, 388", cycle: "일", state: "fixed" },
     { name: "PVC", source: "SunSirs 107", cycle: "일", state: "fixed" },
     { name: "나프타 CFR 일본", source: "생의사 상품정보", cycle: "일", state: "fixed" },
     { name: "에틸렌-나프타 스프레드", source: "생의사 상품정보", cycle: "일", state: "fixed" },
@@ -131,6 +132,8 @@ const state = {
   // 정적본의 무거운 전체 스냅샷 ID. snapshot.generatedAt은 시세 델타를 합칠 때
   // 최신 시세 시각으로 바뀌므로, 전체 스냅샷 교체 판단에는 별도 값을 써야 한다.
   staticSnapshotGeneratedAt: null,
+  pollError: null,
+  builtAt: null,
   search: "",
   sector: "all",
   sortKey: "default",
@@ -304,36 +307,35 @@ function sourceStatus(source, key = null) {
   return { label: "정상", className: "ok" };
 }
 
-function sourceDisplayName(key, sourceName) {
-  const source = String(sourceName || "").trim();
-  if (key === "quote" && source.toLowerCase() === "fixture") return RUNTIME.staticMode ? "Fixture 시세, 공개본 5분 지연" : "Fixture 시세";
-  if (key === "quote" && source.toLowerCase() === "kiwoom") return RUNTIME.staticMode ? "Kiwoom KRX, 공개본 5분 지연" : "Kiwoom KRX 실시간";
-  if (key === "quote" && source.toLowerCase() === "toss") return RUNTIME.staticMode ? "토스 통합시세, 공개본 5분 지연" : "토스 통합시세(KRX+NXT)";
-  if (key === "quote" && source.toLowerCase() === "naver") return RUNTIME.staticMode ? "Naver KRX, 공개본 5분 지연" : "Naver KRX 지연";
-  return source || "미적재";
+function sourceDisplayName(key, sourceName, quote = quoteContext()) {
+  return key === "quote" ? quoteSourceName(sourceName, quote, RUNTIME.staticMode) : String(sourceName || "미적재");
+}
+
+function quoteDescription(quote = {}) {
+  const received = quote.source === "naver" ? "조회" : "수신";
+  return `${sourceDisplayName("quote", quote.source, quote)}, ${received} ${formatTimestamp(quote.observedAt)}`;
 }
 
 function sourceHealthStatus(source, key = null) {
   if (!source || !source.status) return { label: "미적재", className: "not-loaded" };
   if (source.status === "not_loaded") return { label: "미적재", className: "not-loaded" };
   if (source.status === "fixture") return key === "quote" && RUNTIME.staticMode
-    ? { label: "FIXTURE, 5분 지연", className: "stale" }
+    ? { label: "FIXTURE, 5분 주기", className: "stale" }
     : { label: "FIXTURE", className: "partial" };
   if (source.status === "not_configured") return { label: "미설정", className: "partial" };
   if (source.status === "error") return { label: "오류", className: "error" };
 
   const labels = [];
   if (source.status === "partial") labels.push("일부");
+  if (key === "quote") {
+    const freshness = currentQuoteFreshness(source);
+    labels.push(freshness.label);
+    return { label: [...new Set(labels)].join(", "), className: freshness.className };
+  }
   if (source.stale) labels.push("갱신 지연");
-  if (source.delayed && !RUNTIME.staticMode) labels.push("지연");
-  if (key === "quote" && RUNTIME.staticMode) labels.push("5분 지연");
+  if (source.delayed) labels.push("지연");
   if (!labels.length) labels.push(sourceStatus(source, key).label);
-  return {
-    label: [...new Set(labels)].join(", "),
-    className: source.stale || source.delayed || (key === "quote" && RUNTIME.staticMode)
-      ? "stale"
-      : source.status === "partial" ? "partial" : "ok",
-  };
+  return { label: labels.join(", "), className: source.stale || source.delayed ? "stale" : source.status === "partial" ? "partial" : "ok" };
 }
 
 function sourceHealthBadge(label, source, key = null, fallbackSource = "") {
@@ -349,11 +351,13 @@ function sourceHealthBadge(label, source, key = null, fallbackSource = "") {
   return `<span class="source-health__item is-${health.className}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">${escapeHtml(label)} ${escapeHtml(health.label)}</span>`;
 }
 
-function sourceLine(keys) {
+function sourceLine(keys, quote = null) {
   return keys.map((key) => {
-    const source = state.snapshot?.sources?.[key] || {};
+    let source = state.snapshot?.sources?.[key] || {};
+    if (key === "quote" && quote) source = { ...source, source: quote.source, updatedAt: quote.observedAt };
     const status = sourceHealthStatus(source, key);
-    return `${SOURCE_LABELS[key]} ${escapeHtml(sourceDisplayName(key, source.source))} · ${formatTimestamp(source.updatedAt)} · ${status.label}`;
+    const timeLabel = key === "quote" ? (source.source === "naver" ? "조회 " : "수신 ") : "";
+    return `${SOURCE_LABELS[key]} ${escapeHtml(sourceDisplayName(key, source.source, quote || quoteContext()))}, ${timeLabel}${formatTimestamp(source.updatedAt)}, ${status.label}`;
   }).join(" / ");
 }
 
@@ -375,7 +379,7 @@ function returnHeatMeta(value, key) {
 // 컨센서스를 볼 때는 시세·수익률도 밸류에이션도 보지 않는다. 그 폭을 매출·영업이익·순이익이 가져간다.
 const CONSENSUS_VIEW_KEY = "consensusDetail";
 const OPTIONAL_COLUMN_GROUPS = [
-  { key: CONSENSUS_VIEW_KEY, label: "컨센서스 자세히 보기", hint: "목표가 괴리 + 매출 · 영업이익 · 지배순이익을 분기·연간으로" },
+  { key: CONSENSUS_VIEW_KEY, label: "컨센서스 자세히 보기", hint: "목표가 괴리 + 매출, 영업이익, 지배순이익을 분기, 연간으로" },
 ];
 
 // 2026-08-30 사용자 결정으로 코어 열을 다시 짰다.
@@ -386,8 +390,22 @@ const OPTIONAL_COLUMN_GROUPS = [
 //   전체 화면은 영업이익으로 통일한다 — 섞으면 정렬이 은행 순이익과 정유 영업이익을 나란히 세운다.
 //   금융·보험·증권·지주 섹터 페이지에서는 순이익으로 바뀐다. 그 안에서는 전부 같은 지표라 정렬이 정직하다.
 const NET_INCOME_SECTORS = new Set(["금융", "보험", "증권", "지주"]);
-const TABLE_QUARTERS = [["2026Q1", "1Q26"], ["2026Q2", "2Q26"], ["2026Q3", "3Q26"], ["2026Q4", "4Q26"]];
-const TABLE_ANNUALS = [["2026", "26E"], ["2027", "27E"]];
+let periodSnapshot = null;
+let periodModel = null;
+function displayPeriods() {
+  if (!periodModel || periodSnapshot !== state.snapshot) {
+    periodSnapshot = state.snapshot;
+    periodModel = resolveDisplayPeriods(state.snapshot || {});
+  }
+  return periodModel;
+}
+function currentAnnualPeriod() { return displayPeriods().year; }
+function tableAnnuals() { return displayPeriods().tableAnnuals; }
+function tableQuarters() { return displayPeriods().tableQuarters; }
+function quoteContext() { return { venue: combinedQuoteVenue(state.snapshot?.stocks || []), providers: state.snapshot?.sources?.quote?.providers }; }
+function currentQuoteFreshness(source = state.snapshot?.sources?.quote || {}) {
+  return quoteFreshness({ source, staticMode: RUNTIME.staticMode, builtAt: state.builtAt || state.snapshot?.generatedAt, pollError: state.pollError });
+}
 
 function profitMetricFor(sector = state.sector) {
   return NET_INCOME_SECTORS.has(sector) ? "parentNetIncome" : "operatingIncome";
@@ -470,13 +488,13 @@ function buildConsensusSections() {
     },
     ...CONSENSUS_METRICS.map(({ key, label, metric, className }) => ({
       key: `consensus-${key}`,
-      label: `${label} (억원 · ${estimateBasisTag()})`,
+      label: `${label} (억원, ${estimateBasisTag()})`,
       columns: [
-        ...TABLE_QUARTERS.map(([period, short]) => ({
+        ...tableQuarters().map(([period, short]) => ({
           key: `${key}-q${period}`, label: short, sort: `quarter.${period}.${metric}`,
           className, kind: "quarterFinancial", period, metric,
         })),
-        ...TABLE_ANNUALS.map(([period, short], index) => ({
+        ...tableAnnuals().map(([period, short], index) => ({
           key: `${key}-a${period}`, label: short, sort: `annual.${period}.${metric}`,
           className, subsection: index === 0, kind: "financial", period, metric,
         })),
@@ -487,7 +505,7 @@ function buildConsensusSections() {
       key: "contributors",
       plain: true,
       columns: [
-        { key: "contributors", label: "참여사", sort: "consensus.contributors", className: "revision-col", kind: "contributors", period: "2026" },
+        { key: "contributors", label: "참여사", sort: "consensus.contributors", className: "revision-col", kind: "contributors", period: currentAnnualPeriod() },
       ],
     },
   ];
@@ -510,7 +528,7 @@ function buildColumnSections(sector = state.sector) {
     },
     {
       key: "quote",
-      label: "시세 · 수익률",
+      label: "시세, 수익률",
       columns: [
         { key: "price", label: "현재가", sort: "quote.price", className: "base-col price-col", kind: "price" },
         { key: "d1", label: "1D", sort: "performance.d1", className: "base-col return-col", kind: "return", period: "d1" },
@@ -521,26 +539,24 @@ function buildColumnSections(sector = state.sector) {
     },
     {
       key: "valuation",
-      label: `밸류에이션 · ${valuationBasisTag()}`,
+      label: `밸류에이션, ${valuationBasisTag()}`,
       columns: [
-        { key: "pe2026", label: "P/E 26E", sort: "valuation.2026.pe.value", className: "ratio-col", kind: "ratio", period: "2026", ratio: "pe" },
-        { key: "pe2027", label: "P/E 27E", sort: "valuation.2027.pe.value", className: "ratio-col", kind: "ratio", period: "2027", ratio: "pe" },
-        { key: "pb2026", label: "P/B 26E", sort: "valuation.2026.pb.value", className: "ratio-col", kind: "ratio", period: "2026", ratio: "pb" },
-        { key: "pb2027", label: "P/B 27E", sort: "valuation.2027.pb.value", className: "ratio-col", kind: "ratio", period: "2027", ratio: "pb" },
-        { key: "roe2026", label: "ROE 26E", sort: "valuation.2026.roe.value", className: "ratio-col", kind: "ratio", period: "2026", ratio: "roe" },
-        { key: "roe2027", label: "ROE 27E", sort: "valuation.2027.roe.value", className: "ratio-col", kind: "ratio", period: "2027", ratio: "roe" },
+        ...["pe", "pb", "roe"].flatMap(ratio => tableAnnuals().map(([period, label]) => ({
+          key: `${ratio}${period}`, label: `${{ pe: "P/E", pb: "P/B", roe: "ROE" }[ratio]} ${label}`,
+          sort: `valuation.${period}.${ratio}.value`, className: "ratio-col", kind: "ratio", period, ratio,
+        }))),
       ],
     },
     {
       key: "profit",
       label: `${profit} (억원)`,
       columns: [
-        ...TABLE_QUARTERS.map(([period, label]) => ({
+        ...tableQuarters().map(([period, label]) => ({
           key: `q${period}`, label, sort: `quarter.${period}.${metric}`,
           className: "metric-col", kind: "quarterFinancial", period, metric,
         })),
         // 분기 넉 칸과 연간 두 칸이 한 그룹에 붙어 있다. 연간 첫 칸에 옅은 세로선을 둬서 경계를 보인다.
-        ...TABLE_ANNUALS.map(([period, label], index) => ({
+        ...tableAnnuals().map(([period, label], index) => ({
           key: `a${period}`, label, sort: `annual.${period}.${metric}`,
           className: "metric-col", subsection: index === 0, kind: "financial", period, metric,
         })),
@@ -567,13 +583,13 @@ function consensusRevision(stock, period, metric) {
 // 서버가 미리 계산해 두면 시세가 움직일 때마다 어긋나므로 화면에서 그때그때 만든다.
 const COMPUTED = {
   dividendYield: (stock) => {
-    const dps = stock.annual?.["2026"]?.dividendPerShare;
+    const dps = stock.annual?.[currentAnnualPeriod()]?.dividendPerShare;
     const price = stock.quote?.price;
     if (!Number.isFinite(dps) || !Number.isFinite(price) || price <= 0) return null;
     return (dps / price) * 100;
   },
   targetGap: (stock) => {
-    const target = targetPriceOf(stock, "2026");
+    const target = targetPriceOf(stock, currentAnnualPeriod());
     const price = stock.quote?.price;
     if (!Number.isFinite(target) || !Number.isFinite(price) || price <= 0) return null;
     return ((target / price) - 1) * 100;
@@ -590,7 +606,7 @@ function targetPriceLabel() {
   return targetPriceBasis() === "highest" ? "3M 최고" : "3M 평균";
 }
 
-function targetPriceOf(stock, period = "2026") {
+function targetPriceOf(stock, period = currentAnnualPeriod()) {
   const record = stock.annual?.[period];
   if (!record) return null;
   if (record.kind !== "estimate" || !record.horizons) return record.targetPrice ?? null;
@@ -963,7 +979,7 @@ function quarterBarChart(items, { width = 420, height = 176 } = {}) {
       + `<text class="lbl" x="${(left + barWidth / 2).toFixed(1)}" y="${(top - 3).toFixed(1)}" text-anchor="middle" font-size="9.5">${formatFinancial(item.value)}</text>`
       + `<text x="${(left + barWidth / 2).toFixed(1)}" y="${height - 5}" text-anchor="middle" font-size="9.5">${escapeHtml(item.label)}</text>`;
   }).join("");
-  return `<svg class="chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="분기 영업이익, 단위 억원"><title>분기 영업이익 · 단위 억원</title>`
+  return `<svg class="chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="분기 영업이익, 단위 억원"><title>분기 영업이익, 단위 억원</title>`
     + `${grid}<line class="axis" x1="${pad.left}" x2="${pad.left + innerWidth}" y1="${baseline.toFixed(1)}" y2="${baseline.toFixed(1)}"/>${bars}</svg>`;
 }
 
@@ -992,7 +1008,7 @@ function renderSidebar() {
   const sources = state.snapshot?.sources || {};
   const breadth = state.snapshot?.marketBreadth || null;
   const health = [
-    sourceHealthBadge("시세", sources.quote, "quote"),
+    sourceHealthBadge(`시세 ${combinedQuoteVenue(state.snapshot?.stocks || [])}`, sources.quote, "quote"),
     sourceHealthBadge("컨센", sources.consensus, "consensus"),
     sourceHealthBadge("시장폭", breadth, null, "Naver 시장 전체"),
   ];
@@ -1001,7 +1017,10 @@ function renderSidebar() {
   if (RUNTIME.staticMode) warnings.push("실시간 아님(지연 스냅샷)");
   $("#sourceFoot").innerHTML = health.join("")
     + warnings.map((warning) => `<span class="source-health__warning">${escapeHtml(warning)}</span>`).join("");
-  $("#lastUpdated").textContent = `최근 갱신 ${formatTimestamp(state.snapshot?.generatedAt)}`;
+  const quoteSource = sources.quote || {};
+  $("#lastUpdated").textContent = `시세 ${quoteSource.source === "naver" ? "조회" : "수신"} ${formatTimestamp(quoteSource.updatedAt)}`;
+  $("#lastUpdated").title = `화면 구성 ${formatTimestamp(state.snapshot?.generatedAt)}`;
+  if (RUNTIME.staticMode) renderStaticConnection();
 }
 
 // ---------------------------------------------------------------------------
@@ -1068,7 +1087,7 @@ function kpiStripHtml() {
     : null;
 
   return `<dl class="kpis" id="kpis">
-    <div class="kpi" id="kpiMarket"><dt>지수 <u>KOSPI · KOSDAQ</u></dt>
+    <div class="kpi" id="kpiMarket"><dt>지수 <u>KOSPI, KOSDAQ</u></dt>
       ${pair(
         `<span><em>KOSPI</em>${Number.isFinite(kospi?.level) ? formatNumber(kospi.level, 2) : "-"} <span class="${numberClass(kospi?.d1)}">${formatPercent(kospi?.d1, 2)}</span></span>`,
         `<span><em>KOSDAQ</em>${Number.isFinite(kosdaq?.level) ? formatNumber(kosdaq.level, 2) : "-"} <span class="${numberClass(kosdaq?.d1)}">${formatPercent(kosdaq?.d1, 2)}</span></span>`,
@@ -1163,7 +1182,7 @@ function homeGroupChart() {
     ${chart}
     <div class="chart-legend">${shownSeries.map((item) => `<span><i class="${item.legendClass}"></i>${escapeHtml(item.name)}</span>`).join("")}
       <span><i class="ctx"></i>KOSPI</span><span><i class="ctx2"></i>KOSDAQ</span>
-      <span class="unit">기간 시작 = 100 · 동일가중 · 일별 종가</span></div>
+      <span class="unit">기간 시작 = 100, 동일가중, 일별 종가</span></div>
   </div>`;
 }
 
@@ -1171,7 +1190,7 @@ function homeGroupChart() {
 function sectorExceptions(stocks) {
   const byReturn = [...stocks].filter((stock) => Number.isFinite(stock.performance?.d1)).sort((left, right) => right.performance.d1 - left.performance.d1);
   const byRevision = [...stocks]
-    .map((stock) => ({ stock, value: consensusRevision(stock, "2026", profitMetricFor()) }))
+    .map((stock) => ({ stock, value: consensusRevision(stock, currentAnnualPeriod(), profitMetricFor()) }))
     .filter(({ value }) => Number.isFinite(value) && value !== 0)
     .sort((left, right) => right.value - left.value);
   const item = (stock, value) => `<li><span><a href="#/stock/${stock.code}">${escapeHtml(stock.name)}</a>`
@@ -1185,8 +1204,8 @@ function sectorExceptions(stocks) {
   return `<div class="exc-grid">
     ${block("1D 상승 상위", byReturn.slice(0, 2).map((stock) => item(stock, stock.performance.d1)))}
     ${block("1D 하락 상위", byReturn.slice(-2).reverse().map((stock) => item(stock, stock.performance.d1)))}
-    ${block(`${profitShortFor()} 26E 컨센 1M 상향`, byRevision.slice(0, 2).map(({ stock, value }) => item(stock, value)))}
-    ${block(`${profitShortFor()} 26E 컨센 1M 하향`, byRevision.slice(-2).reverse().map(({ stock, value }) => item(stock, value)))}
+    ${block(`${profitShortFor()} ${tableAnnuals()[0][1]} 컨센 1M 상향`, byRevision.slice(0, 2).map(({ stock, value }) => item(stock, value)))}
+    ${block(`${profitShortFor()} ${tableAnnuals()[0][1]} 컨센 1M 하향`, byRevision.slice(-2).reverse().map(({ stock, value }) => item(stock, value)))}
   </div>`;
 }
 
@@ -1218,7 +1237,7 @@ function sectorTrend(sector, stocks) {
   const chart = dates.length >= 2 && series.length
     ? lineChart({ series: [...series, ...benchmarkSeriesFor(dates)], labels: dates, ...box })
     : '<p class="empty-state">섹터 지수를 만들 일봉이 아직 없습니다.</p>';
-  const excluded = global?.excluded?.length ? ` · 제외 ${global.excluded.length}종목` : "";
+  const excluded = global?.excluded?.length ? `, 제외 ${global.excluded.length}종목` : "";
   const globalLabel = hasPeers
     ? `<span><i></i>글로벌(동일가중 ${global?.members ?? 0}종목${excluded})</span><span><i class="sector"></i>국내(${local?.members ?? 0}종목)</span>`
     : `<span><i></i>${escapeHtml(sector)} 섹터(동일가중 ${global?.members ?? 0}종목${excluded})</span>`;
@@ -1229,7 +1248,7 @@ function sectorTrend(sector, stocks) {
       ${chart}
       <div class="chart-legend">${globalLabel}
         <span><i class="ctx"></i>KOSPI</span><span><i class="ctx2"></i>KOSDAQ</span>
-        <span class="unit">기간 시작 = 100 · 동일가중 · 일별 종가</span></div>
+        <span class="unit">기간 시작 = 100, 동일가중, 일별 종가</span></div>
     </div>
     <div class="card"><div class="card-head"><h2>섹터 내 예외</h2><span class="unit">${stocks.length}종목</span></div>${sectorExceptions(stocks)}</div>
   </div>`;
@@ -1351,9 +1370,9 @@ function foreignPeerTable(sector) {
   const memberRow = (peer) => {
     if (peer.error) {
       return `<tr class="peer-member"><td class="l">${escapeHtml(peer.name)}<small>${escapeHtml(peer.symbol)}</small></td>`
-        + `<td class="na" colspan="${PEER_COLUMNS.length + 1}">받지 못함 · ${escapeHtml(peer.error)}</td></tr>`;
+        + `<td class="na" colspan="${PEER_COLUMNS.length + 1}">받지 못함, ${escapeHtml(peer.error)}</td></tr>`;
     }
-    return `<tr class="peer-member"><td class="l">${escapeHtml(peer.name)}<small>${escapeHtml(peer.symbol)} · ${escapeHtml(peer.exchange || "")}</small></td>`
+    return `<tr class="peer-member"><td class="l">${escapeHtml(peer.name)}<small>${escapeHtml(peer.symbol)}, ${escapeHtml(peer.exchange || "")}</small></td>`
       + `<td>${formatNumber(peer.price, 2)}<u>${escapeHtml(peer.currency || "")}</u></td>`
       + PEER_COLUMNS.map(([key]) => `<td class="${numberClass(peer[key])}">${formatPercent(peer[key], 1)}</td>`).join("")
       + "</tr>";
@@ -1385,7 +1404,7 @@ function foreignPeerTable(sector) {
     : `${peers.length}종목`;
   return `<div class="card" id="foreignPeers">
     <div class="card-head"><h2>${escapeHtml(sector)} 해외 peer</h2>
-      <span class="unit">Yahoo Finance · 일별 종가 · ${escapeHtml(note)}${grouped ? " · 묶음을 누르면 종목이 펼쳐집니다" : ""}</span></div>
+      <span class="unit">Yahoo Finance, 일별 종가, ${escapeHtml(note)}${grouped ? ", 묶음을 누르면 종목이 펼쳐집니다" : ""}</span></div>
     <div class="fin-wrap"><table class="fin peer">
       <thead><tr><th class="l">종목</th><th>주가</th>${PEER_COLUMNS.map(([, label]) => `<th>${label}</th>`).join("")}</tr></thead>
       <tbody>${body}</tbody></table></div>
@@ -1447,9 +1466,9 @@ function holdcoNavTable(sector) {
       + "</tr>"
       // 리포트 근거를 먼저 편다. 주 지표가 어느 애널리스트의 어떤 가정에서 나왔는지가 가장 궁금한 정보다.
       + (open && adjusted
-        ? adjusted.reports.map((report) => `<tr class="peer-member"><td class="l">${escapeHtml(report.broker)} · ${escapeHtml(report.date)}<em>p.${report.page}</em></td>`
+        ? adjusted.reports.map((report) => `<tr class="peer-member"><td class="l">${escapeHtml(report.broker)}, ${escapeHtml(report.date)}<em>p.${report.page}</em></td>`
           + `<td class="disc">${formatDiscount(report.discount)}</td>`
-          + `<td colspan="6" class="report-line">본업 ${formatNumber(report.ownBusiness)} · 비상장 ${formatNumber(report.unlisted)} · 순차입금 ${formatNumber(adjusted.netDebt)} · NAV ${formatNumber(report.nav)}`
+          + `<td colspan="6" class="report-line">본업 ${formatNumber(report.ownBusiness)}, 비상장 ${formatNumber(report.unlisted)}, 순차입금 ${formatNumber(adjusted.netDebt)}, NAV ${formatNumber(report.nav)}`
           + `<u>${escapeHtml(report.note || "")}</u></td></tr>`).join("")
         : "")
       + (open && (row.series || []).length >= 3
@@ -1465,13 +1484,13 @@ function holdcoNavTable(sector) {
   const withReports = rows.filter((row) => row.adjusted?.median != null).length;
   return `<div class="card" id="holdcoNav">
     <div class="card-head"><h2>지주사 NAV 할인율</h2>
-      <span class="unit">조정 ${withReports}종목 · 리포트 ${payload?.reportsAsOf || "-"} 기준 · 억원 · 종목을 누르면 근거가 펼쳐집니다</span></div>
+      <span class="unit">조정 ${withReports}종목, 리포트 ${payload?.reportsAsOf || "-"} 기준, 억원, 종목을 누르면 근거가 펼쳐집니다</span></div>
     <div class="fin-wrap"><table class="fin peer dense">
       <thead><tr><th class="l">종목</th>
         <th>조정 할인율</th><th>상장 기준</th><th>장부가 포함</th>
         <th>시가총액</th><th>상장 지분가치</th><th>순차입금 (별도)</th><th>비상장 장부가</th></tr></thead>
       <tbody>${body}</tbody></table></div>
-    <p class="note">조정 할인율은 <b>상장 지분가치만 우리가 매일 계산하고, 본업·비상장·순차입금은 증권사 리포트 값</b>을 씁니다.
+    <p class="note">조정 할인율은 <b>상장 지분가치만 우리가 매일 계산하고, 본업, 비상장, 순차입금은 증권사 리포트 값</b>을 씁니다.
       리포트별로 할인율을 낸 뒤 중앙값을 잡습니다. 리포트가 없는 종목은 “—”이고, 그때는 본업 가치가 빠져 실제보다 낮게 나옵니다.
       옆 두 열은 우리 계산만으로 만든 하한입니다. <b>손자회사(예: LS전선 → 가온전선)는 빠져 있습니다.</b></p>
   </div>`;
@@ -1489,11 +1508,11 @@ function indicatorTiles(sector) {
     const liveKeys = new Set(live.map((tile) => tile.name));
     const pending = items.filter((item) => !liveKeys.has(item.name));
     // 원천이 섹터마다 다르다(금융·보험 = ECOS, 화학·희토류 = SunSirs). 그 섹터가 실제로 쓰는 것만 적는다.
-    const providerNames = { ecos: "한국은행 ECOS", sunsirs: "생의사 중국 현물·국제유가", breadth: "Naver 시장 전체", holdco: "OpenDART 출자현황 × 시총", koreaap: "한국자산평가 민평" };
+    const providerNames = { ecos: "한국은행 ECOS", sunsirs: "생의사 중국 현물, 국제유가", breadth: "Naver 시장 전체", holdco: "OpenDART 출자현황 × 시총", koreaap: "한국자산평가 민평" };
     const providers = [...new Set(live.map((tile) => providerNames[tile.provider] || tile.provider).filter(Boolean))];
-    const note = providers.join(" · ") + (state.snapshot?.indicators?.sampleKey ? " · 공개 sample 키(요청당 10행 제한)" : "");
+    const note = providers.join(", ") + (state.snapshot?.indicators?.sampleKey ? ", 공개 sample 키(요청당 10행 제한)" : "");
     return `<div class="ind-head"><h2>${escapeHtml(sector)} 트래킹 지표</h2>
-        <span>${escapeHtml(note)} · 기준 ${escapeHtml(formatTimestamp(source.updatedAt || state.snapshot?.indicators?.loadedAt))}${source.stale ? " · 갱신 지연" : ""}</span></div>
+        <span>${escapeHtml(note)}, 기준 ${escapeHtml(formatTimestamp(source.updatedAt || state.snapshot?.indicators?.loadedAt))}${source.stale ? ", 갱신 지연" : ""}</span></div>
       <ul class="ind" id="indicatorTiles">${live.map(indicatorTile).join("")}${pending.map(pendingIndicatorTile).join("")}</ul>`;
   }
   return `<div class="ind-head"><h2>${escapeHtml(sector)} 트래킹 지표</h2>
@@ -1502,15 +1521,15 @@ function indicatorTiles(sector) {
 }
 
 function indicatorWaitingNote(source) {
-  if (source.status === "not_configured") return "원천 확정 · ECOS 인증키 등록 대기 (값을 만들지 않습니다)";
-  if (source.status === "error") return `원천 수집 실패 · ${source.note || "다음 갱신에 재시도"}`;
-  return "원천 확정 전 · 값 연동 대기 (2026-08-23 실접속 검증한 후보)";
+  if (source.status === "not_configured") return "원천 확정, ECOS 인증키 등록 대기 (값을 만들지 않습니다)";
+  if (source.status === "error") return `원천 수집 실패, ${source.note || "다음 갱신에 재시도"}`;
+  return "원천 확정 전, 값 연동 대기 (2026-08-23 실접속 검증한 후보)";
 }
 
 function pendingIndicatorTile(item) {
-  const label = item.state === "paid" ? "유료·수기 검토" : item.state === "fixed" ? "원천 확정 · 연동 대기" : "자동 수집 후보";
+  const label = item.state === "paid" ? "유료, 수기 검토" : item.state === "fixed" ? "원천 확정, 연동 대기" : "자동 수집 후보";
   return `<li>
-    <b>${escapeHtml(item.name)}</b><i>${escapeHtml(item.source)} · ${escapeHtml(item.cycle)}</i>
+    <b>${escapeHtml(item.name)}</b><i>${escapeHtml(item.source)}, ${escapeHtml(item.cycle)}</i>
     <span class="state ${item.state === "paid" ? "paid" : ""}">${label}</span>
   </li>`;
 }
@@ -1574,7 +1593,7 @@ function bodyCell(stock, column, extraClass = "") {
   switch (column.kind) {
     case "sector": return `<td class="${extraClass}">${escapeHtml(stock.sector)}</td>`;
     case "name": return `<td class="${extraClass}"><a class="stock-name" href="#/stock/${stock.code}" aria-controls="drawer" aria-label="${escapeHtml(`${stock.name}, ${stock.code}, 상세 열기`)}" title="${escapeHtml(stock.name)}">${escapeHtml(stock.name)}</a></td>`;
-    case "price": return `<td data-live-field="quote.price" class="${extraClass}">${formatPrice(stock.quote?.price)}</td>`;
+    case "price": return `<td data-live-field="quote.price" class="${extraClass}" title="${escapeHtml(quoteDescription(stock.quote))}">${formatPrice(stock.quote?.price)}</td>`;
     case "marketCap": return `<td data-live-field="quote.${column.field}" class="${extraClass}">${formatNumber(stock.quote?.[column.field])}</td>`;
     case "return": return performanceCell(stock, column.period, extraClass);
     case "financial": return financialCell(stock.annual?.[column.period], column.metric, extraClass);
@@ -1589,7 +1608,7 @@ function bodyCell(stock, column, extraClass = "") {
 }
 
 function sortValue(stock, key) {
-  if (key === "consensus.contributors") return estimateContributors(stock, "2026");
+  if (key === "consensus.contributors") return estimateContributors(stock, currentAnnualPeriod());
   if (key.startsWith("computed.")) return COMPUTED[key.slice("computed.".length)]?.(stock) ?? null;
   // 화면에 보이는 값으로 정렬해야 한다. 최고 보기에서 평균으로 줄을 세우면 순서와 숫자가 어긋난다.
   if (/^(quarter|annual)\.[^.]+\.(revenue|operatingIncome|parentNetIncome)$/.test(key)) {
@@ -1691,10 +1710,10 @@ function tableHtml() {
   // 안내에는 지금 켜져 있는 열그룹만 적는다. 접혀 있는 열까지 적으면 무엇이 사라졌는지 흐려진다.
   const hiddenActive = [...hidden.values()].filter((column) => !column.group || state.columnGroups.has(column.group));
   const hiddenNote = hiddenActive.length
-    ? `<p class="hidden-columns">${escapeHtml(state.sector)} 전 종목에 값이 없어 숨긴 열: ${hiddenActive.map(({ label }) => escapeHtml(label)).join(" · ")}</p>`
+    ? `<p class="hidden-columns">${escapeHtml(state.sector)} 전 종목에 값이 없어 숨긴 열: ${hiddenActive.map(({ label }) => escapeHtml(label)).join(", ")}</p>`
     : '<p class="hidden-columns"></p>';
   const pendingNote = PENDING_COLUMNS.length
-    ? `<p class="pending-columns" id="pendingColumns">원천 연결 대기 열: ${PENDING_COLUMNS.map(({ label, pending }) => `${escapeHtml(label)} - ${escapeHtml(pending)}`).join(" · ")}</p>`
+    ? `<p class="pending-columns" id="pendingColumns">원천 연결 대기 열: ${PENDING_COLUMNS.map(({ label, pending }) => `${escapeHtml(label)} - ${escapeHtml(pending)}`).join(", ")}</p>`
     : '<p class="pending-columns" id="pendingColumns"></p>';
 
   const basisSwitch = (state.columnGroups.has(CONSENSUS_VIEW_KEY) ? horizonsAvailable() : valuationHorizonsAvailable())
@@ -1809,6 +1828,7 @@ function quarterSeriesOf(stock, metric = profitMetricFor(stock.sector)) {
 }
 
 function drawerConsensusTable(stock) {
+  const annuals = displayPeriods().drawerAnnuals;
   const rows = [
     ["매출액", "revenue"],
     ["영업이익", "operatingIncome"],
@@ -1816,32 +1836,32 @@ function drawerConsensusTable(stock) {
   ];
   // 한 칸에 1M·최고 두 값이 나란히 들어가면 그 행 때문에 표 전체가 드로어(460px)를 넘어
   // 가로 스크롤이 생겼다(2026-08-27 실측 472px vs 408px). 세로로 쌓아 칸 너비를 숫자 하나로 맞춘다.
-  const horizonRow = (metric) => ANNUALS.map(([period]) => {
+  const horizonRow = (metric) => annuals.map(([period]) => {
     const compare = stock.consensusComparison?.annual?.[period];
     if (!compare) return '<td class="est">-</td>';
     return `<td class="est stack"><span>${formatFinancial(compare.oneMonth?.[metric])}</span>`
       + `<span>${formatFinancial(compare.highest?.[metric])}</span></td>`;
   }).join("");
   return `<div class="fin-wrap"><table class="fin" id="drawerConsensus">
-    <thead><tr><th class="l"></th>${ANNUALS.map(([period, label]) => `<th class="${period <= "2025" ? "" : "est"}">${label}</th>`).join("")}</tr></thead>
+    <thead><tr><th class="l"></th>${annuals.map(([period, label]) => `<th class="${stock.annual?.[period]?.kind !== "estimate" ? "" : "est"}">${label}</th>`).join("")}</tr></thead>
     <tbody>
-      ${rows.map(([label, metric]) => `<tr><td class="l">${label}</td>${ANNUALS.map(([period]) => {
+      ${rows.map(([label, metric]) => `<tr><td class="l">${label}</td>${annuals.map(([period]) => {
         const row = stock.annual?.[period];
-        const focus = metric === profitMetricFor(stock.sector) && period === "2026" ? " focus" : "";
+        const focus = metric === profitMetricFor(stock.sector) && period === currentAnnualPeriod() ? " focus" : "";
         return `<td class="${row?.kind === "estimate" ? "est" : ""}${focus}">${formatFinancial(row?.[metric])}</td>`;
       }).join("")}</tr>`).join("")}
-      <tr><td class="l">· ${profitLabelFor(stock.sector)} 1M / 최고</td>${horizonRow(profitMetricFor(stock.sector))}</tr>
-      <tr><td class="l">참여 증권사</td>${ANNUALS.map(([period]) => `<td>${formatNumber(stock.annual?.[period]?.contributors)}</td>`).join("")}</tr>
-      <tr><td class="l">지배주주지분</td>${ANNUALS.map(([period]) => `<td class="${stock.annual?.[period]?.kind === "estimate" ? "est" : ""}">${formatFinancial(stock.annual?.[period]?.parentEquity)}</td>`).join("")}</tr>
-      <tr><td class="l">주당배당금 (원)</td>${ANNUALS.map(([period]) => `<td class="${stock.annual?.[period]?.kind === "estimate" ? "est" : ""}">${formatPrice(stock.annual?.[period]?.dividendPerShare)}</td>`).join("")}</tr>
+      <tr><td class="l">보조 ${profitLabelFor(stock.sector)} 1M / 최고</td>${horizonRow(profitMetricFor(stock.sector))}</tr>
+      <tr><td class="l">참여 증권사</td>${annuals.map(([period]) => `<td>${formatNumber(stock.annual?.[period]?.contributors)}</td>`).join("")}</tr>
+      <tr><td class="l">지배주주지분</td>${annuals.map(([period]) => `<td class="${stock.annual?.[period]?.kind === "estimate" ? "est" : ""}">${formatFinancial(stock.annual?.[period]?.parentEquity)}</td>`).join("")}</tr>
+      <tr><td class="l">주당배당금 (원)</td>${annuals.map(([period]) => `<td class="${stock.annual?.[period]?.kind === "estimate" ? "est" : ""}">${formatPrice(stock.annual?.[period]?.dividendPerShare)}</td>`).join("")}</tr>
     </tbody></table></div>`;
 }
 
 function drawerRevisionTable(stock) {
   const metrics = [["매출액", "revenue"], ["영업이익", "operatingIncome"], ["지배순이익", "parentNetIncome"]];
-  const periods = ["2026", "2027"];
+  const periods = tableAnnuals().map(([period]) => period);
   const any = periods.some((period) => stock.consensusComparison?.annual?.[period]);
-  if (!any) return '<p class="empty-state">1M · 3M · 최고 비교 데이터가 없습니다.</p>';
+  if (!any) return '<p class="empty-state">1M, 3M, 최고 비교 데이터가 없습니다.</p>';
   return `<div class="fin-wrap"><table class="fin" id="drawerRevision">
     <thead><tr><th class="l"></th>${periods.flatMap((period) => [`<th>${period}E 3M</th>`, `<th>${period}E 1M변화</th>`]).join("")}</tr></thead>
     <tbody>${metrics.map(([label, metric]) => `<tr><td class="l">${label}</td>${periods.flatMap((period) => {
@@ -1849,7 +1869,7 @@ function drawerRevisionTable(stock) {
       const change = consensusRevision(stock, period, metric);
       return [`<td>${formatFinancial(base)}</td>`, `<td class="${numberClass(change)}">${formatPercent(change)}</td>`];
     }).join("")}</tr>`).join("")}</tbody></table></div>
-    <p class="note">리포트 단위 어닝 리비전(증권사·목표주가·투자의견)은 사용자 추출 프로그램 연동 후 붙는다. 지금은 ConsenDB의 1M · 3M · 최고 비교만 쓴다.</p>`;
+    <p class="note">리포트 단위 어닝 리비전(증권사, 목표주가, 투자의견)은 사용자 추출 프로그램 연동 후 붙는다. 지금은 ConsenDB의 1M, 3M, 최고 비교만 쓴다.</p>`;
 }
 
 function drawerFilings(stock) {
@@ -1859,7 +1879,7 @@ function drawerFilings(stock) {
     .slice(0, 10);
   if (!rows.length) return '<p class="empty-state">OpenDART 확정 실적이 아직 적재되지 않았습니다.</p>';
   return `<ul class="events" id="drawerFilings">${rows.map((row) => `<li>
-    <span><span class="tag">${escapeHtml(row.basis || "실적")}</span> ${escapeHtml(row.period)} 매출 ${formatFinancial(row.revenue)} · OP ${formatFinancial(row.operatingIncome)}</span>
+    <span><span class="tag">${escapeHtml(row.basis || "실적")}</span> ${escapeHtml(row.period)} 매출 ${formatFinancial(row.revenue)}, OP ${formatFinancial(row.operatingIncome)}</span>
     <span class="num">${row.filing?.receiptNumber
       ? `<a class="filing-link" href="${escapeHtml(row.filing.url)}" target="_blank" rel="noreferrer">${escapeHtml(row.filing.receiptNumber)}</a>`
       : "-"}</span></li>`).join("")}</ul>`;
@@ -1908,40 +1928,41 @@ function drawerHtml(stock) {
   const kospiYtd = benchmarkOf("KOSPI")?.ytd ?? null;
   const ytd = stock.performance?.ytd;
   const relative = Number.isFinite(ytd) && Number.isFinite(kospiYtd) ? ytd - kospiYtd : null;
-  const opRevision = consensusRevision(stock, "2026", profitMetricFor(stock.sector));
-  const valuation2026 = stock.valuation?.["2026"] || {};
-  const valuation2027 = stock.valuation?.["2027"] || {};
-  const pe2026 = valuationResult(valuation2026, "pe");
-  const pe2027 = valuationResult(valuation2027, "pe");
-  const pb2026 = valuationResult(valuation2026, "pb");
-  const roe2026 = valuationResult(valuation2026, "roe");
+  const opRevision = consensusRevision(stock, currentAnnualPeriod(), profitMetricFor(stock.sector));
+  const [[currentYear, currentLabel], [nextYear, nextLabel]] = tableAnnuals();
+  const currentValuation = stock.valuation?.[currentYear] || {};
+  const nextValuation = stock.valuation?.[nextYear] || {};
+  const currentPe = valuationResult(currentValuation, "pe");
+  const nextPe = valuationResult(nextValuation, "pe");
+  const currentPb = valuationResult(currentValuation, "pb");
+  const currentRoe = valuationResult(currentValuation, "roe");
   const change = dailyChangeAmount(stock);
 
   return `<div class="drawer-inner">
     <div class="drawer-head">
-      <div><p class="crumb">${escapeHtml(stock.sector)} · ${stock.code} · ${escapeHtml(marketForStock(stock))}</p><h2 id="drawerName">${escapeHtml(stock.name)}</h2></div>
+      <div><p class="crumb">${escapeHtml(stock.sector)}, ${stock.code}, ${escapeHtml(marketForStock(stock))}</p><h2 id="drawerName">${escapeHtml(stock.name)}</h2></div>
       <button class="close" id="closeDrawer" type="button" aria-label="종목 상세 닫기">×</button>
     </div>
     <div class="price-line">
-      <span class="px" id="detailPrice">${formatPrice(stock.quote?.price)}</span>
+      <span class="px" id="detailPrice">${formatPrice(stock.quote?.price)}</span><span class="tag" id="detailVenue">${escapeHtml(quoteVenue(stock.quote))}</span>
       <span class="chg ${numberClass(stock.performance?.d1)}" id="detailChange">${formatSignedNumber(change)} (${formatPercent(stock.performance?.d1, 2)})</span>
-      <span class="sub" id="detailMarketCap">시가총액 ${formatMarketCap(stock.quote?.marketCap)} · ${escapeHtml(sourceDisplayName("quote", stock.quote?.source))} · ${formatTimestamp(stock.quote?.observedAt)}</span>
+      <span class="sub" id="detailMarketCap">시가총액 ${formatMarketCap(stock.quote?.marketCap)}, ${escapeHtml(quoteDescription(stock.quote))}</span>
     </div>
     <dl class="dgrid" id="drawerRatios">
-      <div><dt>P/E 26E</dt><dd data-live-field="valuation.2026.pe">${formatRatio(pe2026, "pe")}</dd><small>27E ${formatRatio(pe2027, "pe")} · ${valuationBasisTag()}</small></div>
-      <div><dt>P/B 26E</dt><dd data-live-field="valuation.2026.pb">${formatRatio(pb2026, "pb")}</dd><small>ROE ${formatRatio(roe2026, "roe")} · ${valuationBasisTag()}</small></div>
-      <div><dt>${profitShortFor(stock.sector)} 26E 1M변화</dt><dd class="${numberClass(opRevision)}">${formatPercent(opRevision)}</dd><small>1M ÷ 3M − 1</small></div>
+      <div><dt>P/E ${currentLabel}</dt><dd data-live-field="valuation.${currentYear}.pe">${formatRatio(currentPe, "pe")}</dd><small>${nextLabel} ${formatRatio(nextPe, "pe")}, ${valuationBasisTag()}</small></div>
+      <div><dt>P/B ${currentLabel}</dt><dd data-live-field="valuation.${currentYear}.pb">${formatRatio(currentPb, "pb")}</dd><small>ROE ${formatRatio(currentRoe, "roe")}, ${valuationBasisTag()}</small></div>
+      <div><dt>${profitShortFor(stock.sector)} ${currentLabel} 1M변화</dt><dd class="${numberClass(opRevision)}">${formatPercent(opRevision)}</dd><small>1M ÷ 3M − 1</small></div>
       <div><dt>YTD</dt><dd class="${numberClass(ytd)}" data-performance="ytd">${formatPercent(ytd)}</dd><small>vs KOSPI ${formatPercent(relative, 1)}</small></div>
       <div><dt>52주高比</dt><dd class="${numberClass(stock.performance?.drawdown52w)}" data-performance="drawdown52w">${formatPercent(stock.performance?.drawdown52w)}</dd><small>1Y ${formatPercent(stock.performance?.y1, 1)}</small></div>
       <div><dt>목표가 괴리</dt><dd class="${numberClass(COMPUTED.targetGap(stock))}">${formatPercent(COMPUTED.targetGap(stock))}</dd>
-        <small>TP ${formatPrice(targetPriceOf(stock))} (${targetPriceLabel()}) · 배당 ${formatLevelPercent(COMPUTED.dividendYield(stock))}</small></div>
+        <small>TP ${formatPrice(targetPriceOf(stock))} (${targetPriceLabel()}), 배당 ${formatLevelPercent(COMPUTED.dividendYield(stock))}</small></div>
     </dl>
-    <section class="panel"><div class="panel-head"><h3>주가 vs 섹터 · 벤치마크</h3>
+    <section class="panel"><div class="panel-head"><h3>주가 vs 섹터, 벤치마크</h3>
         <span class="tools">${rangeButtons()}</span></div>
       ${chart}
       <div class="chart-legend"><span><i></i>${escapeHtml(stock.name)}</span><span><i class="sector"></i>${escapeHtml(stock.sector)} 섹터</span>
         <span><i class="ctx"></i>KOSPI</span><span><i class="ctx2"></i>KOSDAQ</span><span class="unit">기간 시작 = 100</span></div></section>
-    <section class="panel"><div class="panel-head"><h3>컨센서스 · 연간</h3><span class="unit">억원 · 3M 평균</span></div>
+    <section class="panel"><div class="panel-head"><h3>컨센서스, 연간</h3><span class="unit">억원, 3M 평균</span></div>
       ${drawerConsensusTable(stock)}</section>
     <section class="panel"><div class="panel-head"><h3>분기 ${profitName} — 실적 ${quarters.filter((row) => !row.estimate).length} + 추정 ${quarters.filter((row) => row.estimate).length}</h3><span class="unit">억원</span></div>
       ${quarterBarChart(quarters)}
@@ -1958,11 +1979,11 @@ function drawerHtml(stock) {
           }).join("")}</tr>
           <tr><td class="l">${otherName}</td>${recent.map((row) => `<td class="${row.estimate ? "est" : ""}">${formatFinancial(row[otherMetric])}</td>`).join("")}</tr>
         </tbody></table></div></section>
-    <section class="panel"><div class="panel-head"><h3>컨센서스 리비전</h3><span class="unit">억원 · %</span></div>
+    <section class="panel"><div class="panel-head"><h3>컨센서스 리비전</h3><span class="unit">억원, %</span></div>
       ${drawerRevisionTable(stock)}</section>
     <section class="panel"><div class="panel-head"><h3>확정 실적 공시</h3><span class="unit">OpenDART</span></div>
       ${drawerFilings(stock)}
-      <p class="note source-line" data-source-keys="quote,actuals,consensus">${sourceLine(["quote", "actuals", "consensus"])}</p></section>
+      <p class="note source-line" data-source-keys="quote,actuals,consensus">${sourceLine(["quote", "actuals", "consensus"], stock.quote)}</p></section>
   </div>`;
 }
 
@@ -1974,7 +1995,7 @@ function renderDrawer() {
     drawer.innerHTML = "";
     drawer.removeAttribute("aria-labelledby");
     main.classList.remove("has-drawer");
-    document.title = state.sector === "all" ? "홍대현 Universe" : `${state.sector} · 홍대현 Universe`;
+    document.title = state.sector === "all" ? "홍대현 Universe" : `${state.sector}, 홍대현 Universe`;
     return;
   }
   drawer.hidden = false;
@@ -1986,7 +2007,7 @@ function renderDrawer() {
   }
   drawer.innerHTML = drawerHtml(state.detail);
   drawer.setAttribute("aria-labelledby", "drawerName");
-  document.title = `${state.detail.name} · 홍대현 Universe`;
+  document.title = `${state.detail.name}, 홍대현 Universe`;
 }
 
 async function loadDetail(code) {
@@ -2063,6 +2084,7 @@ function updateLiveRow(stock) {
   const price = row.querySelector('[data-live-field="quote.price"]');
   const marketCap = row.querySelector('[data-live-field="quote.marketCap"]');
   if (price) {
+    price.title = quoteDescription(stock.quote);
     const nextText = formatPrice(stock.quote?.price);
     if (price.textContent !== nextText) {
       const before = renderedNumber(price.textContent);
@@ -2087,7 +2109,7 @@ function updateLiveRow(stock) {
     const heat = returnHeatMeta(value, "targetGap");
     cell.className = `${numberClass(value)} ${heat.className} ${sectionStart}`;
   }
-  for (const period of ["2026", "2027"]) {
+  for (const [period] of tableAnnuals()) {
     for (const kind of ["pe", "pb", "roe"]) {
       const cell = row.querySelector(`[data-live-field="valuation.${period}.${kind}"]`);
       if (cell) cell.textContent = formatRatio(valuationResult(stock.valuation?.[period], kind), kind);
@@ -2104,8 +2126,10 @@ function updateLiveDrawer(payload) {
   const marketCap = $("#detailMarketCap");
   const change = $("#detailChange");
   if (price) price.textContent = formatPrice(state.detail.quote?.price);
+  const venueLabel = $("#detailVenue");
+  if (venueLabel) venueLabel.textContent = quoteVenue(state.detail.quote);
   if (marketCap) {
-    marketCap.textContent = `시가총액 ${formatMarketCap(state.detail.quote?.marketCap)} · ${sourceDisplayName("quote", state.detail.quote?.source)} · ${formatTimestamp(state.detail.quote?.observedAt)}`;
+    marketCap.textContent = `시가총액 ${formatMarketCap(state.detail.quote?.marketCap)}, ${quoteDescription(state.detail.quote)}`;
   }
   if (change) {
     const delta = dailyChangeAmount(state.detail);
@@ -2122,7 +2146,7 @@ function updateLiveDrawer(payload) {
     element.textContent = formatRatio(valuationResult(state.detail.valuation?.[period], kind), kind);
   }
   for (const element of $$("#drawer .source-line[data-source-keys]")) {
-    element.textContent = sourceLine(element.dataset.sourceKeys.split(","));
+    element.textContent = sourceLine(element.dataset.sourceKeys.split(","), state.detail.quote);
   }
 }
 
@@ -2304,8 +2328,7 @@ function setConnection(className, text) {
 function connectQuoteSocket() {
   if (RUNTIME.staticMode) {
     // 2026-08-25 확정 #4·#7: 실시간은 로컬 8848 전용, 공개 정적본은 지연 스냅샷만 본다.
-    const fixture = state.snapshot?.mode === "fixture" ? "Fixture 검증 모드 · " : "";
-    setConnection("delayed", `${fixture}지연 스냅샷 · ${formatTimestamp(state.snapshot?.generatedAt)} 기준`);
+    renderStaticConnection();
     return;
   }
   if (state.snapshot?.mode === "fixture") {
@@ -2314,11 +2337,12 @@ function connectQuoteSocket() {
   }
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
   const socket = new WebSocket(`${protocol}//${location.host}/ws/quotes`);
-  socket.addEventListener("open", () => setConnection("live", "실시간 채널 연결"));
+  socket.addEventListener("open", () => setConnection("live", "서버 연결"));
   socket.addEventListener("message", (event) => {
     let payload;
     try { payload = JSON.parse(event.data); } catch { return; }
     if (payload.type === "snapshot" && payload.snapshot?.stocks) {
+      state.pollError = null;
       state.liveUpdates.clear();
       state.snapshot = payload.snapshot;
       renderSidebar();
@@ -2327,6 +2351,7 @@ function connectQuoteSocket() {
       return;
     }
     if (payload.type !== "quote") return;
+    state.pollError = null;
     const stock = state.snapshot?.stocks.find(({ code }) => code === payload.quote?.code);
     if (!stock) return;
     stock.quote = { ...stock.quote, ...payload.quote };
@@ -2343,57 +2368,73 @@ function connectQuoteSocket() {
   socket.addEventListener("error", () => socket.close());
 }
 
+function renderStaticConnection() {
+  const freshness = currentQuoteFreshness();
+  const fixture = state.snapshot?.mode === "fixture" ? "Fixture 검증, " : "";
+  setConnection(freshness.className === "error" ? "offline" : "delayed", `${fixture}${freshness.label}, 공개본 생성 ${formatTimestamp(state.builtAt || state.snapshot?.generatedAt)}`);
+}
+
+async function fetchJson(url) {
+  const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(10_000) });
+  if (!response.ok) throw new Error(`데이터 조회 실패 (HTTP ${response.status})`);
+  return response.json();
+}
+
+let refreshInFlight = false;
+async function refreshSnapshot() {
+  if (refreshInFlight) return;
+  refreshInFlight = true;
+  try {
+    if (RUNTIME.staticMode) await refreshStaticQuotes();
+    else {
+      const next = await fetchJson(RUNTIME.snapshotUrl);
+      if (!Array.isArray(next?.stocks)) throw new Error("스냅샷 형식 오류");
+      state.liveUpdates.clear();
+      state.snapshot = next;
+      renderView({ preserveScroll: true });
+      if (state.detailCode) loadDetail(state.detailCode);
+    }
+    state.pollError = null;
+  } catch (error) {
+    state.pollError = error.message;
+  } finally {
+    refreshInFlight = false;
+  }
+  renderSidebar();
+}
+
 async function initialize() {
   loadPreferences();
   applyTheme();
   bindEvents();
-  const response = await fetch(RUNTIME.snapshotUrl, { cache: "no-store" });
-  if (!response.ok) throw new Error("스냅샷 API를 불러오지 못했습니다.");
-  state.snapshot = await response.json();
+  state.snapshot = await fetchJson(RUNTIME.snapshotUrl);
+  if (!Array.isArray(state.snapshot?.stocks)) throw new Error("스냅샷 형식 오류");
   if (RUNTIME.staticMode) {
-    state.staticSnapshotGeneratedAt = state.snapshot?.generatedAt || null;
-    // 공개본은 전체 스냅샷보다 quotes.json이 자주 갱신된다. 첫 화면부터 최신 가격을
-    // 보여 주고 60초 뒤까지 오전의 전체 스냅샷 가격을 노출하지 않는다.
-    await refreshStaticQuotes({ render: false });
+    state.staticSnapshotGeneratedAt = state.snapshot.generatedAt || null;
+    try { await refreshStaticQuotes({ render: false }); }
+    catch (error) { state.pollError = error.message; }
   }
   route();
   connectQuoteSocket();
   setInterval(flushLiveUpdates, 1000);
-  setInterval(async () => {
-    if (document.hidden) return;
-    try {
-      if (RUNTIME.staticMode) {
-        await refreshStaticQuotes();
-        return;
-      }
-      const next = await fetch(RUNTIME.snapshotUrl, { cache: "no-store" });
-      if (!next.ok) return;
-      state.liveUpdates.clear();
-      state.snapshot = await next.json();
-      renderSidebar();
-      renderView({ preserveScroll: true });
-      if (state.detailCode) loadDetail(state.detailCode);
-    } catch { /* WebSocket 재연결 표시가 주 신호다. */ }
-  }, 60_000);
+  setInterval(() => { if (!document.hidden) refreshSnapshot(); }, 60_000);
+  setInterval(() => { if (!document.hidden) renderSidebar(); }, 15_000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshSnapshot(); });
 }
 
 // 정적 배포본 갱신. 가벼운 시세 델타만 읽어 스냅샷 위에 덮어쓴다.
 // 델타가 다른 전체 스냅샷을 가리키면(컨센·실적이 갱신됐다는 뜻) 그때만 스냅샷을 통째로 다시 받는다.
 async function refreshStaticQuotes({ render = true } = {}) {
-  const response = await fetch(RUNTIME.quotesUrl, { cache: "no-store" });
-  if (!response.ok) return;
-  const quotes = await response.json();
+  const quotes = await fetchJson(RUNTIME.quotesUrl);
+  if (!Array.isArray(quotes?.stocks) || !quotes.generatedAt) throw new Error("시세 스냅샷 형식 오류");
   if (quotes.snapshotGeneratedAt && quotes.snapshotGeneratedAt !== state.staticSnapshotGeneratedAt) {
-    const next = await fetch(RUNTIME.snapshotUrl, { cache: "no-store" });
-    if (next.ok) {
-      state.liveUpdates.clear();
-      state.snapshot = await next.json();
-      state.staticSnapshotGeneratedAt = state.snapshot?.generatedAt || null;
-    }
+    const next = await fetchJson(RUNTIME.snapshotUrl);
+    if (next.generatedAt !== quotes.snapshotGeneratedAt || !Array.isArray(next.stocks)) throw new Error("게시본 동기화 대기");
+    state.liveUpdates.clear();
+    state.snapshot = next;
+    state.staticSnapshotGeneratedAt = next.generatedAt;
   }
-  // Pages CDN에서 전체 스냅샷과 델타가 서로 다른 배포 시점으로 보이면 섞지 않는다.
-  // 다음 60초 폴링에서 둘이 맞은 뒤 적용된다.
-  if (quotes.snapshotGeneratedAt && quotes.snapshotGeneratedAt !== state.staticSnapshotGeneratedAt) return;
+  state.pollError = null;
   applyQuotesDelta(quotes, { render });
 }
 
@@ -2409,6 +2450,7 @@ function mergeQuotesDelta(snapshot, quotes) {
   if (quotes.sources?.quote) snapshot.sources = { ...snapshot.sources, quote: quotes.sources.quote };
   if (quotes.marketBreadth) snapshot.marketBreadth = quotes.marketBreadth;
   if (quotes.generatedAt) snapshot.generatedAt = quotes.generatedAt;
+  if (quotes.builtAt) snapshot.builtAt = quotes.builtAt;
   return snapshot;
 }
 
@@ -2418,6 +2460,7 @@ function mergeQuotesDelta(snapshot, quotes) {
 window.__hduTest = {
   mergeQuotesDelta: (quotes) => applyQuotesDelta(quotes),
   refreshStaticQuotes: () => refreshStaticQuotes(),
+  refreshSnapshot: () => refreshSnapshot(),
   staticQuoteState: (code) => ({
     baseGeneratedAt: state.staticSnapshotGeneratedAt,
     displayedGeneratedAt: state.snapshot?.generatedAt || null,
@@ -2461,6 +2504,7 @@ window.__hduTest = {
 function applyQuotesDelta(quotes, { render = true } = {}) {
   if (!state.snapshot) return;
   mergeQuotesDelta(state.snapshot, quotes);
+  state.builtAt = quotes.builtAt || quotes.generatedAt || state.builtAt;
   state.liveUpdates.clear();
   const latestDetail = state.detailCode
     ? state.snapshot.stocks?.find((stock) => stock.code === state.detailCode)
@@ -2477,8 +2521,7 @@ function applyQuotesDelta(quotes, { render = true } = {}) {
       });
     }
   }
-  const fixture = state.snapshot?.mode === "fixture" ? "Fixture 검증 모드 · " : "";
-  setConnection("delayed", `${fixture}지연 스냅샷 · ${formatTimestamp(state.snapshot?.generatedAt)} 기준`);
+  renderStaticConnection();
 }
 
 initialize().catch((error) => {
