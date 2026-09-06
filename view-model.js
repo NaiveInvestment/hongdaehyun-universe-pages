@@ -83,3 +83,41 @@ export function resolveDisplayPeriods(snapshot = {}, now = Date.now()) {
   ];
   return { year: String(year), tableAnnuals, tableQuarters, drawerAnnuals };
 }
+
+// One common calendar cutoff and endpoint. No invented daily prices or FX returns.
+// A market holiday uses the last observed close at/before the cutoff (at most 7 days).
+// Later listings are excluded, and gaps between actual observations remain gaps in data.
+export function relativePeerSeries(companies = [], range = "ytd") {
+  const clean = companies.map(company => ({ ...company, history: (company.history || [])
+    .filter(row => /^\d{4}-\d{2}-\d{2}$/.test(row.date || "") && Number.isFinite(row.close) && row.close > 0)
+    .sort((a, b) => a.date.localeCompare(b.date)) }));
+  const lastDates = clean.map(item => item.history.at(-1)?.date).filter(Boolean).sort();
+  if (!lastDates.length) return { dates: [], series: [], excluded: clean.map(item => ({ symbol: item.symbol, name: item.name, reason: "일봉 미수신" })) };
+  // All comparisons end at the oldest available latest close. The source dates remain visible.
+  const endDate = lastDates[0];
+  const end = new Date(`${endDate}T00:00:00Z`);
+  let baseDate;
+  if (range === "ytd") baseDate = `${end.getUTCFullYear() - 1}-12-31`;
+  else {
+    const months = ({ "1m": 1, "3m": 3, "6m": 6, "1y": 12 })[range] || 6;
+    const first = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - months, 1));
+    const lastDay = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
+    first.setUTCDate(Math.min(end.getUTCDate(), lastDay));
+    baseDate = first.toISOString().slice(0, 10);
+  }
+  const excluded = [], series = [];
+  for (const company of clean) {
+    const base = company.history.filter(row => row.date <= baseDate).at(-1);
+    const elapsed = base ? Date.parse(baseDate) - Date.parse(base.date) : Infinity;
+    const after = company.history.filter(row => row.date > baseDate && row.date <= endDate);
+    if (!base || elapsed > 7 * 86400000 || !after.length) {
+      excluded.push({ symbol: company.symbol, name: company.name, reason: !company.history.length ? "일봉 미수신" : !base ? "기간 시작 종가 없음" : "기준일 부근 종가 부족" });
+      continue;
+    }
+    const points = [{ date: baseDate, value: 100 }, ...after.map(row => ({ date: row.date, value: row.close / base.close * 100 }))];
+    series.push({ symbol: company.symbol, name: company.name, baseDate: base.date, baseClose: base.close, endDate: after.at(-1).date,
+      endClose: after.at(-1).close, returnPct: (after.at(-1).close / base.close - 1) * 100, points });
+  }
+  const dates = [...new Set(series.flatMap(item => item.points.map(point => point.date)))].sort();
+  return { baseDate, endDate, dates, series: series.map(item => { const byDate = new Map(item.points.map(point => [point.date, point.value])); return { ...item, values: dates.map(date => byDate.get(date) ?? null) }; }), excluded };
+}

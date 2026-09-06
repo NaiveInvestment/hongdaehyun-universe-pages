@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-09-06T22:10:39.745Z",
+  "builtAt": "2026-09-06T23:21:10.912Z",
   "mode": "live",
-  "generatedAt": "2026-09-06T22:10:39.494Z",
-  "quotesGeneratedAt": "2026-09-06T22:10:39.494Z",
-  "heavyFingerprint": "{\"consensus\":\"2026-09-06T22:09:48.527839Z\",\"actuals\":\"2026-09-06T22:10:00.793179Z\",\"indicators\":\"2026-09-06T22:10:03.458Z\",\"holdcoNav\":\"2026-09-06T22:10:01.483Z\",\"sectorIndices\":\"2026-09-06T22:09:46.513Z\",\"sectorIndexDays\":250,\"stockCount\":81,\"mode\":\"live\",\"assets\":[\"e02030acb3ecd810\",\"5ac8b68fff2211f3\",\"a6224dd2e7f56f8e\",\"a9f8260304e2bfb7\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"a016b9bc182c1b5c\"]}",
+  "generatedAt": "2026-09-06T23:21:09.708Z",
+  "quotesGeneratedAt": "2026-09-06T23:21:09.708Z",
+  "heavyFingerprint": "{\"consensus\":\"2026-09-06T23:00:02.009601Z\",\"actuals\":\"2026-09-06T22:10:00.793179Z\",\"indicators\":\"2026-09-06T22:10:03.458Z\",\"holdcoNav\":\"2026-09-06T22:10:01.483Z\",\"sectorIndices\":\"2026-09-06T22:09:46.513Z\",\"sectorIndexDays\":250,\"rareEarth\":\"2952e253b5dc95648201b642241dacc9156d1a12d7fbe6fbde25990860f15b03\",\"stockCount\":81,\"mode\":\"live\",\"assets\":[\"e02030acb3ecd810\",\"de2233814c570cdf\",\"d864b23cbab10f4e\",\"060783b13879ed68\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"c09bf9ba0e797eca\",\"8af87ac027e0a6d2\",\"cb088fbf21ab4691\",\"1749b067015d590b\"]}",
   "stockCount": 81,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
   "sources": {
     "quote": {
-      "source": "naver",
-      "updatedAt": "2026-09-06T22:09:47.463Z",
+      "source": "mixed",
+      "updatedAt": "2026-09-06T23:20:46.849Z",
       "status": "partial"
     },
     "actuals": {
@@ -21,7 +21,7 @@
     },
     "consensus": {
       "source": "ConsenDB.xlsx",
-      "updatedAt": "2026-09-06T22:09:48.527839Z",
+      "updatedAt": "2026-09-06T23:00:02.009601Z",
       "status": "partial"
     },
     "indicators": {
