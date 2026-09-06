@@ -1235,26 +1235,31 @@ function rareEarthPanel() {
       const missing = !Number.isFinite(value);
       const note = raw?.notes?.[metric] || (missing ? "원천에서 확인된 값 없음" : "");
       const title = `${company.name}, ${fiscalEnd}, ${metricLabel}, ${unit}, ${kind === "A" ? "확정 실적" : kind === "E" ? "추정치" : "미확인"}, ${source}${note ? `, ${note}` : ""}`;
-      return `<td class="num ${kind === "E" ? "re-estimate" : ""}" data-year="${year}" data-kind="${kind}" title="${escapeHtml(title)}">${missing ? '<span class="na">-</span>' : formatNumber(value, 1)}${!missing && kind ? `<small class="re-kind">${kind}</small>` : ""}</td>`;
+      return `<td class="num ${kind === "E" ? "re-estimate" : ""}" data-year="${year}" data-kind="${kind}" title="${escapeHtml(title)}"><span class="re-number ${missing ? "na" : ""}">${missing ? "-" : formatNumber(value, 1)}</span><span class="re-kind" aria-label="${kind === "A" ? "실적" : kind === "E" ? "추정" : ""}">${!missing ? kind : ""}</span></td>`;
     }).join("");
-    return `<tr data-rare-company="${escapeHtml(company.symbol)}"><th scope="row">${name}<small>${escapeHtml(company.symbol)} / ${escapeHtml(company.exchange)}</small></th>
+    const fiscalMonth = Number((finances?.fiscalYearEnd || "12-31").slice(0, 2));
+    return `<tr data-rare-company="${escapeHtml(company.symbol)}"><th scope="row" title="${escapeHtml(`${company.name}, ${company.symbol}, ${company.exchange}, 재무 ${unit}, ${fiscalMonth}월 결산`)}">${name}<small class="re-company-meta"><span>${escapeHtml(company.symbol)}</span><span>${escapeHtml(unit)}</span><span>${fiscalMonth}월 결산</span></small></th>
       <td class="num re-cap" title="${escapeHtml(`시가총액 ${capDate || "기준일 미확인"}, ${company.domestic ? quoteSourceName(stock?.quote?.source, stock?.quote, RUNTIME.staticMode) : "TIKR"}`)}">${formatNumber(cap, 1)}<small>${escapeHtml(capCurrency)}</small></td>
-      <td class="re-unit">${escapeHtml(unit)}<small>${escapeHtml(finances?.fiscalYearEnd || "12-31")} 결산</small></td>${cells}</tr>`;
+      ${cells}</tr>`;
   }).join("");
   const metrics = RARE_METRICS.map(([key, label]) => `<button class="btn tiny" type="button" data-rare-metric="${key}" aria-pressed="${state.rareMetric === key}">${label}</button>`).join("");
   const notes = packet.companies.filter(company => company.financials?.note).map(company => `<li>${escapeHtml(company.name)}: ${escapeHtml(company.financials.note)} <a href="${escapeHtml(company.financials.actualSourceUrl)}" target="_blank" rel="noopener noreferrer">과거 손익계산서</a>, <a href="${escapeHtml(company.financials.sourceUrl)}" target="_blank" rel="noopener noreferrer">미래 컨센서스</a></li>`).join("");
+  const metricNote = state.rareMetric === "operatingIncome" ? "해외 실제 영업이익 / 전망 EBIT, 국내 영업이익"
+    : state.rareMetric === "netIncome" ? "해외 GAAP 순이익, 국내 지배순이익"
+      : state.rareMetric === "normalizedNetIncome" ? "조정순이익, 보고 순이익과 별도 지표" : "기업별 결산연도 기준";
   return `<section class="card re-panel" id="rareEarthComparison" aria-labelledby="rareEarthTitle">
     <div class="card-head"><h2 id="rareEarthTitle">희토류 ${packet.companies.length}개 기업 상대주가</h2><span class="tools">${ranges}</span></div>
     ${chart}<div class="chart-legend re-legend">${legend}</div>
     <p class="note re-basis">${escapeHtml(model.baseDate || "-")} 기준 = 100, ${escapeHtml(model.endDate || "-")}까지. 현지 통화 종가, 환율과 배당 제외. 기준일 휴장은 직전 종가 사용. 일봉: 국내 Kiwoom / Naver, 해외 Yahoo Finance. 범례로 개별 선 선택.</p>${excludedNote}
   </section>
-  <section class="card re-panel" id="rareEarthFinancials" aria-labelledby="rareFinancialTitle">
-    <div class="card-head"><h2 id="rareFinancialTitle">시가총액과 연간 ${escapeHtml(metricLabel)}</h2><span class="tools">${metrics}</span></div>
-    <p class="note re-source">해외 시총 ${escapeHtml(packet.companies.find(c => c.financials?.marketCap?.asOf)?.financials.marketCap.asOf || "-")}, TIKR 조회 ${escapeHtml(packet.financialsRetrievedAt ? kstSession(Date.parse(packet.financialsRetrievedAt)).date : "-")} KST. 국내 시총은 현재 시세 기준. A 확정, E 추정, - 미제공.</p>
-    <div class="re-table-scroll" tabindex="0" role="region" aria-label="기업별 시가총액과 연간 실적 비교표, 가로 스크롤"><table class="re-fin-table"><caption class="sr-only">${escapeHtml(metricLabel)}, 기업별 원통화와 단위 및 결산일 기준</caption><colgroup><col class="re-company-col"><col class="re-cap-col"><col class="re-unit-col">${years.map(() => '<col class="re-year-col">').join("")}</colgroup>
-      <thead><tr><th scope="col">기업</th><th scope="col">시가총액</th><th scope="col">재무 단위</th>${years.map(year => `<th scope="col">${year}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>
-    <p class="note">해외 실제치는 TIKR 손익계산서, 추정치는 연간 컨센서스입니다. 해외 이익은 실제 영업이익 / 추정 EBIT, 순이익은 GAAP입니다. 국내는 OpenDART와 ConsenDB ${HORIZON_LABELS[state.estimateBasis]}, 순이익은 지배순이익입니다. 조정순이익은 별도 지표입니다.</p>
-    <details class="re-notes"><summary>출처와 비교 시 참고사항</summary><p class="note">기업명을 누르면 국내 상세 또는 TIKR 원문을 엽니다. 값에 마우스를 올리면 결산일과 출처를 확인할 수 있습니다. 해외 시총과 재무는 표시한 조회일의 스냅샷입니다. 현지 통화가 달라 시총과 매출의 숫자 크기만으로 기업 간 규모를 비교할 수 없습니다.</p><ul>${notes}</ul></details>
+  <section class="card re-panel re-financials" id="rareEarthFinancials" aria-labelledby="rareFinancialTitle">
+    <div class="card-head"><h2 id="rareFinancialTitle">시가총액과 연간 ${escapeHtml(metricLabel)}</h2><div class="tools re-metric-tabs" role="group" aria-label="연간 재무 지표 선택">${metrics}</div></div>
+    <div class="re-table-meta"><p>${escapeHtml(metricNote)}<span class="re-unit-hint">재무 단위는 기업명 아래 표시</span></p><div class="re-status-key"><span><b>A</b> 실적</span><span><b class="re-key-estimate">E</b> 컨센서스</span><span>- 미제공</span></div></div>
+    <p class="re-scroll-hint">표를 좌우로 넘기면 2030년까지 볼 수 있습니다. 기업명은 고정됩니다.</p>
+    <div class="re-table-scroll" tabindex="0" role="region" aria-label="기업별 시가총액과 연간 실적 비교표, 가로 스크롤"><table class="re-fin-table"><caption>${escapeHtml(metricLabel)}, 기업별 원통화와 단위 및 결산일 기준</caption><colgroup><col class="re-company-col"><col class="re-cap-col">${years.map(() => '<col class="re-year-col">').join("")}</colgroup>
+      <thead><tr><th scope="col">기업 <span class="re-heading-detail">/ 재무 단위</span></th><th scope="col">시가총액</th>${years.map(year => `<th scope="col" data-fin-year="${year}">${year}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="re-fin-footer"><p class="note re-source">해외 시총 ${escapeHtml(packet.companies.find(c => c.financials?.marketCap?.asOf)?.financials.marketCap.asOf || "-")}, TIKR 조회 ${escapeHtml(packet.financialsRetrievedAt ? kstSession(Date.parse(packet.financialsRetrievedAt)).date : "-")} KST. 국내 시총은 현재 시세 기준.</p>
+    <details class="re-notes"><summary>출처와 비교 기준</summary><p class="note">해외 실제치는 TIKR 손익계산서, 추정치는 연간 컨센서스입니다. 해외 이익은 실제 영업이익 / 추정 EBIT, 순이익은 GAAP입니다. 국내는 OpenDART와 ConsenDB ${HORIZON_LABELS[state.estimateBasis]}, 순이익은 지배순이익입니다. 조정순이익은 별도 지표입니다.</p><p class="note">기업명을 누르면 국내 상세 또는 TIKR 원문을 엽니다. 값에 마우스를 올리면 결산일과 출처를 확인할 수 있습니다. 해외 시총과 재무는 표시한 조회일의 스냅샷입니다. 현지 통화가 달라 시총과 매출의 숫자 크기만으로 기업 간 규모를 비교할 수 없습니다.</p><ul>${notes}</ul></details></div>
   </section>`;
 }
 

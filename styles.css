@@ -585,22 +585,48 @@ table.fin { width: 100%; border-collapse: collapse; font-size: 11.5px; font-vari
 .re-legend button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .re-basis, .re-source, .re-panel > .note { line-height: 1.6; margin: 6px 0; color: var(--muted); font-size: 11px; }
 .re-excluded { color: var(--muted); }
-.re-table-scroll { max-width: 100%; overflow-x: auto; border: 1px solid var(--line-strong); }
-.re-fin-table { width: 100%; min-width: 1040px; table-layout: fixed; border-collapse: separate; border-spacing: 0; font-size: 12px; font-variant-numeric: tabular-nums; }
-.re-fin-table .re-company-col { width: 190px; }
-.re-fin-table .re-cap-col { width: 115px; }
-.re-fin-table .re-unit-col { width: 105px; }
-.re-fin-table .re-year-col { width: 90px; }
-.re-fin-table th, .re-fin-table td { padding: 8px 6px; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); text-align: right; vertical-align: middle; white-space: nowrap; }
-.re-fin-table thead th { background: var(--surface-3); color: var(--ink); font-weight: 800; }
-.re-fin-table tbody th { background: var(--surface); text-align: left; font-weight: 700; white-space: normal; line-height: 1.35; }
+.re-financials { padding: 16px; }
+.re-financials .card-head { margin-bottom: 12px; }
+.re-financials .card-head h2 { font-size: 15px; letter-spacing: -.02em; }
+.re-metric-tabs { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 5px; background: var(--canvas); }
+.re-metric-tabs .btn.tiny { min-height: 30px; padding: 5px 10px; border: 0; border-radius: 3px; background: transparent; color: var(--muted); font-size: 12px; font-weight: 600; }
+.re-metric-tabs .btn.tiny[aria-pressed="true"] { background: var(--surface-3); color: var(--ink); box-shadow: inset 0 -2px 0 var(--accent); }
+.re-table-meta { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 7px 16px; margin: 0 0 12px; color: var(--muted); font-size: 11px; }
+.re-unit-hint { margin-left: 12px; }
+.re-status-key { display: flex; gap: 14px; white-space: nowrap; }
+.re-status-key b { margin-right: 4px; color: var(--ink); font-size: 11px; }
+.re-status-key .re-key-estimate { color: var(--brand); }
+.re-scroll-hint { display: none; color: var(--muted); font-size: 11px; line-height: 1.6; margin-bottom: 9px; }
+.re-table-scroll { max-width: 100%; overflow-x: auto; border-top: 1px solid var(--line-strong); border-bottom: 1px solid var(--line-strong); scrollbar-color: var(--line-group) var(--surface); }
+.re-fin-table { width: 100%; min-width: 990px; table-layout: fixed; border-collapse: separate; border-spacing: 0; font-size: 13px; font-variant-numeric: tabular-nums; }
+.re-fin-table caption { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.re-fin-table .re-company-col { width: 230px; }
+.re-fin-table .re-cap-col { width: 130px; }
+.re-fin-table th, .re-fin-table td { padding: 12px 10px; border: 0; border-bottom: 1px solid var(--line); text-align: right; vertical-align: middle; white-space: nowrap; }
+.re-fin-table thead th { padding-top: 10px; padding-bottom: 10px; background: var(--surface-2); color: var(--muted); font-size: 12px; font-weight: 650; }
+.re-fin-table thead th[data-fin-year] { padding-right: 28px; }
+.re-fin-table thead th:nth-child(2), .re-fin-table .re-cap { border-right: 1px solid var(--line-strong); padding-right: 18px; }
+.re-heading-detail { color: var(--muted); font-size: 10.5px; font-weight: 400; }
+.re-fin-table tbody th { background: var(--surface); text-align: left; font-weight: 650; white-space: normal; line-height: 1.4; }
 .re-fin-table th:first-child { position: sticky; left: 0; z-index: 1; text-align: left; }
 .re-fin-table th a { display: block; overflow-wrap: anywhere; }
-.re-fin-table small { display: block; color: var(--muted); font-size: 10px; line-height: 1.4; font-weight: 400; }
-.re-fin-table .re-kind { display: inline; padding-left: 3px; font-size: 9px; font-weight: 700; }
+.re-fin-table th a:hover { color: var(--brand); text-decoration: underline; text-underline-offset: 3px; }
+.re-fin-table small { display: block; margin-top: 4px; color: var(--muted); font-size: 10.5px; line-height: 1.4; font-weight: 400; }
+.re-fin-table .re-company-meta { display: flex; flex-wrap: wrap; gap: 2px 7px; }
+.re-company-meta > span + span { padding-left: 7px; border-left: 1px solid var(--line-group); }
+.re-fin-table .re-cap { font-size: 13px; font-weight: 500; }
+.re-fin-table .re-number { font-size: 13px; font-weight: 500; }
+.re-fin-table .re-kind { display: inline-block; width: 12px; margin-left: 6px; color: var(--muted); text-align: left; font-size: 10px; font-weight: 500; }
 .re-fin-table .re-estimate { background: var(--surface-2); }
-.re-fin-table .re-unit { text-align: center; color: var(--muted); font-size: 11px; }
+.re-fin-table .re-estimate .re-kind { color: var(--brand); }
+.re-fin-table tbody tr:hover > *, .re-fin-table tbody tr:focus-within > * { background: var(--surface-3); }
 .re-fin-table tr:last-child > * { border-bottom: 0; }
+.re-fin-footer { padding-top: 9px; }
+.re-fin-footer .re-source { margin: 0 0 3px; font-size: 10.5px; line-height: 1.6; }
+.re-fin-footer .re-notes > summary { display: inline-block; font-size: 11px; color: var(--brand); list-style: none; }
+.re-fin-footer .re-notes > summary::before { content: "+"; display: inline-block; width: 15px; font-size: 13px; }
+.re-fin-footer .re-notes[open] > summary::before { content: "−"; }
+.re-fin-footer .re-notes p { margin: 6px 0; color: var(--muted); font-size: 11px; line-height: 1.65; }
 .re-notes summary, .re-secondary > summary { cursor: pointer; color: var(--muted); font-size: 12px; padding: 6px 0; }
 .re-notes ul { margin: 6px 0 0 18px; color: var(--muted); font-size: 11px; line-height: 1.65; }
 .re-secondary { margin-bottom: 12px; }
@@ -609,7 +635,19 @@ table.fin { width: 100%; border-collapse: collapse; font-size: 11.5px; font-vari
   .re-panel .card-head { align-items: flex-start; }
   .re-panel .card-head .tools { width: 100%; }
   .re-panel .card-head h2 { font-size: 15px; }
-  .re-fin-table .re-company-col { width: 145px; }
-  .re-fin-table { min-width: 995px; }
-  .re-fin-table th, .re-fin-table td { padding: 8px 5px; }
+  .re-financials { padding: 12px; }
+  .re-financials .card-head { gap: 10px; }
+  .re-financials .re-metric-tabs { width: auto; max-width: 100%; flex-wrap: nowrap; gap: 0; }
+  .re-metric-tabs .btn.tiny { min-height: 38px; padding: 5px 7px; font-size: 11px; }
+  .re-table-meta { gap: 7px; line-height: 1.6; }
+  .re-unit-hint { display: block; margin-left: 0; }
+  .re-fin-table .re-company-col { width: 156px; }
+  .re-fin-table .re-cap-col { width: 110px; }
+  .re-fin-table { min-width: 938px; }
+  .re-fin-table th, .re-fin-table td { padding: 10px 8px; }
+  .re-fin-table tbody th { box-shadow: 1px 0 0 var(--line-strong); font-size: 12px; }
+  .re-fin-table .re-company-meta { font-size: 10px; gap: 2px 5px; }
+  .re-company-meta > span + span { padding-left: 5px; }
+  .re-heading-detail { display: none; }
 }
+@media (max-width: 1280px) { .re-scroll-hint { display: block; } }
