@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-09-07T06:55:01.721Z",
+  "builtAt": "2026-09-07T07:00:01.942Z",
   "mode": "live",
-  "generatedAt": "2026-09-07T06:55:01.527Z",
-  "quotesGeneratedAt": "2026-09-07T06:55:01.527Z",
-  "heavyFingerprint": "{\"consensus\":\"2026-09-07T03:00:01.841390Z\",\"actuals\":\"2026-09-07T02:47:32.644404Z\",\"indicators\":\"2026-09-07T02:47:35.032Z\",\"holdcoNav\":\"2026-09-07T02:47:33.407Z\",\"sectorIndices\":\"2026-09-07T02:47:17.179Z\",\"sectorIndexDays\":250,\"rareEarth\":\"bd681f37fb35e95126f02cf562667adf795f96b9c677d0abec060d9359ec03d0\",\"stockCount\":81,\"mode\":\"live\",\"assets\":[\"e02030acb3ecd810\",\"6548d4c62bee13ed\",\"9ae66758b4c4f339\",\"4b6f676ab3b344c8\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"c09bf9ba0e797eca\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"1749b067015d590b\"]}",
+  "generatedAt": "2026-09-07T07:00:01.725Z",
+  "quotesGeneratedAt": "2026-09-07T07:00:01.725Z",
+  "heavyFingerprint": "{\"consensus\":\"2026-09-07T03:00:01.841390Z\",\"actuals\":\"2026-09-07T02:47:32.644404Z\",\"indicators\":\"2026-09-07T02:47:35.032Z\",\"holdcoNav\":\"2026-09-07T02:47:33.407Z\",\"sectorIndices\":\"2026-09-07T02:47:17.179Z\",\"sectorIndexDays\":250,\"rareEarth\":\"fd35835cfeeaf047d9a6ca385b04e889b4ecdbd34f631675f548f9de9d1781ad\",\"stockCount\":81,\"mode\":\"live\",\"assets\":[\"e02030acb3ecd810\",\"6548d4c62bee13ed\",\"9ae66758b4c4f339\",\"4b6f676ab3b344c8\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"c09bf9ba0e797eca\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"1749b067015d590b\"]}",
   "stockCount": 81,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
   "sources": {
     "quote": {
       "source": "mixed",
-      "updatedAt": "2026-09-07T06:54:18.452Z",
+      "updatedAt": "2026-09-07T06:59:18.948Z",
       "status": "ok"
     },
     "actuals": {
