@@ -651,14 +651,16 @@ table.fin { width: 100%; border-collapse: collapse; font-size: 11.5px; font-vari
 .re-compare-toolbar { margin-top: 6px; }
 .re-compare-toolbar h2 { margin: 0 8px 0 0; font-size: 13px; line-height: 1.4; }
 .re-compare-region { min-height: 0; max-height: none; overflow: auto; }
-.re-compare-region .re-compare-table { table-layout: fixed; width: 100%; min-width: 1450px; }
+.re-compare-region .re-compare-table { table-layout: fixed; width: 100%; min-width: 1040px; }
 .re-compare-table col.sticky-sector { width: 48px; }
 .re-compare-table col.sticky-stock { width: 180px; }
 .re-compare-table col.re-col-price { width: 78px; }
 .re-compare-table col.re-col-return { width: 58px; }
 .re-compare-table col.re-col-cap { width: 100px; }
-.re-compare-table col.re-col-ratio { width: 64px; }
-.re-compare-table col.re-col-financial { width: 72px; }
+.re-compare-table col.re-col-ratio { width: 86px; }
+.re-compare-table col.re-col-financial { width: 92px; }
+.re-compare-period { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 0 7px; font-size: 11px; color: var(--muted); }
+.re-compare-views { flex-wrap: wrap; }
 .re-compare-table caption { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .re-compare-table thead .col-sub { color: var(--muted); font-size: 9.5px; }
 .re-compare-table td:nth-child(2), .re-compare-table th.sticky-stock { left: 48px; width: 180px; min-width: 180px; max-width: 180px; }
@@ -673,6 +675,8 @@ table.fin { width: 100%; border-collapse: collapse; font-size: 11.5px; font-vari
 #rareAnnualDetail[hidden] { display: none; }
 @media (max-width: 640px) {
   .re-compare-toolbar h2 { width: 100%; }
+  .re-compare-toolbar .re-compare-views { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; gap: 4px; border: 0; border-radius: 0; overflow: visible; }
+  .re-compare-views button { border: 1px solid var(--line) !important; border-radius: 3px; padding: 6px 4px; min-height: 38px; }
   .re-compare-toolbar .visible-count { width: 100%; margin-top: 3px; }
   .re-compare-table col.sticky-stock { width: 160px; }
   .re-compare-table td:nth-child(2), .re-compare-table th.sticky-stock { width: 160px; min-width: 160px; max-width: 160px; }

@@ -143,7 +143,7 @@ export function rareMoneyValue(value, { target = "USD", currency, unit = "millio
 
 // Financial display uses fiscal average FX; valuation ratios use the same spot
 // FX for both sides so changing display currency cannot change a multiple.
-export function rareComparisonRow(company, stock, fx, { target = "KRW", basis = "threeMonth", years = [2025, 2026, 2027] } = {}) {
+export function rareComparisonRow(company, stock, fx, { target = "KRW", basis = "threeMonth", years = [2025, 2026, 2027, 2028] } = {}) {
   const fin = company.financials;
   const currency = company.domestic ? "KRW" : fin?.currency;
   const unit = company.domestic ? "hundredMillion" : "millions";
@@ -155,12 +155,15 @@ export function rareComparisonRow(company, stock, fx, { target = "KRW", basis = 
     : rareMoneyValue(nativeCap, { target, currency: capCurrency, unit, fx }).value;
   const financials = {};
   const ratios = {};
+  const evSource = company.valuation?.enterpriseValue;
+  const evUsd = rareMoneyValue(evSource?.value, { target: "USD", currency: evSource?.currency, unit: evSource?.unit, fx }).value;
+  const ev = !company.private ? rareMoneyValue(evSource?.value, { target, currency: evSource?.currency, unit: evSource?.unit, fx }).value : null;
   for (const year of years) {
     const raw = company.domestic ? stock?.annual?.[year] : fin?.annual?.[year];
     const selected = company.domestic && raw?.kind === "estimate" && raw.horizons ? raw.horizons[basis] : raw;
     const fiscalEnd = raw?.fiscalEnd || `${year}-${fin?.fiscalYearEnd || "12-31"}`;
     financials[year] = {};
-    for (const metric of ["revenue", "operatingIncome", "netIncome"]) {
+    for (const metric of ["revenue", "operatingIncome", "netIncome", "normalizedNetIncome"]) {
       const key = company.domestic && metric === "netIncome" ? "parentNetIncome" : metric;
       const native = selected?.[key];
       financials[year][metric] = { ...rareMoneyValue(native, { target, currency, unit, kind: raw?.kind, fiscalEnd, fx }),
@@ -173,6 +176,15 @@ export function rareComparisonRow(company, stock, fx, { target = "KRW", basis = 
       ratios[year][ratio] = { value: available && denominator > 0 ? capUsd / denominator : null,
         status: !available ? "missing" : denominator <= 0 ? "nm" : "ok", kind: raw?.kind || null };
     }
+    for (const [ratio, metric] of [["evEbitda", "ebitda"], ["evEbit", "ebit"]]) {
+      const record = company.valuation?.annual?.[year];
+      const denominator = rareMoneyValue(record?.[metric], { target: "USD", currency: company.valuation?.currency, unit: "millions", fx }).value;
+      const available = !company.private && Number.isFinite(evUsd) && Number.isFinite(denominator);
+      ratios[year][ratio] = { value: available && denominator > 0 ? evUsd / denominator : null,
+        status: !available ? "missing" : denominator <= 0 ? "nm" : "ok", kind: record?.kind || null,
+        numerator: evSource?.value ?? null, numeratorCurrency: evSource?.currency || null,
+        denominator: record?.[metric] ?? null, denominatorCurrency: company.valuation?.currency || null };
+    }
   }
   const history = (company.history || []).filter(r => Number.isFinite(r.close) && r.close > 0).slice().sort((a,b) => a.date.localeCompare(b.date));
   const end = history.at(-1);
@@ -181,7 +193,7 @@ export function rareComparisonRow(company, stock, fx, { target = "KRW", basis = 
   const ytdBase = history.filter(r => r.date.slice(0,4) < year).at(-1);
   const ytdHigh = end ? Math.max(...history.filter(r => r.date.slice(0,4) === year).map(r => r.close)) : null;
   const change = (v,b) => Number.isFinite(v) && b > 0 ? (v / b - 1) * 100 : null;
-  return { symbol: company.symbol, company, cap: Number.isFinite(cap) ? cap : null, financials, ratios,
+  return { symbol: company.symbol, company, cap: Number.isFinite(cap) ? cap : null, ev, financials, ratios,
     price: company.private ? null : company.domestic ? stock?.quote?.price : end?.close,
     priceDate: company.domestic ? stock?.quote?.observedAt : end?.date,
     d1: company.private ? null : company.domestic ? stock?.performance?.d1 : change(end?.close, prior?.close),
