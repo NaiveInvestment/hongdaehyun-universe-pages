@@ -1,4 +1,4 @@
-import { quoteVenue, combinedQuoteVenue, quoteSourceName, quoteFreshness, resolveDisplayPeriods, relativePeerSeries, kstSession } from "./view-model.js?v=d864b23cbab1";
+import { quoteVenue, combinedQuoteVenue, quoteSourceName, quoteFreshness, resolveDisplayPeriods, relativePeerSeries, rareUsdValue, kstSession } from "./view-model.js?v=f909d521481c";
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
@@ -152,7 +152,6 @@ const state = {
   homeChartExpanded: false,
   range: "ytd",
   rareRange: "6m",
-  rareMetric: "revenue",
   rareHidden: new Set(),
   theme: "dark",
   liveUpdates: new Map(),
@@ -1213,53 +1212,65 @@ function rareEarthPanel() {
     return `<button type="button" data-rare-symbol="${escapeHtml(company.symbol)}" aria-pressed="${!state.rareHidden.has(company.symbol)}" ${line ? "" : "disabled"} title="${escapeHtml(title)}"><i class="s${colorIndex.get(company.symbol)}"></i>${escapeHtml(RARE_SHORT[company.symbol] || company.name)} <b class="${numberClass(line?.returnPct)}">${line ? formatPercent(line.returnPct, 1) : "제외"}</b></button>`;
   }).join("");
   const excludedNote = model.excluded.length ? `<p class="note re-excluded">제외: ${model.excluded.map(item => `${escapeHtml(item.name)} (${escapeHtml(item.reason)})`).join(", ")}. 기간을 줄이면 상장 이후 추이를 볼 수 있습니다.</p>` : "";
-  const metricLabel = RARE_METRICS.find(([key]) => key === state.rareMetric)?.[1] || "매출";
-  const years = packet.years || [];
-  const rows = packet.companies.map(company => {
-    const stock = company.domestic ? state.snapshot.stocks.find(item => item.code === company.symbol) : null;
-    const finances = company.financials;
-    const unit = company.domestic ? "KRW 억원" : `${finances?.currency || company.currency} 백만`;
-    const cap = company.domestic ? stock?.quote?.marketCap : finances?.marketCap?.value;
-    const capCurrency = company.domestic ? "KRW 억원" : `${finances?.marketCap?.currency || company.currency} 백만`;
-    const capDate = company.domestic ? (stock?.quote?.observedAt ? kstSession(Date.parse(stock.quote.observedAt)).date : null) : finances?.marketCap?.asOf;
-    const name = company.domestic ? `<a href="#/stock/${company.symbol}">${escapeHtml(company.name)}</a>`
-      : `<a href="${escapeHtml(finances?.sourceUrl || `https://finance.yahoo.com/quote/${encodeURIComponent(company.symbol)}/`)}" target="_blank" rel="noopener noreferrer">${escapeHtml(company.name)}</a>`;
-    const cells = years.map(year => {
-      const raw = company.domestic ? stock?.annual?.[year] : finances?.annual?.[year];
-      const metric = company.domestic && state.rareMetric === "netIncome" ? "parentNetIncome" : state.rareMetric;
-      const selected = company.domestic && raw?.kind === "estimate" && raw.horizons ? raw.horizons[state.estimateBasis] : raw;
-      const value = selected?.[metric];
-      const kind = raw?.kind === "actual" ? "A" : raw?.kind === "estimate" ? "E" : "";
-      const fiscalEnd = raw?.fiscalEnd || `${year}-12-31`;
-      const source = company.domestic ? (kind === "A" ? "OpenDART" : `ConsenDB ${HORIZON_LABELS[state.estimateBasis]}`) : "TIKR";
-      const missing = !Number.isFinite(value);
-      const note = raw?.notes?.[metric] || (missing ? "원천에서 확인된 값 없음" : "");
-      const title = `${company.name}, ${fiscalEnd}, ${metricLabel}, ${unit}, ${kind === "A" ? "확정 실적" : kind === "E" ? "추정치" : "미확인"}, ${source}${note ? `, ${note}` : ""}`;
-      return `<td class="num ${kind === "E" ? "re-estimate" : ""}" data-year="${year}" data-kind="${kind}" title="${escapeHtml(title)}"><span class="re-number ${missing ? "na" : ""}">${missing ? "-" : formatNumber(value, 1)}</span><span class="re-kind" aria-label="${kind === "A" ? "실적" : kind === "E" ? "추정" : ""}">${!missing ? kind : ""}</span></td>`;
-    }).join("");
-    const fiscalMonth = Number((finances?.fiscalYearEnd || "12-31").slice(0, 2));
-    return `<tr data-rare-company="${escapeHtml(company.symbol)}"><th scope="row" title="${escapeHtml(`${company.name}, ${company.symbol}, ${company.exchange}, 재무 ${unit}, ${fiscalMonth}월 결산`)}">${name}<small class="re-company-meta"><span>${escapeHtml(company.symbol)}</span><span>${escapeHtml(unit)}</span><span>${fiscalMonth}월 결산</span></small></th>
-      <td class="num re-cap" title="${escapeHtml(`시가총액 ${capDate || "기준일 미확인"}, ${company.domestic ? quoteSourceName(stock?.quote?.source, stock?.quote, RUNTIME.staticMode) : "TIKR"}`)}">${formatNumber(cap, 1)}<small>${escapeHtml(capCurrency)}</small></td>
-      ${cells}</tr>`;
-  }).join("");
-  const metrics = RARE_METRICS.map(([key, label]) => `<button class="btn tiny" type="button" data-rare-metric="${key}" aria-pressed="${state.rareMetric === key}">${label}</button>`).join("");
-  const notes = packet.companies.filter(company => company.financials?.note).map(company => `<li>${escapeHtml(company.name)}: ${escapeHtml(company.financials.note)} <a href="${escapeHtml(company.financials.actualSourceUrl)}" target="_blank" rel="noopener noreferrer">과거 손익계산서</a>, <a href="${escapeHtml(company.financials.sourceUrl)}" target="_blank" rel="noopener noreferrer">미래 컨센서스</a></li>`).join("");
-  const metricNote = state.rareMetric === "operatingIncome" ? "해외 실제 영업이익 / 전망 EBIT, 국내 영업이익"
-    : state.rareMetric === "netIncome" ? "해외 GAAP 순이익, 국내 지배순이익"
-      : state.rareMetric === "normalizedNetIncome" ? "조정순이익, 보고 순이익과 별도 지표" : "기업별 결산연도 기준";
   return `<section class="card re-panel" id="rareEarthComparison" aria-labelledby="rareEarthTitle">
     <div class="card-head"><h2 id="rareEarthTitle">희토류 ${packet.companies.length}개 기업 상대주가</h2><span class="tools">${ranges}</span></div>
     ${chart}<div class="chart-legend re-legend">${legend}</div>
     <p class="note re-basis">${escapeHtml(model.baseDate || "-")} 기준 = 100, ${escapeHtml(model.endDate || "-")}까지. 현지 통화 종가, 환율과 배당 제외. 기준일 휴장은 직전 종가 사용. 일봉: 국내 Kiwoom / Naver, 해외 Yahoo Finance. 범례로 개별 선 선택.</p>${excludedNote}
   </section>
-  <section class="card re-panel re-financials" id="rareEarthFinancials" aria-labelledby="rareFinancialTitle">
-    <div class="card-head"><h2 id="rareFinancialTitle">시가총액과 연간 ${escapeHtml(metricLabel)}</h2><div class="tools re-metric-tabs" role="group" aria-label="연간 재무 지표 선택">${metrics}</div></div>
-    <div class="re-table-meta"><p>${escapeHtml(metricNote)}<span class="re-unit-hint">재무 단위는 기업명 아래 표시</span></p><div class="re-status-key"><span><b>A</b> 실적</span><span><b class="re-key-estimate">E</b> 컨센서스</span><span>- 미제공</span></div></div>
-    <p class="re-scroll-hint">표를 좌우로 넘기면 2030년까지 볼 수 있습니다. 기업명은 고정됩니다.</p>
-    <div class="re-table-scroll" tabindex="0" role="region" aria-label="기업별 시가총액과 연간 실적 비교표, 가로 스크롤"><table class="re-fin-table"><caption>${escapeHtml(metricLabel)}, 기업별 원통화와 단위 및 결산일 기준</caption><colgroup><col class="re-company-col"><col class="re-cap-col">${years.map(() => '<col class="re-year-col">').join("")}</colgroup>
-      <thead><tr><th scope="col">기업 <span class="re-heading-detail">/ 재무 단위</span></th><th scope="col">시가총액</th>${years.map(year => `<th scope="col" data-fin-year="${year}">${year}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>
-    <div class="re-fin-footer"><p class="note re-source">해외 시총 ${escapeHtml(packet.companies.find(c => c.financials?.marketCap?.asOf)?.financials.marketCap.asOf || "-")}, TIKR 조회 ${escapeHtml(packet.financialsRetrievedAt ? kstSession(Date.parse(packet.financialsRetrievedAt)).date : "-")} KST. 국내 시총은 현재 시세 기준.</p>
-    <details class="re-notes"><summary>출처와 비교 기준</summary><p class="note">해외 실제치는 TIKR 손익계산서, 추정치는 연간 컨센서스입니다. 해외 이익은 실제 영업이익 / 추정 EBIT, 순이익은 GAAP입니다. 국내는 OpenDART와 ConsenDB ${HORIZON_LABELS[state.estimateBasis]}, 순이익은 지배순이익입니다. 조정순이익은 별도 지표입니다.</p><p class="note">기업명을 누르면 국내 상세 또는 TIKR 원문을 엽니다. 값에 마우스를 올리면 결산일과 출처를 확인할 수 있습니다. 해외 시총과 재무는 표시한 조회일의 스냅샷입니다. 현지 통화가 달라 시총과 매출의 숫자 크기만으로 기업 간 규모를 비교할 수 없습니다.</p><ul>${notes}</ul></details></div>
+  ${rareFinancialTable(packet)}`;
+}
+
+function rareCapModel(company, stock, fx) {
+  const native = company.domestic ? stock?.quote?.marketCap : company.financials?.marketCap?.value;
+  const currency = company.domestic ? "KRW" : company.financials?.marketCap?.currency;
+  const converted = rareUsdValue(native, { currency, unit: company.domestic ? "hundredMillion" : "millions", fx });
+  const date = company.domestic ? (stock?.quote?.observedAt ? kstSession(Date.parse(stock.quote.observedAt)).date : "미확인") : company.financials?.marketCap?.asOf;
+  return { ...converted, title: `시가총액 ${date || "미확인"}, 원본 ${formatNumber(native, 2)} ${currency || ""} ${company.domestic ? "억원" : "백만"}, 환산환율 ${fx?.spot?.asOf || "미확인"} 고정`, date };
+}
+
+function rareFinancialTable(packet) {
+  const years = packet.years || [];
+  const fx = packet.fx;
+  const companyBlocks = packet.companies.map(company => {
+    const stock = company.domestic ? state.snapshot.stocks.find(item => item.code === company.symbol) : null;
+    const fin = company.financials;
+    const currency = company.domestic ? "KRW" : fin?.currency;
+    const fiscal = fin?.fiscalYearEnd || "12-31";
+    const cap = rareCapModel(company, stock, fx);
+    const name = company.domestic ? `<a href="#/stock/${company.symbol}">${escapeHtml(company.name)}</a>`
+      : `<a href="${escapeHtml(fin?.sourceUrl || `https://finance.yahoo.com/quote/${encodeURIComponent(company.symbol)}/`)}" target="_blank" rel="noopener noreferrer">${escapeHtml(company.name)}</a>`;
+    const rows = RARE_METRICS.map(([metric, label], index) => {
+      const metricLabel = company.domestic && metric === "netIncome" ? "지배순이익" : label;
+      const cells = years.map(year => {
+        const raw = company.domestic ? stock?.annual?.[year] : fin?.annual?.[year];
+        const key = company.domestic && metric === "netIncome" ? "parentNetIncome" : metric;
+        const selected = company.domestic && raw?.kind === "estimate" && raw.horizons ? raw.horizons[state.estimateBasis] : raw;
+        const native = selected?.[key];
+        const fiscalEnd = raw?.fiscalEnd || `${year}-${fiscal}`;
+        const converted = rareUsdValue(native, { currency, unit: company.domestic ? "hundredMillion" : "millions", kind: raw?.kind, fiscalEnd, fx });
+        const present = Number.isFinite(converted.value);
+        const kind = raw?.kind === "actual" ? "A" : raw?.kind === "estimate" ? "E" : "";
+        const source = company.domestic ? (kind === "A" ? "OpenDART" : `ConsenDB ${HORIZON_LABELS[state.estimateBasis]}`) : "TIKR";
+        const rateNote = currency === "USD" ? "USD 원본, 환산 없음" : converted.rate
+          ? `${converted.basis}, ${converted.rate.periodStart}~${converted.rate.periodEnd}, 1 ${currency} = ${converted.rate.usdPerUnit.toPrecision(9)} USD`
+          : "해당 환율 미확보";
+        const title = `${company.name}, ${fiscalEnd}, ${metricLabel}, ${kind === "A" ? "실적" : "전망"}, ${source}. 원본 ${formatNumber(native, 2)} ${currency || ""} ${company.domestic ? "억원" : "백만"}. ${rateNote}${raw?.notes?.[key] ? `. ${raw.notes[key]}` : ""}`;
+        return `<td data-year="${year}" data-kind="${kind}" class="${kind === "E" ? "re-estimate" : ""} ${year === 2026 ? "re-forecast-edge" : ""}" title="${escapeHtml(title)}"><span class="re-number ${present ? "" : "na"}">${present ? formatNumber(converted.value, 1) : "-"}</span><span class="re-kind" aria-label="${present ? kind === "A" ? "실적" : "추정" : "미제공"}">${present ? kind : ""}</span></td>`;
+      }).join("");
+      return `<tr data-metric="${metric}" class="${index === 0 ? "re-revenue" : ""} ${metric === "normalizedNetIncome" ? "re-adjusted" : ""}"><th scope="row" class="re-metric">${escapeHtml(metricLabel)}</th>${cells}</tr>`;
+    }).join("");
+    return `<tbody data-rare-company="${escapeHtml(company.symbol)}"><tr class="re-company-row"><th colspan="8" scope="rowgroup"><div class="re-company-band"><div class="re-company">${name}<small class="re-company-meta">${escapeHtml(company.symbol)} / ${Number(fiscal.slice(0, 2))}월 결산</small></div><div class="re-cap" title="${escapeHtml(cap.title)}"><small>시가총액</small><strong>${formatNumber(cap.value, 1)}</strong></div></div></th></tr>${rows}</tbody>`;
+  }).join("");
+  const notes = packet.companies.filter(c => c.financials).map(c => `<li><b>${escapeHtml(c.name)}</b>: ${escapeHtml(c.financials.note || "")} <a href="${escapeHtml(c.financials.actualSourceUrl)}" target="_blank" rel="noopener noreferrer">실적 원문</a>, <a href="${escapeHtml(c.financials.sourceUrl)}" target="_blank" rel="noopener noreferrer">전망 원문</a></li>`).join("");
+  const rates = fx ? Object.entries(fx.actuals).map(([key, rate]) => `<li>${key.startsWith("KRW") ? "제이에스링크" : "Lynas"} FY${key.slice(4, 8)} (${rate.periodStart}~${rate.periodEnd}): ${key.startsWith("KRW") ? `1,000 KRW = ${formatNumber(rate.usdPerUnit * 1000, 6)}` : `1 AUD = ${formatNumber(rate.usdPerUnit, 6)}`} USD, ${rate.observations}개 관측일 평균</li>`).join("") : "";
+  const spot = fx?.spot?.rates;
+  return `<section class="card re-panel re-financials" id="rareEarthFinancials" aria-labelledby="rareFinancialTitle">
+    <header class="re-fin-heading"><div><h2 id="rareFinancialTitle">희토류 기업 재무 비교</h2><p>시가총액, 매출과 이익 추이 <span>2024–2030</span></p></div><strong class="re-unit">USD 백만</strong></header>
+    <div class="re-table-meta"><p>실적은 결산기간 평균환율, 시총과 전망은 <b>${escapeHtml(fx?.spot?.asOf || "미확인")}</b> 환율 고정</p><p class="re-status-key"><span>A 실적</span><span>E 컨센서스</span><span>- 미제공</span></p></div>
+    <p class="re-scroll-hint">좌우로 넘겨 연도를 비교하세요. 기업명과 손익 항목은 고정됩니다.</p>
+    <div class="re-table-scroll" tabindex="0" role="region" aria-label="희토류 기업 재무 비교, USD 백만, 가로 스크롤"><table class="re-fin-table"><caption>기업별 시가총액과 연간 손익, 모든 금액 USD 백만. 연도는 각 기업의 결산연도.</caption><colgroup><col class="re-metric-col">${years.map(() => '<col>').join("")}</colgroup><thead><tr><th rowspan="2" scope="col" class="re-metric">기업 / 연간 손익</th><th colspan="2" scope="colgroup">과거 실적</th><th scope="col" class="re-forecast-edge">실적 / 전망</th><th colspan="4" scope="colgroup">컨센서스</th></tr><tr>${years.map(year => `<th scope="col" data-fin-year="${year}" class="${year === 2026 ? "re-forecast-edge" : ""}">${year}</th>`).join("")}</tr></thead>${companyBlocks}</table></div>
+    <div class="re-fin-footer"><p class="re-source">자료: TIKR 조회 ${escapeHtml(packet.financialsRetrievedAt ? kstSession(Date.parse(packet.financialsRetrievedAt)).date : "-")} KST, OpenDART, ConsenDB, <a href="${escapeHtml(fx?.sourceUrl || "https://www.ecb.europa.eu/")}" target="_blank" rel="noopener noreferrer">ECB 환율</a>. 해외 시총 2026-09-04, 국내 시총은 현재 시세.</p><p>해외 영업이익은 실적 영업이익 / 전망 EBIT, 순이익은 GAAP입니다. 국내 순이익은 지배순이익입니다. Lynas의 2026년은 6월 결산 실적입니다.</p>
+    <details class="re-notes"><summary>적용 환율과 원본 데이터 확인</summary><p>시가총액과 전망 환산: ${escapeHtml(fx?.spot?.asOf || "-")} 기준, 1 USD = ${formatNumber(spot?.KRW ? 1 / spot.KRW.usdPerUnit : null, 4)} KRW, 1 AUD = ${formatNumber(spot?.AUD?.usdPerUnit, 6)} USD, 1 CAD = ${formatNumber(spot?.CAD?.usdPerUnit, 6)} USD. 향후 환율 예측값이 아닌 동일 환율 가정입니다. 국내 시총은 가격이 갱신돼도 이 환산환율을 유지합니다.</p><p>과거 손익은 ECB의 같은 날짜 EUR 기준 환율을 USD / 원통화로 교차 환산한 뒤, 해당 회계연도 관측일의 USD 환산계수를 단순 평균했습니다. USD 원본 손익은 그대로 사용합니다. Neo는 시총 CAD, 손익 USD 원본으로 각각 처리했습니다.</p><ul>${rates}</ul><p>숫자에 마우스를 올리면 원본 통화, 금액, 결산일과 적용 환율을 볼 수 있습니다. 미확인 원본이나 환율은 -로 남깁니다. 해외 재무와 환율은 조회 스냅샷이며 자동 갱신되지 않습니다. 국내 전망은 ConsenDB ${HORIZON_LABELS[state.estimateBasis]}입니다. 조정순이익은 별도 항목이며 GAAP 순이익을 대체하지 않습니다.</p><ul>${notes}</ul></details></div>
   </section>`;
 }
 
@@ -2161,8 +2172,9 @@ function renderedNumber(text) {
 function updateLiveRow(stock) {
   const peerCap = $(`[data-rare-company="${stock.code}"] .re-cap`);
   if (peerCap) {
-    peerCap.innerHTML = `${formatNumber(stock.quote?.marketCap, 1)}<small>KRW 억원</small>`;
-    peerCap.title = `시가총액 ${stock.quote?.observedAt ? kstSession(Date.parse(stock.quote.observedAt)).date : "기준일 미확인"}, ${quoteSourceName(stock.quote?.source, stock.quote, RUNTIME.staticMode)}`;
+    const cap = rareCapModel({ domestic: true }, stock, state.snapshot?.rareEarth?.fx);
+    peerCap.innerHTML = `<small>시가총액</small><strong>${formatNumber(cap.value, 1)}</strong>`;
+    peerCap.title = cap.title;
   }
   const row = $(`#tableBody tr[data-code="${stock.code}"]`);
   if (!row) return;
@@ -2340,8 +2352,6 @@ function bindEvents() {
   $("#view").addEventListener("click", (event) => {
     const rareRange = event.target.closest("[data-rare-range]");
     if (rareRange) { state.rareRange = rareRange.dataset.rareRange; renderView({ preserveScroll: true }); return $(`[data-rare-range="${state.rareRange}"]`)?.focus(); }
-    const rareMetric = event.target.closest("[data-rare-metric]");
-    if (rareMetric) { state.rareMetric = rareMetric.dataset.rareMetric; renderView({ preserveScroll: true }); return $(`[data-rare-metric="${state.rareMetric}"]`)?.focus(); }
     const rareSymbol = event.target.closest("[data-rare-symbol]");
     if (rareSymbol) {
       const symbol = rareSymbol.dataset.rareSymbol;

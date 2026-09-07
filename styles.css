@@ -585,50 +585,54 @@ table.fin { width: 100%; border-collapse: collapse; font-size: 11.5px; font-vari
 .re-legend button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .re-basis, .re-source, .re-panel > .note { line-height: 1.6; margin: 6px 0; color: var(--muted); font-size: 11px; }
 .re-excluded { color: var(--muted); }
+/* chart-templates financial model: shared years, company bands and indented earnings rows. */
 .re-financials { padding: 16px; }
-.re-financials .card-head { margin-bottom: 12px; }
-.re-financials .card-head h2 { font-size: 15px; letter-spacing: -.02em; }
-.re-metric-tabs { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 5px; background: var(--canvas); }
-.re-metric-tabs .btn.tiny { min-height: 30px; padding: 5px 10px; border: 0; border-radius: 3px; background: transparent; color: var(--muted); font-size: 12px; font-weight: 600; }
-.re-metric-tabs .btn.tiny[aria-pressed="true"] { background: var(--surface-3); color: var(--ink); box-shadow: inset 0 -2px 0 var(--accent); }
-.re-table-meta { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 7px 16px; margin: 0 0 12px; color: var(--muted); font-size: 11px; }
-.re-unit-hint { margin-left: 12px; }
+.re-fin-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+.re-fin-heading h2 { font-size: 20px; line-height: 1.3; letter-spacing: -.025em; margin: 0 0 5px; }
+.re-fin-heading p { color: var(--muted); font-size: 13px; line-height: 1.5; }
+.re-fin-heading p span { margin-left: 12px; font-variant-numeric: tabular-nums; }
+.re-unit { font-size: 14px; white-space: nowrap; padding-top: 4px; }
+.re-table-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 18px; margin-bottom: 10px; font-size: 12px; line-height: 1.6; color: var(--muted); }
+.re-table-meta b { color: var(--ink); font-weight: 600; }
 .re-status-key { display: flex; gap: 14px; white-space: nowrap; }
-.re-status-key b { margin-right: 4px; color: var(--ink); font-size: 11px; }
-.re-status-key .re-key-estimate { color: var(--brand); }
-.re-scroll-hint { display: none; color: var(--muted); font-size: 11px; line-height: 1.6; margin-bottom: 9px; }
-.re-table-scroll { max-width: 100%; overflow-x: auto; border-top: 1px solid var(--line-strong); border-bottom: 1px solid var(--line-strong); scrollbar-color: var(--line-group) var(--surface); }
-.re-fin-table { width: 100%; min-width: 990px; table-layout: fixed; border-collapse: separate; border-spacing: 0; font-size: 13px; font-variant-numeric: tabular-nums; }
+.re-scroll-hint { display: none; color: var(--muted); font-size: 12px; margin: 6px 0 10px; }
+.re-table-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; position: relative; container-type: inline-size; border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink); scrollbar-color: var(--line-group) var(--surface); }
+.re-fin-table { width: 100%; min-width: 1010px; table-layout: fixed; border-collapse: separate; border-spacing: 0; font: 16px/1.3 Arial, 'Malgun Gothic', sans-serif; font-variant-numeric: tabular-nums; }
 .re-fin-table caption { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.re-fin-table .re-company-col { width: 230px; }
-.re-fin-table .re-cap-col { width: 130px; }
-.re-fin-table th, .re-fin-table td { padding: 12px 10px; border: 0; border-bottom: 1px solid var(--line); text-align: right; vertical-align: middle; white-space: nowrap; }
-.re-fin-table thead th { padding-top: 10px; padding-bottom: 10px; background: var(--surface-2); color: var(--muted); font-size: 12px; font-weight: 650; }
-.re-fin-table thead th[data-fin-year] { padding-right: 28px; }
-.re-fin-table thead th:nth-child(2), .re-fin-table .re-cap { border-right: 1px solid var(--line-strong); padding-right: 18px; }
-.re-heading-detail { color: var(--muted); font-size: 10.5px; font-weight: 400; }
-.re-fin-table tbody th { background: var(--surface); text-align: left; font-weight: 650; white-space: normal; line-height: 1.4; }
-.re-fin-table th:first-child { position: sticky; left: 0; z-index: 1; text-align: left; }
-.re-fin-table th a { display: block; overflow-wrap: anywhere; }
-.re-fin-table th a:hover { color: var(--brand); text-decoration: underline; text-underline-offset: 3px; }
-.re-fin-table small { display: block; margin-top: 4px; color: var(--muted); font-size: 10.5px; line-height: 1.4; font-weight: 400; }
-.re-fin-table .re-company-meta { display: flex; flex-wrap: wrap; gap: 2px 7px; }
-.re-company-meta > span + span { padding-left: 7px; border-left: 1px solid var(--line-group); }
-.re-fin-table .re-cap { font-size: 13px; font-weight: 500; }
-.re-fin-table .re-number { font-size: 13px; font-weight: 500; }
-.re-fin-table .re-kind { display: inline-block; width: 12px; margin-left: 6px; color: var(--muted); text-align: left; font-size: 10px; font-weight: 500; }
+.re-metric-col { width: 180px; }
+.re-fin-table th, .re-fin-table td { border: 0; padding: 6px 12px; height: 33px; text-align: right; white-space: nowrap; }
+.re-fin-table thead th { color: var(--muted); background: var(--surface); font-size: 13px; font-weight: 600; }
+.re-fin-table thead tr:first-child th { border-bottom: 1px solid var(--line); text-align: center; height: 30px; }
+.re-fin-table thead tr:last-child th { padding-right: 27px; color: var(--ink); font-size: 15px; }
+.re-fin-table .re-metric { position: sticky; left: 0; z-index: 2; text-align: left; background: var(--surface); font-size: 13px; font-weight: 500; box-shadow: 1px 0 0 var(--line); }
+.re-fin-table thead .re-metric { text-align: left !important; }
+.re-fin-table .re-forecast-edge { border-left: 1px dashed var(--line-strong); }
+.re-fin-table .re-company-row th { padding: 0; background: var(--surface-2); border-top: 1px solid var(--line-strong); border-bottom: 1px solid var(--line); text-align: left; }
+.re-company-band { position: sticky; left: 0; width: min(1010px, 100cqw); max-width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 12px; background: var(--surface-2); }
+.re-company { min-width: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 3px 12px; }
+.re-company a { color: var(--ink); font-size: 15px; font-weight: 700; white-space: normal; }
+.re-company a:hover { color: var(--brand); text-decoration: underline; text-underline-offset: 3px; }
+.re-company-meta { color: var(--muted); font-size: 11px; font-weight: 400; white-space: nowrap; }
+.re-cap { display: flex; align-items: baseline; gap: 9px; white-space: nowrap; flex-shrink: 0; }
+.re-cap small { color: var(--muted); font-size: 11px; font-weight: 400; }
+.re-cap strong { color: var(--ink); font-size: 16px; font-weight: 700; }
+.re-fin-table .re-revenue .re-metric, .re-fin-table .re-revenue .re-number { font-weight: 700; }
+.re-fin-table .re-adjusted .re-metric { padding-left: 24px; color: var(--muted); }
+.re-fin-table .re-adjusted > * { padding-bottom: 12px; }
+.re-fin-table .re-number { display: inline-block; font-size: 16px; }
+.re-fin-table .re-kind { display: inline-block; width: 9px; margin-left: 5px; font-size: 10px; color: var(--muted); text-align: left; }
 .re-fin-table .re-estimate { background: var(--surface-2); }
 .re-fin-table .re-estimate .re-kind { color: var(--brand); }
-.re-fin-table tbody tr:hover > *, .re-fin-table tbody tr:focus-within > * { background: var(--surface-3); }
-.re-fin-table tr:last-child > * { border-bottom: 0; }
-.re-fin-footer { padding-top: 9px; }
-.re-fin-footer .re-source { margin: 0 0 3px; font-size: 10.5px; line-height: 1.6; }
-.re-fin-footer .re-notes > summary { display: inline-block; font-size: 11px; color: var(--brand); list-style: none; }
-.re-fin-footer .re-notes > summary::before { content: "+"; display: inline-block; width: 15px; font-size: 13px; }
-.re-fin-footer .re-notes[open] > summary::before { content: "−"; }
-.re-fin-footer .re-notes p { margin: 6px 0; color: var(--muted); font-size: 11px; line-height: 1.65; }
+.re-fin-table tr[data-metric]:hover > * { background: var(--surface-3); }
+.re-fin-table tbody + tbody .re-company-row th { border-top: 2px solid var(--line-strong); }
+.re-fin-footer { padding-top: 10px; }
+.re-fin-footer p, .re-fin-footer .re-source { color: var(--muted); font-size: 12px; line-height: 1.6; margin: 3px 0; }
+.re-fin-footer a { color: var(--brand); text-decoration: underline; text-underline-offset: 2px; }
 .re-notes summary, .re-secondary > summary { cursor: pointer; color: var(--muted); font-size: 12px; padding: 6px 0; }
-.re-notes ul { margin: 6px 0 0 18px; color: var(--muted); font-size: 11px; line-height: 1.65; }
+.re-notes summary { min-height: 40px; display: flex; align-items: center; color: var(--brand); }
+.re-notes summary::before { content: '+'; margin-right: 8px; }
+.re-notes[open] summary::before { content: '−'; }
+.re-notes ul { margin: 6px 0 6px 18px; color: var(--muted); font-size: 12px; line-height: 1.7; }
 .re-secondary { margin-bottom: 12px; }
 .re-secondary[open] > summary { margin-bottom: 8px; }
 @media (max-width: 640px) {
@@ -636,18 +640,20 @@ table.fin { width: 100%; border-collapse: collapse; font-size: 11.5px; font-vari
   .re-panel .card-head .tools { width: 100%; }
   .re-panel .card-head h2 { font-size: 15px; }
   .re-financials { padding: 12px; }
-  .re-financials .card-head { gap: 10px; }
-  .re-financials .re-metric-tabs { width: auto; max-width: 100%; flex-wrap: nowrap; gap: 0; }
-  .re-metric-tabs .btn.tiny { min-height: 38px; padding: 5px 7px; font-size: 11px; }
-  .re-table-meta { gap: 7px; line-height: 1.6; }
-  .re-unit-hint { display: block; margin-left: 0; }
-  .re-fin-table .re-company-col { width: 156px; }
-  .re-fin-table .re-cap-col { width: 110px; }
-  .re-fin-table { min-width: 938px; }
-  .re-fin-table th, .re-fin-table td { padding: 10px 8px; }
-  .re-fin-table tbody th { box-shadow: 1px 0 0 var(--line-strong); font-size: 12px; }
-  .re-fin-table .re-company-meta { font-size: 10px; gap: 2px 5px; }
-  .re-company-meta > span + span { padding-left: 5px; }
-  .re-heading-detail { display: none; }
+  .re-fin-heading h2 { font-size: 18px; }
+  .re-fin-heading { gap: 8px; }
+  .re-fin-heading p span { display: block; margin-left: 0; }
+  .re-unit { font-size: 12px; }
+  .re-metric-col { width: 144px; }
+  .re-fin-table { min-width: 956px; }
+  .re-fin-table th, .re-fin-table td { padding-left: 8px; padding-right: 8px; }
+  .re-company-band { width: 100cqw; gap: 8px; padding: 9px 8px; }
+  .re-company { display: block; }
+  .re-company a { font-size: 14px; line-height: 1.35; display: block; overflow-wrap: anywhere; }
+  .re-company-meta { display: block; margin-top: 3px; font-size: 10px; }
+  .re-cap { display: block; text-align: right; }
+  .re-cap small { display: block; margin-bottom: 4px; }
+  .re-cap strong { font-size: 15px; }
+  .re-fin-table .re-adjusted .re-metric { padding-left: 16px; }
 }
 @media (max-width: 1280px) { .re-scroll-hint { display: block; } }

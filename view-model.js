@@ -121,3 +121,12 @@ export function relativePeerSeries(companies = [], range = "ytd") {
   const dates = [...new Set(series.flatMap(item => item.points.map(point => point.date)))].sort();
   return { baseDate, endDate, dates, series: series.map(item => { const byDate = new Map(item.points.map(point => [point.date, point.value])); return { ...item, values: dates.map(date => byDate.get(date) ?? null) }; }), excluded };
 }
+// Display conversion only. Preserve source values and fail closed when a fiscal FX rate is absent.
+export function rareUsdValue(value, { currency, unit = "millions", kind, fiscalEnd, fx } = {}) {
+  const scale = unit === "hundredMillion" ? 100 : unit === "millions" ? 1 : null;
+  const rate = currency === "USD" ? { usdPerUnit: 1 } : kind === "actual"
+    ? fx?.actuals?.[`${currency}:${fiscalEnd}`] : fx?.spot?.rates?.[currency];
+  return { value: Number.isFinite(value) && scale && Number.isFinite(rate?.usdPerUnit) && rate.usdPerUnit > 0
+    ? value * scale * rate.usdPerUnit : null, rate: rate || null,
+    basis: currency === "USD" ? "USD 원본" : kind === "actual" ? "회계연도 일별 환율 평균" : "조회 기준 고정환율" };
+}
