@@ -140,3 +140,51 @@ export function rareMoneyValue(value, { target = "USD", currency, unit = "millio
     ? value * scale * rate.krwPerUnit : null, rate: rate || null,
     basis: currency === "KRW" ? "KRW 원본" : kind === "actual" ? "회계연도 일별 환율 평균" : "조회 기준 고정환율" };
 }
+
+// Financial display uses fiscal average FX; valuation ratios use the same spot
+// FX for both sides so changing display currency cannot change a multiple.
+export function rareComparisonRow(company, stock, fx, { target = "KRW", basis = "threeMonth", years = [2025, 2026, 2027] } = {}) {
+  const fin = company.financials;
+  const currency = company.domestic ? "KRW" : fin?.currency;
+  const unit = company.domestic ? "hundredMillion" : "millions";
+  const nativeCap = company.domestic ? stock?.quote?.marketCap : fin?.marketCap?.value;
+  const capCurrency = company.domestic ? "KRW" : fin?.marketCap?.currency;
+  const capUsd = rareMoneyValue(nativeCap, { target: "USD", currency: capCurrency, unit, fx }).value;
+  const cap = company.private
+    ? (target === "USD" ? company.equityValue?.value : company.equityValue?.value * company.equityValue?.krwPerUsd / 100)
+    : rareMoneyValue(nativeCap, { target, currency: capCurrency, unit, fx }).value;
+  const financials = {};
+  const ratios = {};
+  for (const year of years) {
+    const raw = company.domestic ? stock?.annual?.[year] : fin?.annual?.[year];
+    const selected = company.domestic && raw?.kind === "estimate" && raw.horizons ? raw.horizons[basis] : raw;
+    const fiscalEnd = raw?.fiscalEnd || `${year}-${fin?.fiscalYearEnd || "12-31"}`;
+    financials[year] = {};
+    for (const metric of ["revenue", "operatingIncome", "netIncome"]) {
+      const key = company.domestic && metric === "netIncome" ? "parentNetIncome" : metric;
+      const native = selected?.[key];
+      financials[year][metric] = { ...rareMoneyValue(native, { target, currency, unit, kind: raw?.kind, fiscalEnd, fx }),
+        native: Number.isFinite(native) ? native : null, currency, unit, kind: raw?.kind || null, fiscalEnd, note: raw?.notes?.[key] || "" };
+    }
+    ratios[year] = {};
+    for (const [ratio, metric] of [["ps", "revenue"], ["pe", "netIncome"]]) {
+      const denominator = rareMoneyValue(financials[year][metric].native, { target: "USD", currency, unit, fx }).value;
+      const available = !company.private && Number.isFinite(capUsd) && capUsd > 0 && Number.isFinite(denominator);
+      ratios[year][ratio] = { value: available && denominator > 0 ? capUsd / denominator : null,
+        status: !available ? "missing" : denominator <= 0 ? "nm" : "ok", kind: raw?.kind || null };
+    }
+  }
+  const history = (company.history || []).filter(r => Number.isFinite(r.close) && r.close > 0).slice().sort((a,b) => a.date.localeCompare(b.date));
+  const end = history.at(-1);
+  const prior = history.at(-2);
+  const year = end?.date?.slice(0, 4);
+  const ytdBase = history.filter(r => r.date.slice(0,4) < year).at(-1);
+  const ytdHigh = end ? Math.max(...history.filter(r => r.date.slice(0,4) === year).map(r => r.close)) : null;
+  const change = (v,b) => Number.isFinite(v) && b > 0 ? (v / b - 1) * 100 : null;
+  return { symbol: company.symbol, company, cap: Number.isFinite(cap) ? cap : null, financials, ratios,
+    price: company.private ? null : company.domestic ? stock?.quote?.price : end?.close,
+    priceDate: company.domestic ? stock?.quote?.observedAt : end?.date,
+    d1: company.private ? null : company.domestic ? stock?.performance?.d1 : change(end?.close, prior?.close),
+    ytd: company.private ? null : company.domestic ? stock?.performance?.ytd : change(end?.close, ytdBase?.close),
+    mdd: company.private ? null : company.domestic ? stock?.performance?.ytdDrawdown : change(end?.close, ytdHigh) };
+}

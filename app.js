@@ -1,4 +1,4 @@
-import { quoteVenue, combinedQuoteVenue, quoteSourceName, quoteFreshness, resolveDisplayPeriods, relativePeerSeries, rareMoneyValue, kstSession } from "./view-model.js?v=9d176c2e23be";
+import { quoteVenue, combinedQuoteVenue, quoteSourceName, quoteFreshness, resolveDisplayPeriods, relativePeerSeries, rareMoneyValue, rareComparisonRow, kstSession } from "./view-model.js?v=7ba74c76cb9c";
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
@@ -154,6 +154,8 @@ const state = {
   rareRange: "6m",
   rareMetric: "revenue",
   rareCurrency: "KRW",
+  rareDetails: false,
+  rareSort: { key: "default", direction: "desc" },
   rareHidden: new Set(),
   theme: "dark",
   liveUpdates: new Map(),
@@ -1218,8 +1220,97 @@ function rareEarthPanel() {
     <div class="card-head"><h2 id="rareEarthTitle">희토류 ${packet.companies.length}개 기업 상대주가</h2><span class="tools">${ranges}</span></div>
     ${chart}<div class="chart-legend re-legend">${legend}</div>
     <p class="note re-basis">${escapeHtml(model.baseDate || "-")} 기준 = 100, ${escapeHtml(model.endDate || "-")}까지. 현지 통화 종가, 환율과 배당 제외. 기준일 휴장은 직전 종가 사용. 일봉: 국내 Kiwoom / Naver, 해외 Yahoo Finance. 범례로 개별 선 선택.</p>${excludedNote}
-  </section>
-  ${rareFinancialTable(packet)}`;
+  </section>`;
+}
+
+const RARE_COMPARE_YEARS = [2025, 2026, 2027];
+function rareCompareModels() {
+  const packet = state.snapshot.rareEarth;
+  return [...packet.companies, ...(packet.privateCompanies || [])].map(company => rareComparisonRow(company,
+    state.snapshot.stocks.find(s => s.code === company.symbol), packet.fx,
+    { target: state.rareCurrency, basis: state.estimateBasis, years: RARE_COMPARE_YEARS }));
+}
+
+function rareCompareColumns() {
+  return [
+    { label: "시세, 수익률", columns: [
+      { key: "price", label: "현재가", sub: "현지통화", width: 78 },
+      { key: "d1", label: "1D", width: 54 }, { key: "ytd", label: "YTD", width: 58 }, { key: "mdd", label: "MDD", width: 58 },
+      { key: "cap", label: "시총 / 지분가치", width: 100 },
+    ] },
+    { label: "밸류에이션", columns: ["ps", "pe"].flatMap(ratio => [2026, 2027].map(year => ({ key: `${ratio}${year}`, ratio, year, label: `${ratio === "ps" ? "P/S" : "P/E"} ${String(year).slice(2)}`, width: 64 }))) },
+    ...[["revenue", "매출"], ["operatingIncome", "영업이익 / EBIT"], ["netIncome", "순이익"]].map(([metric, label]) => ({
+      label: `${label} (${state.rareCurrency === "KRW" ? "억원" : "USD 백만"})`,
+      columns: RARE_COMPARE_YEARS.map(year => ({ key: `${metric}${year}`, metric, year, label: `${String(year).slice(2)}`, sub: year === 2025 ? "실적" : year === 2026 ? "실적 / 전망" : "전망", width: 72 })),
+    })),
+  ];
+}
+
+function rareCompareValue(row, column) {
+  return column.metric ? row.financials[column.year][column.metric].value : column.ratio ? row.ratios[column.year][column.ratio].value : row[column.key];
+}
+
+function rareCompareCell(row, column, index) {
+  const value = rareCompareValue(row, column);
+  const company = row.company;
+  let title = "", text = formatNumber(value, 1), extra = index === 0 ? "section-start" : "";
+  if (column.metric) {
+    const record = row.financials[column.year][column.metric];
+    title = `${company.name}, ${record.fiscalEnd}, ${record.kind === "actual" ? "실적" : "전망"}, 원본 ${formatNumber(record.native, 2)} ${record.currency} ${record.unit === "millions" ? "백만" : "억원"}. ${record.basis}. ${record.note}`;
+  } else if (column.ratio) {
+    const record = row.ratios[column.year][column.ratio];
+    text = record.status === "nm" ? "N/M" : record.status === "ok" ? `${formatNumber(value, 2)}x` : "-";
+    title = `${column.label}, 시총 / ${column.ratio === "ps" ? "매출" : company.domestic ? "지배순이익" : "GAAP 순이익"}, ${record.kind === "actual" ? "결산 실적" : "연간 전망"}. 분자와 분모에 같은 2026-09-04 환율 적용. N/M은 분모가 0 이하, -는 미제공. 비상장 배수는 산출하지 않습니다.`;
+  } else if (["d1", "ytd", "mdd"].includes(column.key)) {
+    text = formatPercent(value, 1);
+    const heat = returnHeatMeta(value, column.key === "mdd" ? "ytdDrawdown" : column.key);
+    extra += ` ${numberClass(value)} ${heat.className}`;
+    title = column.key === "mdd" ? "올해 최고 종가 대비 현재가, 기존 홈페이지 MDD 정의" : `현지통화 가격 수익률, ${row.priceDate || "미제공"}`;
+  } else if (column.key === "price") {
+    text = formatNumber(value, company.domestic ? 0 : 2);
+    title = `${company.currency || "KRW"}, ${company.domestic ? "현재가" : "최근 일별 종가"}, ${row.priceDate || "미제공"}`;
+  } else if (column.key === "cap") {
+    text = formatNumber(value, 0);
+    title = company.private ? `${company.equityValue.basis}, ${company.equityValue.asOf}, 원본 USD ${company.equityValue.value} 백만. 환율 ${company.equityValue.fxDate}, 1 USD = ${company.equityValue.krwPerUsd} KRW.`
+      : rareCapModel(company, state.snapshot.stocks.find(s => s.code === company.symbol), state.snapshot.rareEarth.fx).title;
+  }
+  return `<td data-compare-field="${column.key}" class="${extra} ${value == null ? "na" : ""}" title="${escapeHtml(title)}">${text}</td>`;
+}
+
+function rareCompareRowHtml(row, sections) {
+  const c = row.company;
+  const url = c.domestic ? `#/stock/${c.symbol}` : c.private ? c.equityValue.sourceUrl : c.financials?.sourceUrl;
+  const names = { "LYC.AX": "Lynas", EMAT: "EMAT", "NEO.TO": "Neo Performance" };
+  const name = names[c.symbol] || c.name;
+  const market = c.private ? "비상장" : c.domestic ? "한국" : c.currency === "AUD" ? "호주" : c.symbol === "NEO.TO" ? "캐나다" : "미국";
+  const hint = c.private ? c.equityValue.basis : `${c.symbol}, ${c.exchange}, ${c.financials?.fiscalYearEnd || "12-31"} 결산`;
+  return `<tr data-compare-company="${c.symbol}" ${c.domestic ? `data-code="${c.symbol}"` : ""} class="${c.private ? "re-private-row" : ""}"><td class="sticky-sector">${market}</td><td class="sticky-stock"><a class="stock-name" href="${escapeHtml(url || "#")}" ${c.domestic ? "" : 'target="_blank" rel="noopener noreferrer"'} title="${escapeHtml(hint)}">${escapeHtml(name)}</a></td>${sections.flatMap(section => section.columns.map((column, i) => rareCompareCell(row, column, i))).join("")}</tr>`;
+}
+
+function rareComparisonTable(packet) {
+  const sections = rareCompareColumns();
+  const columns = sections.flatMap(s => s.columns);
+  let rows = rareCompareModels().filter(row => !state.search || `${row.company.name} ${row.symbol}`.toLowerCase().includes(state.search.toLowerCase()));
+  const sort = columns.find(c => c.key === state.rareSort.key);
+  if (sort) rows.sort((a,b) => {
+    if (Boolean(a.company.private) !== Boolean(b.company.private)) return a.company.private ? 1 : -1;
+    const av = rareCompareValue(a, sort), bv = rareCompareValue(b, sort);
+    if (av == null || bv == null) return av == null && bv == null ? 0 : av == null ? 1 : -1;
+    return (av - bv) * (state.rareSort.direction === "asc" ? 1 : -1);
+  });
+  const button = c => `<button type="button" data-rare-sort="${c.key}" data-active="${state.rareSort.key === c.key}" data-arrow="${state.rareSort.direction === "asc" ? "↑" : "↓"}" aria-label="${c.label} 기준 정렬">${c.label}${c.sub ? `<small class="col-sub">${c.sub}</small>` : ""}</button>`;
+  const currency = [["KRW", "원화, 억원"], ["USD", "USD, 백만"]].map(([key,label]) => `<button type="button" data-rare-currency="${key}" aria-pressed="${state.rareCurrency === key}">${label}</button>`).join("");
+  const privateNotes = (packet.privateCompanies || []).map(c => `<li><b>${escapeHtml(c.name)}</b>: ${escapeHtml(c.note)} <a href="${escapeHtml(c.noteSourceUrl)}" target="_blank" rel="noopener noreferrer">재무 근거</a>, <a href="${escapeHtml(c.equityValue.sourceUrl)}" target="_blank" rel="noopener noreferrer">지분가치 근거</a>. 지분가치 원화 환산은 ${c.equityValue.fxDate} ECB 환율입니다.</li>`).join("");
+  return `<section id="rareValuationComparison" aria-labelledby="rareValuationTitle">
+    <div class="toolbar re-compare-toolbar"><h2 id="rareValuationTitle">희토류 기업 비교</h2><button type="button" class="column-chip" data-rare-details-toggle aria-expanded="${state.rareDetails}">연간 재무 자세히 보기</button><span class="basis-switch" role="group" aria-label="표시 통화 선택">${currency}</span><span class="spacer"></span><span class="visible-count">상장 ${rows.filter(r=>!r.company.private).length}개, 비상장 ${rows.filter(r=>r.company.private).length}개</span></div>
+    <div id="tableScroller" class="table-region re-compare-region" role="region" tabindex="0" aria-label="희토류 밸류에이션과 실적 비교, 가로 스크롤"><table id="universeTable" class="universe-table re-compare-table"><caption class="sr-only">희토류 기업별 시총 또는 최근 거래 지분가치, P/S, P/E, 연간 재무. 현재가는 현지통화, 나머지 금액은 ${state.rareCurrency === "KRW" ? "억원" : "USD 백만"}.</caption>
+    <colgroup><col class="sticky-sector"><col class="sticky-stock">${columns.map(c=>`<col class="re-col-${c.metric ? "financial" : c.ratio ? "ratio" : c.key === "price" ? "price" : c.key === "cap" ? "cap" : "return"}">`).join("")}</colgroup>
+    <thead id="tableHead"><tr><th rowspan="2" class="sticky-sector" scope="col">시장</th><th rowspan="2" class="sticky-stock" scope="col">기업</th>${sections.map(s=>`<th class="group-head section-start" colspan="${s.columns.length}" scope="colgroup">${s.label}</th>`).join("")}</tr><tr>${sections.flatMap(s=>s.columns.map((c,i)=>`<th scope="col" class="${i===0?"section-start":""}">${button(c)}</th>`)).join("")}</tr></thead>
+    <tbody id="tableBody">${rows.map(row=>rareCompareRowHtml(row,sections)).join("") || `<tr><td colspan="${columns.length+2}">검색 결과가 없습니다.</td></tr>`}</tbody></table></div>
+    <div class="re-compare-notes"><p>해외 시총 2026-09-04, 재무 TIKR 2026-09-07 조회. 국내 시총은 현재 시세, 전망은 ConsenDB ${HORIZON_LABELS[state.estimateBasis]}. 과거 손익은 결산기간 평균환율, 시총과 전망은 2026-09-04 환율입니다.</p><p>P/S = 시총 / 매출, P/E = 시총 / 순이익. 해외는 GAAP, 국내는 지배순이익 기준. N/M은 적자 또는 0, -는 미제공. Lynas와 CRML은 6월 결산이며, Lynas 26년은 실적입니다. 비상장은 최근 거래 지분가치로 상장 시총과 구분합니다.</p>
+    <details class="re-notes"><summary>비상장 가치, 매출 범위와 출처</summary><ul>${privateNotes}</ul><p>Noveon의 투자 후 지분가치는 Forge 추정치이며 회사가 공식 발표한 평가액이 아닙니다. VAC는 2026-06-23 인수계약 발표 기준이며 거래 종결 전입니다. 비상장 두 회사는 주가 차트와 상장사 배수 비교에서 제외됩니다. <a href="${escapeHtml(packet.fx?.sourceUrl)}" target="_blank" rel="noopener noreferrer">ECB 환율</a></p></details></div>
+    <div id="rareAnnualDetail" ${state.rareDetails ? "" : "hidden"}>${rareFinancialTable(packet)}</div>
+    </section>`;
 }
 
 function rareCapModel(company, stock, fx) {
@@ -1774,6 +1865,7 @@ function columnEdgeClass(column, index) {
 }
 
 function tableHtml() {
+  if (state.sector === "희토류" && state.snapshot?.rareEarth?.companies?.length) return rareComparisonTable(state.snapshot.rareEarth);
   const hidden = hiddenColumnsForSector();
   const sections = visibleSections(hidden);
   const groupRow = sections.map((section) => {
@@ -2180,6 +2272,17 @@ function renderedNumber(text) {
 }
 
 function updateLiveRow(stock) {
+  const comparisonRow = document.querySelector(`[data-compare-company="${stock.code}"]`);
+  if (comparisonRow) {
+    const rowModel = rareCompareModels().find(row => row.symbol === stock.code);
+    if (rowModel) {
+      for (const section of rareCompareColumns()) for (const [i, column] of section.columns.entries()) {
+        if (column.metric) continue;
+        const cell = comparisonRow.querySelector(`[data-compare-field="${column.key}"]`);
+        if (cell) cell.outerHTML = rareCompareCell(rowModel, column, i);
+      }
+    }
+  }
   const peerCap = $(`[data-rare-company="${stock.code}"] .re-cap`);
   if (peerCap) {
     const cap = rareCapModel({ domestic: true }, stock, state.snapshot?.rareEarth?.fx);
@@ -2188,6 +2291,7 @@ function updateLiveRow(stock) {
   }
   const row = $(`#tableBody tr[data-code="${stock.code}"]`);
   if (!row) return;
+  if (comparisonRow) return;
   const price = row.querySelector('[data-live-field="quote.price"]');
   const marketCap = row.querySelector('[data-live-field="quote.marketCap"]');
   if (price) {
@@ -2360,6 +2464,18 @@ function bindEvents() {
   });
 
   $("#view").addEventListener("click", (event) => {
+    const rareSort = event.target.closest("[data-rare-sort]");
+    if (rareSort) {
+      const key = rareSort.dataset.rareSort;
+      state.rareSort = { key, direction: state.rareSort.key === key && state.rareSort.direction === "desc" ? "asc" : "desc" };
+      renderView({ preserveScroll: true });
+      return $(`[data-rare-sort="${key}"]`)?.focus({ preventScroll: true });
+    }
+    if (event.target.closest("[data-rare-details-toggle]")) {
+      state.rareDetails = !state.rareDetails;
+      renderView({ preserveScroll: true });
+      return $("[data-rare-details-toggle]")?.focus({ preventScroll: true });
+    }
     const rareCurrency = event.target.closest("[data-rare-currency]");
     if (rareCurrency) {
       const scrollLeft = $(".re-table-scroll")?.scrollLeft || 0;
