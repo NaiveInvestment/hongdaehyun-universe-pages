@@ -1,4 +1,4 @@
-import { quoteVenue, combinedQuoteVenue, quoteSourceName, quoteFreshness, resolveDisplayPeriods, relativePeerSeries, rareMoneyValue, rareComparisonRow, kstSession } from "./view-model.js?v=0b1964f23748";
+import { quoteVenue, combinedQuoteVenue, quoteSourceName, quoteFreshness, resolveDisplayPeriods, relativePeerSeries, rareMoneyValue, rareComparisonRow, kstSession } from "./view-model.js?v=9ae66758b4c4";
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
@@ -1196,7 +1196,7 @@ function homeGroupChart() {
 
 
 const RARE_RANGES = [["ytd", "YTD"], ["1m", "1M"], ["3m", "3M"], ["6m", "6M"], ["1y", "1Y"]];
-const RARE_METRICS = [["revenue", "매출"], ["operatingIncome", "영업이익 / EBIT"], ["netIncome", "순이익"]];
+const RARE_METRICS = [["revenue", "매출"], ["operatingIncome", "영업이익 / EBIT"], ["ebitda", "EBITDA"], ["netIncome", "순이익"]];
 const RARE_SHORT = { "127120": "JS링크", MP: "MP", "LYC.AX": "Lynas", USAR: "USAR", CRML: "CRML", EMAT: "EMAT", "NEO.TO": "NEO" };
 
 function rareEarthPanel() {
@@ -1235,9 +1235,10 @@ function rareCompareModels() {
 
 function rareCompareColumns(income = false) {
   const money = state.rareCurrency === "KRW" ? "억원" : "USD 백만";
-  if (income) return RARE_METRICS.map(([metric, label]) => ({
-    label: `${label} (${money})`, columns: RARE_FORWARD_YEARS.map(year => ({
-      key: `${metric}${year}`, metric, year, label: String(year), sortLabel: `${label} ${year}`,
+  if (income) return RARE_FORWARD_YEARS.map(year => ({
+    label: `${year} (${money})`, columns: RARE_METRICS.map(([metric, label]) => ({
+      key: `${metric}${year}`, metric, year, label: metric === "operatingIncome" ? "영업이익" : label,
+      sub: metric === "operatingIncome" ? "EBIT" : "", sortLabel: `${year} ${label}`,
     })),
   }));
   return [
@@ -1262,7 +1263,8 @@ function rareCompareCell(row, column, index) {
   let title = "", text = formatNumber(value, 1), extra = index === 0 ? "section-start" : "";
   if (column.metric) {
     const record = row.financials[column.year][column.metric];
-    title = `${company.name}, ${record.fiscalEnd}, ${record.kind === "actual" ? "실적" : "전망"}, 원본 ${formatNumber(record.native, 2)} ${record.currency} ${record.unit === "millions" ? "백만" : "억원"}. ${record.basis}. ${record.note}`;
+    title = record.native == null ? `${company.name}, ${record.fiscalEnd}, ${column.label}, 미제공. ${record.note}`
+      : `${company.name}, ${record.fiscalEnd}, ${record.kind === "actual" ? "실적" : "전망"}, 원본 ${formatNumber(record.native, 2)} ${record.currency} ${record.unit === "millions" ? "백만" : "억원"}. ${record.basis}. ${record.note}`;
   } else if (column.ratio) {
     const record = row.ratios[column.year][column.ratio];
     text = record.status === "nm" ? "N/M" : record.status === "ok" ? `${formatNumber(value, 2)}x` : "-";
@@ -1303,7 +1305,7 @@ function rareIncomeStatement(rows, button) {
   const sections = rareCompareColumns(true);
   const columns = sections.flatMap(s => s.columns);
   return `<section id="rareIncomeStatement" aria-label="기업별 연간 손익계산서">
-    <div class="table-region re-compare-region re-income-region" role="region" tabindex="0" aria-label="기업별 매출, 영업이익, 순이익 2026~2028, 가로 스크롤"><table class="universe-table re-compare-table re-income-table"><caption>기업별 매출, 영업이익/EBIT, 순이익, 결산연도 2026~2028, ${unit}</caption><colgroup><col class="sticky-sector"><col class="sticky-stock">${columns.map(() => '<col class="re-col-financial">').join("")}</colgroup>
+    <div class="table-region re-compare-region re-income-region" role="region" tabindex="0" aria-label="2026~2028 연도별 매출, 영업이익, EBITDA, 순이익, 가로 스크롤"><table class="universe-table re-compare-table re-income-table"><caption>2026, 2027, 2028년별 매출, 영업이익/EBIT, EBITDA, 순이익, ${unit}</caption><colgroup><col class="sticky-sector"><col class="sticky-stock">${columns.map(() => '<col class="re-col-financial">').join("")}</colgroup>
     <thead><tr><th rowspan="2" class="sticky-sector" scope="col">시장</th><th rowspan="2" class="sticky-stock" scope="col">기업</th>${sections.map(s => `<th class="group-head section-start" colspan="${s.columns.length}" scope="colgroup">${s.label}</th>`).join("")}</tr><tr>${sections.flatMap(s => s.columns.map((c, i) => `<th scope="col" class="${i === 0 ? "section-start" : ""}">${button(c)}</th>`)).join("")}</tr></thead><tbody>${rows.map(row => rareCompareRowHtml(row, sections, true)).join("") || `<tr><td colspan="${columns.length + 2}">검색 결과가 없습니다.</td></tr>`}</tbody></table></div></section>`;
 }
 
@@ -1359,7 +1361,7 @@ function rareFinancialTable(packet) {
   const companyBlocks = packet.companies.map(company => {
     const stock = company.domestic ? state.snapshot.stocks.find(item => item.code === company.symbol) : null;
     const fin = company.financials;
-    const currency = company.domestic ? "KRW" : fin?.currency;
+    const currency = metric === "ebitda" ? company.valuation?.currency : company.domestic ? "KRW" : fin?.currency;
     const fiscal = fin?.fiscalYearEnd || "12-31";
     const cap = rareCapModel(company, stock, fx);
     const displayName = displayNames[company.symbol] || company.name;
@@ -1367,7 +1369,7 @@ function rareFinancialTable(packet) {
       : `<a href="${escapeHtml(fin?.sourceUrl || `https://finance.yahoo.com/quote/${encodeURIComponent(company.symbol)}/`)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(company.name)}">${escapeHtml(displayName)}</a>`;
       const metricLabel = company.domestic && metric === "netIncome" ? "지배순이익" : label;
       const cells = years.map(year => {
-        const raw = company.domestic ? stock?.annual?.[year] : fin?.annual?.[year];
+        const raw = metric === "ebitda" ? company.valuation?.annual?.[year] : company.domestic ? stock?.annual?.[year] : fin?.annual?.[year];
         const key = company.domestic && metric === "netIncome" ? "parentNetIncome" : metric;
         const selected = company.domestic && raw?.kind === "estimate" && raw.horizons ? raw.horizons[state.estimateBasis] : raw;
         const native = selected?.[key];

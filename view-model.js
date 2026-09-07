@@ -169,6 +169,20 @@ export function rareComparisonRow(company, stock, fx, { target = "KRW", basis = 
       financials[year][metric] = { ...rareMoneyValue(native, { target, currency, unit, kind: raw?.kind, fiscalEnd, fx }),
         native: Number.isFinite(native) ? native : null, currency, unit, kind: raw?.kind || null, fiscalEnd, note: raw?.notes?.[key] || "" };
     }
+    // EBITDA is the captured TIKR annual row, independent of reported operating
+    // income. Display actuals at fiscal-average FX and forecasts at snapshot FX.
+    const earnings = company.valuation?.annual?.[year];
+    const ebitda = earnings?.ebitda;
+    const ebitdaCurrency = company.valuation?.currency || null;
+    const ebitdaUnit = company.valuation?.unit || "millions";
+    const ebitdaFiscalEnd = earnings?.fiscalEnd || fiscalEnd;
+    financials[year].ebitda = {
+      ...rareMoneyValue(ebitda, { target, currency: ebitdaCurrency, unit: ebitdaUnit, kind: earnings?.kind, fiscalEnd: ebitdaFiscalEnd, fx }),
+      native: Number.isFinite(ebitda) ? ebitda : null, currency: ebitdaCurrency, unit: ebitdaUnit,
+      kind: earnings?.kind || null, fiscalEnd: ebitdaFiscalEnd,
+      note: Number.isFinite(ebitda) ? "TIKR 연간 EBITDA 원행" : "EBITDA 미제공",
+      sourceUrl: earnings?.metricSources?.ebitda?.url || null,
+    };
     ratios[year] = {};
     for (const [ratio, metric] of [["ps", "revenue"], ["pe", "netIncome"]]) {
       const denominator = rareMoneyValue(financials[year][metric].native, { target: "USD", currency, unit, fx }).value;
