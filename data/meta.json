@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-09-07T01:25:01.918Z",
+  "builtAt": "2026-09-07T01:30:01.734Z",
   "mode": "live",
-  "generatedAt": "2026-09-07T01:25:01.695Z",
-  "quotesGeneratedAt": "2026-09-07T01:25:01.695Z",
-  "heavyFingerprint": "{\"consensus\":\"2026-09-07T01:10:48.641944Z\",\"actuals\":\"2026-09-07T01:11:02.062165Z\",\"indicators\":\"2026-09-07T01:11:04.497Z\",\"holdcoNav\":\"2026-09-07T01:11:02.762Z\",\"sectorIndices\":\"2026-09-07T01:10:46.656Z\",\"sectorIndexDays\":250,\"rareEarth\":\"879e8cd080166faae52e2c5c25baeb9dfb65db063038dc039681d575414d9c44\",\"stockCount\":81,\"mode\":\"live\",\"assets\":[\"e02030acb3ecd810\",\"a298b4f7538eaeed\",\"9d176c2e23bea125\",\"6c1c14157052d908\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"c09bf9ba0e797eca\",\"97844437710ef979\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"1749b067015d590b\"]}",
+  "generatedAt": "2026-09-07T01:30:01.535Z",
+  "quotesGeneratedAt": "2026-09-07T01:30:01.535Z",
+  "heavyFingerprint": "{\"consensus\":\"2026-09-07T01:10:48.641944Z\",\"actuals\":\"2026-09-07T01:11:02.062165Z\",\"indicators\":\"2026-09-07T01:11:04.497Z\",\"holdcoNav\":\"2026-09-07T01:11:02.762Z\",\"sectorIndices\":\"2026-09-07T01:10:46.656Z\",\"sectorIndexDays\":250,\"rareEarth\":\"2b364d1c2da32f371413136ae177df8892d1b16d6c300f892f3b4d1bb5bc341d\",\"stockCount\":81,\"mode\":\"live\",\"assets\":[\"e02030acb3ecd810\",\"a298b4f7538eaeed\",\"9d176c2e23bea125\",\"6c1c14157052d908\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"c09bf9ba0e797eca\",\"97844437710ef979\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"1749b067015d590b\"]}",
   "stockCount": 81,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
   "sources": {
     "quote": {
       "source": "mixed",
-      "updatedAt": "2026-09-07T01:24:46.469Z",
+      "updatedAt": "2026-09-07T01:29:46.666Z",
       "status": "ok"
     },
     "actuals": {
