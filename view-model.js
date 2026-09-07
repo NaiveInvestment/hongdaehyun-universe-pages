@@ -130,3 +130,13 @@ export function rareUsdValue(value, { currency, unit = "millions", kind, fiscalE
     ? value * scale * rate.usdPerUnit : null, rate: rate || null,
     basis: currency === "USD" ? "USD 원본" : kind === "actual" ? "회계연도 일별 환율 평균" : "조회 기준 고정환율" };
 }
+
+export function rareMoneyValue(value, { target = "USD", currency, unit = "millions", kind, fiscalEnd, fx } = {}) {
+  if (target === "USD") return rareUsdValue(value, { currency, unit, kind, fiscalEnd, fx });
+  const scale = unit === "hundredMillion" ? 1 : unit === "millions" ? 0.01 : null;
+  const rate = currency === "KRW" ? { krwPerUnit: 1 } : kind === "actual"
+    ? fx?.krw?.actuals?.[`${currency}:${fiscalEnd}`] : fx?.krw?.spot?.rates?.[currency];
+  return { value: target === "KRW" && Number.isFinite(value) && scale && Number.isFinite(rate?.krwPerUnit) && rate.krwPerUnit > 0
+    ? value * scale * rate.krwPerUnit : null, rate: rate || null,
+    basis: currency === "KRW" ? "KRW 원본" : kind === "actual" ? "회계연도 일별 환율 평균" : "조회 기준 고정환율" };
+}
