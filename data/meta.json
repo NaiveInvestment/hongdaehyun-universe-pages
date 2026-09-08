@@ -1,18 +1,18 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-09-08T09:00:02.166Z",
+  "builtAt": "2026-09-08T09:05:02.322Z",
   "mode": "live",
-  "generatedAt": "2026-09-08T09:00:01.970Z",
-  "quotesGeneratedAt": "2026-09-08T09:00:01.970Z",
-  "heavyFingerprint": "{\"consensus\":\"2026-09-08T03:00:01.821490Z\",\"actuals\":\"2026-09-07T22:01:49.942506Z\",\"indicators\":\"2026-09-08T07:00:10.060Z\",\"holdcoNav\":\"2026-09-08T07:00:07.726Z\",\"sectorIndices\":\"2026-09-07T09:00:40.432Z\",\"sectorIndexDays\":250,\"rareEarth\":\"6aa32f6c2ce4c5030bdbfc7b5e3778b33a95060e87ad369e66e21c313c7587b8\",\"stockCount\":81,\"mode\":\"live\",\"assets\":[\"e02030acb3ecd810\",\"194ac8a286ed6e7a\",\"9ae66758b4c4f339\",\"afb7b324e9e9fa46\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"c09bf9ba0e797eca\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"1749b067015d590b\"]}",
+  "generatedAt": "2026-09-08T09:05:02.101Z",
+  "quotesGeneratedAt": "2026-09-08T09:05:02.101Z",
+  "heavyFingerprint": "{\"consensus\":\"2026-09-08T03:00:01.821490Z\",\"actuals\":\"2026-09-07T22:01:49.942506Z\",\"indicators\":\"2026-09-08T07:00:10.060Z\",\"holdcoNav\":\"2026-09-08T07:00:07.726Z\",\"sectorIndices\":\"2026-09-08T09:00:41.901Z\",\"sectorIndexDays\":250,\"rareEarth\":\"18250276b873477129d9a62a46157ee1a95fe4bd91fd6ad073751eeaf40134f4\",\"stockCount\":81,\"mode\":\"live\",\"assets\":[\"e02030acb3ecd810\",\"194ac8a286ed6e7a\",\"9ae66758b4c4f339\",\"afb7b324e9e9fa46\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"c09bf9ba0e797eca\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"1749b067015d590b\"]}",
   "stockCount": 81,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
   "sources": {
     "quote": {
       "source": "mixed",
-      "updatedAt": "2026-09-08T08:59:30.888Z",
-      "status": "partial"
+      "updatedAt": "2026-09-08T09:04:31.684Z",
+      "status": "ok"
     },
     "actuals": {
       "source": "OpenDART",
