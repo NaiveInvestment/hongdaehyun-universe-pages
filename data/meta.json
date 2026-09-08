@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-09-08T23:00:02.718Z",
+  "builtAt": "2026-09-08T23:05:02.582Z",
   "mode": "live",
-  "generatedAt": "2026-09-08T23:00:02.210Z",
-  "quotesGeneratedAt": "2026-09-08T23:00:02.210Z",
-  "heavyFingerprint": "{\"consensus\":\"2026-09-08T03:00:01.821490Z\",\"actuals\":\"2026-09-08T22:01:45.970140Z\",\"indicators\":\"2026-09-08T22:00:08.130Z\",\"holdcoNav\":\"2026-09-08T22:00:06.304Z\",\"sectorIndices\":\"2026-09-08T09:00:41.901Z\",\"sectorIndexDays\":250,\"rareEarth\":\"74e07e94f0e3334e20412b0abfd83c25788af7236187f200a6fba45826cee34e\",\"stockCount\":81,\"mode\":\"live\",\"assets\":[\"e02030acb3ecd810\",\"194ac8a286ed6e7a\",\"9ae66758b4c4f339\",\"afb7b324e9e9fa46\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"c09bf9ba0e797eca\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"1749b067015d590b\"]}",
+  "generatedAt": "2026-09-08T23:05:02.189Z",
+  "quotesGeneratedAt": "2026-09-08T23:05:02.189Z",
+  "heavyFingerprint": "{\"consensus\":\"2026-09-08T23:00:03.474611Z\",\"actuals\":\"2026-09-08T22:01:45.970140Z\",\"indicators\":\"2026-09-08T22:00:08.130Z\",\"holdcoNav\":\"2026-09-08T22:00:06.304Z\",\"sectorIndices\":\"2026-09-08T09:00:41.901Z\",\"sectorIndexDays\":250,\"rareEarth\":\"9c00a8486fd5ae836dd061906fded8769d792ba81d5583f2fcad4ce3de8c4e5e\",\"stockCount\":81,\"mode\":\"live\",\"assets\":[\"e02030acb3ecd810\",\"194ac8a286ed6e7a\",\"9ae66758b4c4f339\",\"afb7b324e9e9fa46\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"c09bf9ba0e797eca\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"1749b067015d590b\"]}",
   "stockCount": 81,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
   "sources": {
     "quote": {
-      "source": "naver",
-      "updatedAt": "2026-09-08T22:53:25.369Z",
+      "source": "mixed",
+      "updatedAt": "2026-09-08T23:04:39.868Z",
       "status": "partial"
     },
     "actuals": {
@@ -21,7 +21,7 @@
     },
     "consensus": {
       "source": "ConsenDB.xlsx",
-      "updatedAt": "2026-09-08T03:00:01.821490Z",
+      "updatedAt": "2026-09-08T23:00:03.474611Z",
       "status": "partial"
     },
     "indicators": {
