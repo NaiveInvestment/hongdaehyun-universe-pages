@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-09-14T07:00:01.656Z",
+  "builtAt": "2026-09-14T07:05:01.567Z",
   "mode": "live",
-  "generatedAt": "2026-09-14T07:00:01.471Z",
-  "quotesGeneratedAt": "2026-09-14T07:00:01.471Z",
-  "heavyFingerprint": "{\"consensus\":\"2026-09-14T03:00:01.644027Z\",\"actuals\":\"2026-09-13T23:17:22.723437Z\",\"indicators\":\"2026-09-13T23:17:25.025Z\",\"holdcoNav\":\"2026-09-13T23:17:23.504Z\",\"sectorIndices\":\"2026-09-13T23:17:00.443Z\",\"sectorIndexDays\":250,\"rareEarth\":\"800895b282f62d81348b66eb519d1dacb7aa1718750f608690c0529c94f909fe\",\"stockCount\":81,\"mode\":\"live\",\"assets\":[\"e02030acb3ecd810\",\"194ac8a286ed6e7a\",\"9ae66758b4c4f339\",\"afb7b324e9e9fa46\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"c09bf9ba0e797eca\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"1749b067015d590b\"]}",
+  "generatedAt": "2026-09-14T07:05:01.385Z",
+  "quotesGeneratedAt": "2026-09-14T07:05:01.385Z",
+  "heavyFingerprint": "{\"consensus\":\"2026-09-14T03:00:01.644027Z\",\"actuals\":\"2026-09-13T23:17:22.723437Z\",\"indicators\":\"2026-09-14T07:00:09.071Z\",\"holdcoNav\":\"2026-09-14T07:00:06.931Z\",\"sectorIndices\":\"2026-09-13T23:17:00.443Z\",\"sectorIndexDays\":250,\"rareEarth\":\"54153c28d0cec083021aedaf7bc7adcd2f1562567b2574a52531687495d6a8d6\",\"stockCount\":81,\"mode\":\"live\",\"assets\":[\"e02030acb3ecd810\",\"194ac8a286ed6e7a\",\"9ae66758b4c4f339\",\"afb7b324e9e9fa46\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"c09bf9ba0e797eca\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"1749b067015d590b\"]}",
   "stockCount": 81,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
   "sources": {
     "quote": {
       "source": "mixed",
-      "updatedAt": "2026-09-14T06:59:03.120Z",
+      "updatedAt": "2026-09-14T07:04:03.418Z",
       "status": "ok"
     },
     "actuals": {
@@ -26,7 +26,7 @@
     },
     "indicators": {
       "source": "한국은행 ECOS",
-      "updatedAt": "2026-09-13T23:17:25.025Z",
+      "updatedAt": "2026-09-14T07:00:09.071Z",
       "status": "ok"
     }
   },
