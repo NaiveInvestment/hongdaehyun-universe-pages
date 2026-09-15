@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-09-15T07:55:01.681Z",
+  "builtAt": "2026-09-15T08:00:01.562Z",
   "mode": "live",
   "generatedAt": "2026-09-15T07:55:01.503Z",
-  "quotesGeneratedAt": "2026-09-15T07:55:01.503Z",
+  "quotesGeneratedAt": "2026-09-15T08:00:01.500Z",
   "heavyFingerprint": "{\"consensus\":\"2026-09-15T03:00:02.024883Z\",\"actuals\":\"2026-09-14T22:01:40.170786Z\",\"indicators\":\"2026-09-15T07:00:09.753Z\",\"holdcoNav\":\"2026-09-15T07:00:07.036Z\",\"sectorIndices\":\"2026-09-14T09:00:39.755Z\",\"sectorIndexDays\":250,\"rareEarth\":\"33a236d9fc9b7fd3b7ad82e87d2e7c3641abcf81231035bc6493c25065d2345f\",\"stockCount\":81,\"mode\":\"live\",\"assets\":[\"e02030acb3ecd810\",\"194ac8a286ed6e7a\",\"9ae66758b4c4f339\",\"afb7b324e9e9fa46\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"c09bf9ba0e797eca\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"1749b067015d590b\"]}",
   "stockCount": 81,
   "realtime": false,
@@ -11,7 +11,7 @@
   "sources": {
     "quote": {
       "source": "mixed",
-      "updatedAt": "2026-09-15T07:54:16.513Z",
+      "updatedAt": "2026-09-15T07:59:16.308Z",
       "status": "partial"
     },
     "actuals": {
