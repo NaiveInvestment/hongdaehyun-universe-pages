@@ -1,32 +1,32 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-09-15T08:35:01.820Z",
+  "builtAt": "2026-09-17T01:10:02.318Z",
   "mode": "live",
-  "generatedAt": "2026-09-15T08:35:01.614Z",
-  "quotesGeneratedAt": "2026-09-15T08:35:01.614Z",
-  "heavyFingerprint": "{\"consensus\":\"2026-09-15T03:00:02.024883Z\",\"actuals\":\"2026-09-14T22:01:40.170786Z\",\"indicators\":\"2026-09-15T07:00:09.753Z\",\"holdcoNav\":\"2026-09-15T07:00:07.036Z\",\"sectorIndices\":\"2026-09-14T09:00:39.755Z\",\"sectorIndexDays\":250,\"rareEarth\":\"9d3bbcf8c4fa18c84407b5ba076869597515ada68d20bfe66a4a6371913c1baf\",\"stockCount\":81,\"mode\":\"live\",\"assets\":[\"e02030acb3ecd810\",\"194ac8a286ed6e7a\",\"9ae66758b4c4f339\",\"afb7b324e9e9fa46\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"c09bf9ba0e797eca\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"1749b067015d590b\"]}",
+  "generatedAt": "2026-09-17T01:10:02.026Z",
+  "quotesGeneratedAt": "2026-09-17T01:10:02.026Z",
+  "heavyFingerprint": "{\"consensus\":\"2026-09-17T01:05:53.135708Z\",\"actuals\":\"2026-09-17T01:06:15.116087Z\",\"indicators\":\"2026-09-17T01:06:17.654Z\",\"holdcoNav\":\"2026-09-17T01:06:15.883Z\",\"sectorIndices\":\"2026-09-17T01:05:51.002Z\",\"sectorIndexDays\":250,\"rareEarth\":\"b53f727db3bc14a00a2c674436df5ac356538f2e94a4027ef3198be10780c03b\",\"stockCount\":81,\"mode\":\"live\",\"assets\":[\"e02030acb3ecd810\",\"194ac8a286ed6e7a\",\"9ae66758b4c4f339\",\"afb7b324e9e9fa46\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"c09bf9ba0e797eca\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"1749b067015d590b\"]}",
   "stockCount": 81,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
   "sources": {
     "quote": {
       "source": "mixed",
-      "updatedAt": "2026-09-15T08:34:16.785Z",
-      "status": "partial"
+      "updatedAt": "2026-09-17T01:09:50.921Z",
+      "status": "ok"
     },
     "actuals": {
       "source": "OpenDART",
-      "updatedAt": "2026-09-14T22:01:40.170786Z",
+      "updatedAt": "2026-09-17T01:06:15.116087Z",
       "status": "ok"
     },
     "consensus": {
       "source": "ConsenDB.xlsx",
-      "updatedAt": "2026-09-15T03:00:02.024883Z",
+      "updatedAt": "2026-09-17T01:05:53.135708Z",
       "status": "partial"
     },
     "indicators": {
       "source": "한국은행 ECOS",
-      "updatedAt": "2026-09-15T07:00:09.753Z",
+      "updatedAt": "2026-09-17T01:06:17.654Z",
       "status": "ok"
     }
   },
