@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-09-23T07:25:01.720Z",
+  "builtAt": "2026-09-23T07:30:01.845Z",
   "mode": "live",
-  "generatedAt": "2026-09-23T07:25:01.529Z",
-  "quotesGeneratedAt": "2026-09-23T07:25:01.529Z",
-  "heavyFingerprint": "{\"consensus\":\"2026-09-23T03:00:02.438533Z\",\"actuals\":\"2026-09-22T22:04:56.392824Z\",\"indicators\":\"2026-09-23T07:00:13.094Z\",\"holdcoNav\":\"2026-09-23T07:00:10.315Z\",\"sectorIndices\":\"2026-09-22T09:00:40.279Z\",\"sectorIndexDays\":250,\"rareEarth\":\"a08c2ac08a174f229d3d75419445ce9186748d06b9eef06ecd00cb1cc33080dc\",\"stockCount\":81,\"mode\":\"live\",\"assets\":[\"e02030acb3ecd810\",\"194ac8a286ed6e7a\",\"9ae66758b4c4f339\",\"afb7b324e9e9fa46\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"c09bf9ba0e797eca\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"1749b067015d590b\"]}",
+  "generatedAt": "2026-09-23T07:30:01.581Z",
+  "quotesGeneratedAt": "2026-09-23T07:30:01.581Z",
+  "heavyFingerprint": "{\"consensus\":\"2026-09-23T03:00:02.438533Z\",\"actuals\":\"2026-09-22T22:04:56.392824Z\",\"indicators\":\"2026-09-23T07:00:13.094Z\",\"holdcoNav\":\"2026-09-23T07:00:10.315Z\",\"sectorIndices\":\"2026-09-22T09:00:40.279Z\",\"sectorIndexDays\":250,\"rareEarth\":\"9c6db8754706e6f290fddf425354233f63b7ba91b8cc69109347a6be8ebdd803\",\"stockCount\":81,\"mode\":\"live\",\"assets\":[\"e02030acb3ecd810\",\"194ac8a286ed6e7a\",\"9ae66758b4c4f339\",\"afb7b324e9e9fa46\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"c09bf9ba0e797eca\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"1749b067015d590b\"]}",
   "stockCount": 81,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
   "sources": {
     "quote": {
       "source": "mixed",
-      "updatedAt": "2026-09-23T07:24:15.894Z",
+      "updatedAt": "2026-09-23T07:29:16.390Z",
       "status": "partial"
     },
     "actuals": {
