@@ -1,6 +1,23 @@
 // Shared, side-effect-free display contracts for the live and public surfaces.
 const MINUTE = 60_000;
 
+// Use observed daily closes only. A newly listed stock starts on its first
+// available date and exposes that different base date to the legend.
+export function sectorCompanySeries(stocks, histories, dates) {
+  return stocks.map(stock => {
+    const byDate = new Map((histories[stock.code] || [])
+      .filter(row => row && Number.isFinite(row.close) && row.close > 0)
+      .map(row => [row.date, row.close]));
+    const baseDate = dates.find(date => byDate.has(date));
+    const base = byDate.get(baseDate);
+    const values = dates.map(date => base && byDate.has(date) ? byDate.get(date) / base * 100 : null);
+    const last = values.findLast(Number.isFinite);
+    const lastDate = dates[values.findLastIndex(Number.isFinite)];
+    return { code: stock.code, name: stock.name, values, baseDate, last, lastDate,
+      partial: Boolean(baseDate && baseDate !== dates[0]) };
+  });
+}
+
 export function kstSession(now = Date.now()) {
   const date = new Date(Number(now) + 9 * 60 * MINUTE);
   const weekday = date.getUTCDay() >= 1 && date.getUTCDay() <= 5;
@@ -98,6 +115,11 @@ export function relativePeerSeries(companies = [], range = "ytd") {
   const end = new Date(`${endDate}T00:00:00Z`);
   let baseDate;
   if (range === "ytd") baseDate = `${end.getUTCFullYear() - 1}-12-31`;
+  else if (range === "1w") {
+    const sessions = [...new Set(clean.flatMap(company => company.history
+      .filter(row => row.date <= endDate).map(row => row.date)))].sort();
+    baseDate = sessions.at(-6) || sessions[0];
+  }
   else {
     const months = ({ "1m": 1, "3m": 3, "6m": 6, "1y": 12 })[range] || 6;
     const first = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - months, 1));

@@ -680,3 +680,13 @@ table.fin { width: 100%; border-collapse: collapse; font-size: 11.5px; font-vari
   .re-compare-table col.sticky-stock { width: 160px; }
   .re-compare-table td:nth-child(2), .re-compare-table th.sticky-stock { width: 160px; min-width: 160px; max-width: 160px; }
 }
+
+/* Individual company comparison retains the product palette and chart height. */
+svg.chart path.company-dashed { stroke-dasharray: 6 3; }
+.company-legend i.company-dashed { border-top-style: dashed; }
+.company-legend { gap: 3px 10px; }
+.company-legend-item { padding: 3px 0; border: 0; background: transparent; color: var(--ink); font: inherit; cursor: pointer; text-align: left; }
+.company-legend-item span { color: var(--muted); font-variant-numeric: tabular-nums; }
+.company-legend-item[aria-pressed="false"] { opacity: .5; text-decoration: line-through; }
+.company-legend-item:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.company-chart-note { margin: 5px 0 0; color: var(--muted); font-size: 11px; }

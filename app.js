@@ -1,4 +1,4 @@
-import { quoteVenue, combinedQuoteVenue, quoteSourceName, quoteFreshness, resolveDisplayPeriods, relativePeerSeries, rareMoneyValue, rareComparisonRow, kstSession } from "./view-model.js?v=9ae66758b4c4";
+import { quoteVenue, combinedQuoteVenue, quoteSourceName, quoteFreshness, resolveDisplayPeriods, relativePeerSeries, rareMoneyValue, rareComparisonRow, kstSession, sectorCompanySeries } from "./view-model.js?v=20260928-chart-1w";
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
@@ -38,7 +38,8 @@ const HORIZON_LABELS = { oneMonth: "1M 평균", threeMonth: "3M 평균", highest
 // 2026-08-27 사용자 결정: 섹터 지수는 YTD 기준으로 본다. 원래 3M·6M·1Y뿐이라 YTD가 아예 없었다.
 // "ytd"는 거래일 개수가 아니라 날짜로 자르므로 windowSlice가 따로 처리한다.
 // 2026-08-30 사용자 결정: 1Y를 빼고 1M을 넣었다. 거래일 기준 1M≈21 · 3M≈62 · 6M≈124일.
-const RANGES = [["ytd", "YTD"], [21, "1M"], [62, "3M"], [124, "6M"]];
+// 1W includes the baseline close plus five trading-day changes.
+const RANGES = [["ytd", "YTD"], [6, "1W"], [21, "1M"], [62, "3M"], [124, "6M"]];
 const RETURN_HEAT_CAPS = {
   d1: { positive: 10, negative: 5 },
   d5: { positive: 20, negative: 10 },
@@ -141,6 +142,8 @@ const state = {
   detail: null,
   detailCode: null,
   detailLoading: false,
+  companyHistories: new Map(),
+  companyHidden: new Set(),
   columnGroups: new Set(),
   // 컨센서스 값을 무엇으로 볼지. 1M 평균 · 3M 평균(기본) · 최고 추정치.
   estimateBasis: "threeMonth",
@@ -809,10 +812,10 @@ function chartBox(wide, narrow, { ratio = 1 } = {}) {
   return { ...wide, width: measuredChartWidth({ ratio, fallback: wide.width }) };
 }
 
-function lineChart({ series, labels, width = 820, height = 250, rebase = true, calendar = false, connectGaps = false }) {
+function lineChart({ series, labels, width = 820, height = 250, rebase = true, calendar = false, connectGaps = false, endLabels = true }) {
   const usable = series.filter((item) => (item.values || []).some((value) => Number.isFinite(value)));
   if (!usable.length || labels.length < 2) return '<p class="empty-state">표시할 시계열이 없습니다.</p>';
-  const pad = { left: 38, right: 104, top: 12, bottom: 24 };
+  const pad = { left: 38, right: endLabels ? 104 : 12, top: 12, bottom: 24 };
   const innerWidth = width - pad.left - pad.right;
   const innerHeight = height - pad.top - pad.bottom;
   const data = usable.map((item) => {
@@ -844,7 +847,11 @@ function lineChart({ series, labels, width = 820, height = 250, rebase = true, c
   }
   const ticks = [0, Math.floor((count - 1) / 2), count - 1].map((index) => {
     const anchor = index === 0 ? "start" : index === count - 1 ? "end" : "middle";
-    return `<text x="${x(index).toFixed(1)}" y="${height - 6}" text-anchor="${anchor}">${escapeHtml(labels[index].slice(2, 7).replace("-", "."))}</text>`;
+    const shortWindow = count <= 6;
+    const label = shortWindow
+      ? labels[index].slice(labels[0].slice(0, 4) === labels.at(-1).slice(0, 4) ? 5 : 2).replaceAll("-", ".")
+      : labels[index].slice(2, 7).replace("-", ".");
+    return `<text x="${x(index).toFixed(1)}" y="${height - 6}" text-anchor="${anchor}">${escapeHtml(label)}</text>`;
   }).join("");
   const paths = data.map((item) => {
     let path = "";
@@ -854,7 +861,7 @@ function lineChart({ series, labels, width = 820, height = 250, rebase = true, c
       path += `${open ? "L" : "M"}${x(index).toFixed(1)} ${y(value).toFixed(1)} `;
       open = true;
     });
-    return `<path class="${item.cls}" d="${path.trim()}"/>`;
+    return `<path class="${item.cls}" d="${path.trim()}"><title>${escapeHtml(item.name)}</title></path>`;
   }).join("");
   // 끝 라벨이 같은 높이에 몰리면 서로 덮어쓴다. 위에서부터 최소 간격을 확보해 밀어 내린다.
   const endPoints = data
@@ -868,7 +875,7 @@ function lineChart({ series, labels, width = 820, height = 250, rebase = true, c
   }
   const overflow = previousY - (height - 6);
   if (overflow > 0) for (const point of endPoints) point.labelY -= overflow;
-  const ends = endPoints.map(({ item, last, labelY }) =>
+  const ends = (endLabels ? endPoints : []).map(({ item, last, labelY }) =>
     `<text class="end" x="${pad.left + innerWidth + 5}" y="${(labelY + 4).toFixed(1)}">${escapeHtml(item.short || item.name)} ${last.toFixed(1)}</text>`).join("");
   const title = usable.map(({ name }) => name).join(" vs ");
   return `<svg class="chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(title)} 상대주가 추이, 기간 시작 100">`
@@ -1194,7 +1201,7 @@ function homeGroupChart() {
 }
 
 
-const RARE_RANGES = [["ytd", "YTD"], ["1m", "1M"], ["3m", "3M"], ["6m", "6M"], ["1y", "1Y"]];
+const RARE_RANGES = [["ytd", "YTD"], ["1w", "1W"], ["1m", "1M"], ["3m", "3M"], ["6m", "6M"], ["1y", "1Y"]];
 const RARE_METRICS = [["revenue", "매출"], ["ebitda", "EBITDA"], ["operatingIncome", "영업이익 / EBIT"], ["netIncome", "순이익"]];
 const RARE_SHORT = { "127120": "JS링크", MP: "MP", "LYC.AX": "Lynas", USAR: "USAR", CRML: "CRML", EMAT: "EMAT", "NEO.TO": "NEO" };
 
@@ -1418,47 +1425,67 @@ function sectorExceptions(stocks) {
   </div>`;
 }
 
-function sectorTrend(sector, stocks) {
+function loadCompanyHistories(stocks) {
+  const needed = stocks.filter(stock => {
+    const entry = state.companyHistories.get(stock.code);
+    return !entry || (!entry.loading && Date.now() - entry.at > (entry.error ? 60_000 : 15 * 60_000));
+  });
+  if (!needed.length) return;
+  const sector = state.sector;
+  Promise.all(needed.map(async stock => {
+    const previous = state.companyHistories.get(stock.code);
+    state.companyHistories.set(stock.code, { ...previous, loading: true, at: Date.now() });
+    try {
+      const response = await fetch(RUNTIME.stockUrl(stock.code), { cache: "no-store", signal: AbortSignal.timeout(10_000) });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const detail = await response.json();
+      if (detail.code !== stock.code || !Array.isArray(detail.history)) throw new Error("주가 이력 없음");
+      state.companyHistories.set(stock.code, { history: detail.history, at: Date.now() });
+    } catch {
+      state.companyHistories.set(stock.code, { history: previous?.history || [], at: Date.now(), error: true });
+    }
+  })).then(() => {
+    if (state.sector !== sector) return;
+    const card = $("#sectorTrendCard");
+    if (card) card.innerHTML = sectorCompanyChart(stocksInSector(sector));
+  });
+}
+
+function sectorCompanyChart(stocks) {
   const dates = windowSlice(indexDates());
-  const global = sectorSeries(sector);
-  const local = domesticSeries(sector);
-  // 해외 peer가 있는 섹터는 국내선과 글로벌선을 함께 그린다(2026-08-30).
-  // 합성선 하나만 그리면 국내 종목이 글로벌 테마를 따라가는지 아닌지가 보이지 않는다.
-  //
-  // 판별은 서버가 준 foreignSectors로 한다. 객체 비교(local !== global)를 쓰면 안 된다 —
-  // 서버는 해외가 없을 때 같은 객체를 넣지만 JSON을 거치면 별개 객체가 되어 항상 참이 된다.
-  // 그래서 2026-08-31까지 희토류 말고 7섹터가 값이 똑같은 "글로벌/국내" 두 줄을 겹쳐 그리고 있었다.
-  const foreignSectors = state.snapshot?.sectorIndices?.foreignSectors;
-  const hasPeers = (foreignSectors ? foreignSectors.includes(sector) : local !== global) && local?.values?.length;
-  const series = [];
-  if (global?.values?.length) {
-    series.push({
-      name: hasPeers ? `${sector} 글로벌` : sector,
-      short: hasPeers ? "글로벌" : sector,
-      values: windowSlice(global.values),
-      cls: "s-main",
-    });
-  }
-  if (hasPeers) {
-    series.push({ name: `${sector} 국내`, short: "국내", values: windowSlice(local.values), cls: "s-sector" });
-  }
-  const box = chartBox({ width: 820, height: 220 }, { width: 430, height: 300 }, { ratio: SECTOR_CHART_RATIO });
-  const chart = dates.length >= 2 && series.length
-    ? lineChart({ series: [...series, ...benchmarkSeriesFor(dates)], labels: dates, ...box })
-    : '<p class="empty-state">섹터 지수를 만들 일봉이 아직 없습니다.</p>';
-  const excluded = global?.excluded?.length ? `, 제외 ${global.excluded.length}종목` : "";
-  const globalLabel = hasPeers
-    ? `<span><i></i>글로벌(동일가중 ${global?.members ?? 0}종목${excluded})</span><span><i class="sector"></i>국내(${local?.members ?? 0}종목)</span>`
-    : `<span><i></i>${escapeHtml(sector)} 섹터(동일가중 ${global?.members ?? 0}종목${excluded})</span>`;
+  const histories = Object.fromEntries(stocks.map(stock => [stock.code, state.companyHistories.get(stock.code)?.history || []]));
+  const model = sectorCompanySeries(stocks, histories, dates);
+  const series = model.filter(item => !state.companyHidden.has(item.code)).map(item => {
+    const index = stocks.findIndex(stock => stock.code === item.code);
+    return { ...item, cls: `s-${index % 8 + 1}${index >= 8 ? " company-dashed" : ""}` };
+  });
+  const loading = stocks.some(stock => state.companyHistories.get(stock.code)?.loading);
+  const box = chartBox({ width: 820, height: 220 }, { width: 340, height: 240 }, { ratio: SECTOR_CHART_RATIO });
+  const chart = series.some(item => Number.isFinite(item.last))
+    ? lineChart({ series, labels: dates, ...box, rebase: false, endLabels: false })
+    : `<p class="empty-state" role="status">${loading ? "기업별 주가를 불러오는 중입니다." : series.length ? "표시할 주가 이력이 없습니다." : "범례에서 비교할 기업을 선택하세요."}</p>`;
+  const legend = model.map((item, index) => {
+    const entry = state.companyHistories.get(item.code);
+    const available = Number.isFinite(item.last);
+    const note = !available ? (entry?.loading ? "불러오는 중" : entry?.error ? "조회 실패" : "이력 없음")
+      : `${formatPercent(item.last - 100, 1)}${item.partial ? "*" : ""}${entry?.error ? " (이전 이력)" : ""}`;
+    const title = `${item.name}, ${item.baseDate || "-"} 첫 종가 = 100, 마지막 주가 ${item.lastDate || "-"}`;
+    return `<button class="company-legend-item" type="button" data-company-line="${item.code}" aria-pressed="${!state.companyHidden.has(item.code)}" title="${escapeHtml(title)}"><i class="s${index % 8 + 1}${index >= 8 ? " company-dashed" : ""}"></i>${escapeHtml(item.name)} <span>${note}</span></button>`;
+  }).join("");
+  const partials = model.filter(item => item.partial).map(item => `${item.name} ${item.baseDate}`);
+  const ended = model.filter(item => item.lastDate && item.lastDate !== dates.at(-1)).map(item => `${item.name} ${item.lastDate}`);
+  return `<div class="card-head"><h2>${escapeHtml(state.sector)} 기업별 주가 추이</h2><span class="tools">${rangeButtons()}</span></div>
+    ${chart}<div class="chart-legend company-legend">${legend}</div>
+    <p class="company-chart-note">기간 시작 = 100, 일봉 종가(당일은 조회 시점), 범례를 눌러 표시 전환</p>
+    ${partials.length ? `<p class="company-chart-note">* 첫 주가 기준: ${escapeHtml(partials.join(", "))}</p>` : ""}
+    ${ended.length ? `<p class="company-chart-note">마지막 주가: ${escapeHtml(ended.join(", "))}</p>` : ""}
+    <p class="company-chart-note">출처: Kiwoom / NAVER, ${escapeHtml(dates[0] || "-")}~${escapeHtml(dates.at(-1) || "-")}</p>`;
+}
+
+function sectorTrend(sector, stocks) {
+  loadCompanyHistories(stocks);
   return `<div class="sec-grid">
-    <div class="card" id="sectorTrendCard">
-      <div class="card-head"><h2>${escapeHtml(sector)} 섹터 지수 vs 벤치마크</h2>
-        <span class="tools">${rangeButtons()}</span></div>
-      ${chart}
-      <div class="chart-legend">${globalLabel}
-        <span><i class="ctx"></i>KOSPI</span><span><i class="ctx2"></i>KOSDAQ</span>
-        <span class="unit">기간 시작 = 100, 동일가중, 일별 종가</span></div>
-    </div>
+    <div class="card" id="sectorTrendCard">${sectorCompanyChart(stocks)}</div>
     <div class="card"><div class="card-head"><h2>섹터 내 예외</h2><span class="unit">${stocks.length}종목</span></div>${sectorExceptions(stocks)}</div>
   </div>`;
 }
@@ -1966,7 +1993,7 @@ function viewHtml() {
     // 101px를 쓰면서 새 정보가 없었다. YTD−K는 차트 끝점에서 읽힌다.
     ? `<div class="home-grid">${homeGroupChart()}</div>`
     : state.sector === "희토류" && state.snapshot?.rareEarth?.companies?.length
-      ? `${rareEarthPanel()}<details class="re-secondary"><summary>섹터 지수와 기간별 수익률</summary>${sectorTrend(state.sector, stocks)}${foreignPeerTable(state.sector)}</details>${indicatorTiles(state.sector)}`
+      ? `${rareEarthPanel()}<details class="re-secondary"><summary>국내 기업별 주가와 기간별 수익률</summary>${sectorTrend(state.sector, stocks)}${foreignPeerTable(state.sector)}</details>${indicatorTiles(state.sector)}`
       : `${sectorTrend(state.sector, stocks)}${foreignPeerTable(state.sector)}${holdcoNavTable(state.sector)}${indicatorTiles(state.sector)}`;
   return `<div class="topbar"><h1 id="viewTitle">${escapeHtml(title)}</h1></div>
     ${kpiStripHtml()}
@@ -2537,6 +2564,14 @@ function bindEvents() {
       state.homeChartExpanded = !state.homeChartExpanded;
       renderView({ preserveScroll: true });
       return requestAnimationFrame(() => $("[data-home-chart-expand]")?.focus());
+    }
+    const companyLine = event.target.closest("[data-company-line]");
+    if (companyLine) {
+      const code = companyLine.dataset.companyLine;
+      if (state.companyHidden.has(code)) state.companyHidden.delete(code);
+      else state.companyHidden.add(code);
+      $("#sectorTrendCard").innerHTML = sectorCompanyChart(stocksInSector(state.sector));
+      return $(`[data-company-line="${code}"]`)?.focus({ preventScroll: true });
     }
     const range = event.target.closest("[data-range]");
     if (range) { state.range = parseRangeValue(range.dataset.range); return renderView({ preserveScroll: true }); }
