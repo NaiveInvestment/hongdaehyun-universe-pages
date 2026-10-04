@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-10-02T11:15:01.714Z",
+  "builtAt": "2026-10-04T23:00:02.329Z",
   "mode": "live",
-  "generatedAt": "2026-10-02T11:05:02.292Z",
-  "quotesGeneratedAt": "2026-10-02T11:15:01.647Z",
-  "heavyFingerprint": "{\"consensus\":\"2026-10-02T03:00:02.103420Z\",\"actuals\":\"2026-10-01T22:01:45.894422Z\",\"indicators\":\"2026-10-02T07:00:10.203Z\",\"holdcoNav\":\"2026-10-02T07:00:07.842Z\",\"sectorIndices\":\"2026-10-02T09:00:40.111Z\",\"sectorIndexDays\":250,\"rareEarth\":\"ef96c760728315fd8d83b4723f630c2ca461e74d341caf5e3394b56a49da4072\",\"stockCount\":81,\"mode\":\"live\",\"assets\":[\"6bda58567690523c\",\"f5b181f14225563f\",\"fc3f313bdc12f546\",\"648964ee95b51ec6\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"c09bf9ba0e797eca\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"1749b067015d590b\"]}",
+  "generatedAt": "2026-10-04T23:00:01.939Z",
+  "quotesGeneratedAt": "2026-10-04T23:00:01.939Z",
+  "heavyFingerprint": "{\"consensus\":\"2026-10-02T03:00:02.103420Z\",\"actuals\":\"2026-10-01T22:01:45.894422Z\",\"indicators\":\"2026-10-02T22:00:03.705Z\",\"holdcoNav\":\"2026-10-02T12:00:06.956Z\",\"sectorIndices\":\"2026-10-02T09:00:40.111Z\",\"sectorIndexDays\":250,\"rareEarth\":\"97c8cde8ee2be1c884eec9fcd11bd05155feedfe099c55797751b5d4e8d3bc56\",\"stockCount\":81,\"mode\":\"live\",\"assets\":[\"6bda58567690523c\",\"f5b181f14225563f\",\"fc3f313bdc12f546\",\"648964ee95b51ec6\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"c09bf9ba0e797eca\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"1749b067015d590b\"]}",
   "stockCount": 81,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
@@ -26,7 +26,7 @@
     },
     "indicators": {
       "source": "한국은행 ECOS",
-      "updatedAt": "2026-10-02T07:00:10.203Z",
+      "updatedAt": "2026-10-02T22:00:03.705Z",
       "status": "ok"
     }
   },
