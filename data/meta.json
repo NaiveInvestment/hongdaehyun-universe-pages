@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-10-07T23:00:04.442Z",
+  "builtAt": "2026-10-07T23:05:03.552Z",
   "mode": "live",
-  "generatedAt": "2026-10-07T23:00:03.869Z",
-  "quotesGeneratedAt": "2026-10-07T23:00:03.869Z",
-  "heavyFingerprint": "{\"consensus\":\"2026-10-07T23:00:03.109973Z\",\"actuals\":\"2026-10-07T22:01:46.919214Z\",\"indicators\":\"2026-10-07T22:00:08.703Z\",\"holdcoNav\":\"2026-10-07T22:00:06.882Z\",\"sectorIndices\":\"2026-10-07T09:00:41.181Z\",\"sectorIndexDays\":250,\"rareEarth\":\"96cb0af890692c66654c88b2e718d868150af15ebc108f08764e222877ce0dc8\",\"stockCount\":81,\"mode\":\"live\",\"assets\":[\"6bda58567690523c\",\"f5b181f14225563f\",\"fc3f313bdc12f546\",\"648964ee95b51ec6\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"c09bf9ba0e797eca\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"1749b067015d590b\"]}",
+  "generatedAt": "2026-10-07T23:05:03.237Z",
+  "quotesGeneratedAt": "2026-10-07T23:05:03.237Z",
+  "heavyFingerprint": "{\"consensus\":\"2026-10-07T23:00:03.109973Z\",\"actuals\":\"2026-10-07T22:01:46.919214Z\",\"indicators\":\"2026-10-07T22:00:08.703Z\",\"holdcoNav\":\"2026-10-07T22:00:06.882Z\",\"sectorIndices\":\"2026-10-07T09:00:41.181Z\",\"sectorIndexDays\":250,\"rareEarth\":\"1da01d160f13630bc21f17dedf3ee4d574d1203495d0421028e5d2ffefafe901\",\"stockCount\":81,\"mode\":\"live\",\"assets\":[\"6bda58567690523c\",\"f5b181f14225563f\",\"fc3f313bdc12f546\",\"648964ee95b51ec6\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"c09bf9ba0e797eca\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"1749b067015d590b\"]}",
   "stockCount": 81,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
   "sources": {
     "quote": {
-      "source": "naver",
-      "updatedAt": "2026-10-07T22:53:24.517Z",
+      "source": "mixed",
+      "updatedAt": "2026-10-07T23:04:52.795Z",
       "status": "partial"
     },
     "actuals": {
