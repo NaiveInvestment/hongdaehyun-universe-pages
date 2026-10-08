@@ -1,4 +1,4 @@
-import { quoteVenue, combinedQuoteVenue, quoteSourceName, quoteFreshness, resolveDisplayPeriods, relativePeerSeries, rareMoneyValue, rareComparisonRow, kstSession, sectorCompanySeries } from "./view-model.js?v=20260928-chart-1w";
+import { quoteVenue, combinedQuoteVenue, quoteSourceName, quoteFreshness, resolveDisplayPeriods, relativePeerSeries, rareMoneyValue, rareComparisonRow, kstSession, sectorCompanySeries } from "./view-model.js?v=fc3f313bdc12";
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
@@ -19,15 +19,16 @@ const RUNTIME = (() => {
 // ---------------------------------------------------------------------------
 // 정본 상수
 // ---------------------------------------------------------------------------
-const SECTOR_ORDER = ["금융", "보험", "증권", "지주", "AI/SW", "정유", "화학", "희토류"];
+const SECTOR_ORDER = ["금융", "보험", "증권", "지주", "AI/SW", "K-DC 운영사", "K-DC 스몰캡", "스테이블코인", "정유", "화학", "희토류"];
 // universe.js의 HOME_SECTOR_GROUPS와 같은 묶음. 홈 비교 차트에서만 4그룹으로 압축한다.
 const HOME_GROUPS = [
   { label: "금융, 지주, 보험, 증권", short: "금융권", sectors: ["금융", "지주", "보험", "증권"] },
-  { label: "AI/SW", short: "AI/SW", sectors: ["AI/SW"] },
+  { label: "AI/SW, K-DC", short: "AI/DC", sectors: ["AI/SW", "K-DC 운영사", "K-DC 스몰캡"] },
+  { label: "스테이블코인", short: "결제", sectors: ["스테이블코인"] },
   { label: "정유, 화학", short: "정유화학", sectors: ["정유", "화학"] },
   { label: "희토류", short: "희토류", sectors: ["희토류"] },
 ];
-const KOSDAQ_CODES = new Set(["093320", "067160", "124500", "030520", "042000", "078020", "127120"]);
+const KOSDAQ_CODES = new Set(["0007C0", "020180", "025770", "030520", "033230", "035600", "036800", "038680", "042000", "042500", "046440", "049480", "052400", "052460", "053580", "060250", "064260", "067160", "078020", "079940", "086960", "093320", "094480", "124500", "127120", "163730", "173130", "189330", "214180", "234340", "242040", "263800", "294570", "328380", "462860"]);
 // 2026-08-26 확정: 연간 컨센서스는 3개(26E·27E·28E)까지 보여준다. 2025는 확정 실적 비교용이다.
 
 // 분기는 확정 실적 8개 + 추정 4개.
@@ -1184,13 +1185,13 @@ function homeGroupChart() {
     : series;
   const box = chartBox({ width: 900, height: 300 }, { width: 430, height: 300 });
   const chart = lineChart({ series: [...shownSeries, ...benchmarkSeriesFor(dates)], labels: dates, ...box });
-  const expandLabel = state.homeChartExpanded ? "핵심 4개" : "전체 10개";
+  const expandLabel = state.homeChartExpanded ? "핵심 4개" : `전체 ${SECTOR_ORDER.length + 2}개`;
   const expandAria = state.homeChartExpanded ? "기간 상위와 하위 섹터만 보기" : "모든 섹터와 벤치마크 보기";
   const mobileNote = state.homeChartExpanded
-    ? "8개 섹터와 KOSPI, KOSDAQ을 모두 표시합니다."
+    ? `${SECTOR_ORDER.length}개 섹터와 KOSPI, KOSDAQ을 모두 표시합니다.`
     : "기간 수익률 상위와 하위 섹터, KOSPI, KOSDAQ을 표시합니다.";
   return `<div class="card" id="homeGroupChart">
-    <div class="card-head"><h2>8섹터 상대주가 vs 벤치마크</h2>
+    <div class="card-head"><h2>${SECTOR_ORDER.length}섹터 상대주가 vs 벤치마크</h2>
       <span class="tools">${rangeButtons()}<button class="btn tiny home-chart-toggle" type="button" data-home-chart-expand aria-expanded="${state.homeChartExpanded}" aria-label="${expandAria}">${expandLabel}</button></span></div>
     <p class="home-chart-mobile-note">${mobileNote}</p>
     ${chart}
@@ -1457,7 +1458,7 @@ function sectorCompanyChart(stocks) {
   const model = sectorCompanySeries(stocks, histories, dates);
   const series = model.filter(item => !state.companyHidden.has(item.code)).map(item => {
     const index = stocks.findIndex(stock => stock.code === item.code);
-    return { ...item, cls: `s-${index % 8 + 1}${index >= 8 ? " company-dashed" : ""}` };
+    return { ...item, cls: `s-${index % 11 + 1}${index >= 11 ? " company-dashed" : ""}` };
   });
   const loading = stocks.some(stock => state.companyHistories.get(stock.code)?.loading);
   const box = chartBox({ width: 820, height: 220 }, { width: 340, height: 240 }, { ratio: SECTOR_CHART_RATIO });
@@ -1470,7 +1471,7 @@ function sectorCompanyChart(stocks) {
     const note = !available ? (entry?.loading ? "불러오는 중" : entry?.error ? "조회 실패" : "이력 없음")
       : `${formatPercent(item.last - 100, 1)}${item.partial ? "*" : ""}${entry?.error ? " (이전 이력)" : ""}`;
     const title = `${item.name}, ${item.baseDate || "-"} 첫 종가 = 100, 마지막 주가 ${item.lastDate || "-"}`;
-    return `<button class="company-legend-item" type="button" data-company-line="${item.code}" aria-pressed="${!state.companyHidden.has(item.code)}" title="${escapeHtml(title)}"><i class="s${index % 8 + 1}${index >= 8 ? " company-dashed" : ""}"></i>${escapeHtml(item.name)} <span>${note}</span></button>`;
+    return `<button class="company-legend-item" type="button" data-company-line="${item.code}" aria-pressed="${!state.companyHidden.has(item.code)}" title="${escapeHtml(title)}"><i class="s${index % 11 + 1}${index >= 11 ? " company-dashed" : ""}"></i>${escapeHtml(item.name)} <span>${note}</span></button>`;
   }).join("");
   const partials = model.filter(item => item.partial).map(item => `${item.name} ${item.baseDate}`);
   const ended = model.filter(item => item.lastDate && item.lastDate !== dates.at(-1)).map(item => `${item.name} ${item.lastDate}`);
@@ -1984,7 +1985,7 @@ function tableHtml() {
 function viewHtml() {
   const stocks = stocksInSector(state.sector);
   const title = state.sector === "all"
-    ? `전체 유니버스 — 8섹터 ${state.snapshot?.stocks?.length || 0}종목`
+    ? `전체 유니버스 — ${SECTOR_ORDER.length}섹터 ${state.snapshot?.stocks?.length || 0}종목`
     : state.sector === "희토류" && state.snapshot?.rareEarth?.companies?.length
       ? `희토류 — 국내 ${stocks.length}개, 해외 ${state.snapshot.rareEarth.companies.filter(company => !company.domestic).length}개 기업`
       : `${state.sector} — ${stocks.length}종목`;
@@ -2427,7 +2428,7 @@ function flushLiveUpdates() {
 // ---------------------------------------------------------------------------
 function route() {
   const hash = location.hash || "#/";
-  const stockMatch = /^#\/stock\/(\d{6})$/.exec(hash);
+  const stockMatch = /^#\/stock\/([0-9A-Z]{6})$/.exec(hash);
   const sectorMatch = /^#\/sector\/(.+)$/.exec(hash);
   const previousSector = state.sector;
   const previousCode = state.detailCode;
