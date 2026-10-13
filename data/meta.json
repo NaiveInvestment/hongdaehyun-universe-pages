@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-10-13T03:00:02.055Z",
+  "builtAt": "2026-10-13T03:05:01.874Z",
   "mode": "live",
-  "generatedAt": "2026-10-13T03:00:01.750Z",
-  "quotesGeneratedAt": "2026-10-13T03:00:01.750Z",
-  "heavyFingerprint": "{\"consensus\":\"2026-10-12T23:00:02.183369Z\",\"actuals\":\"2026-10-12T22:02:26.096369Z\",\"indicators\":\"2026-10-12T22:00:09.359Z\",\"holdcoNav\":\"2026-10-12T22:00:07.274Z\",\"sectorIndices\":\"2026-10-12T09:00:57.588Z\",\"sectorIndexDays\":250,\"rareEarth\":\"f28b91ab9a8f2a0076386c3baa33dd967a26f6184aa43ada1407e3cf99614338\",\"stockCount\":116,\"mode\":\"live\",\"assets\":[\"4716d2b510eb2cc7\",\"bbb07cca9ebb72ee\",\"fc3f313bdc12f546\",\"71326ad853e2266d\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"b44b13cb93a7bd54\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"2e277e5faa7ef7ba\"]}",
+  "generatedAt": "2026-10-13T03:05:01.627Z",
+  "quotesGeneratedAt": "2026-10-13T03:05:01.627Z",
+  "heavyFingerprint": "{\"consensus\":\"2026-10-13T03:00:01.774137Z\",\"actuals\":\"2026-10-12T22:02:26.096369Z\",\"indicators\":\"2026-10-12T22:00:09.359Z\",\"holdcoNav\":\"2026-10-12T22:00:07.274Z\",\"sectorIndices\":\"2026-10-12T09:00:57.588Z\",\"sectorIndexDays\":250,\"rareEarth\":\"d38644a71282c45d364184d443f48525c50b767312300193d2cf4894d09e7554\",\"stockCount\":116,\"mode\":\"live\",\"assets\":[\"4716d2b510eb2cc7\",\"bbb07cca9ebb72ee\",\"fc3f313bdc12f546\",\"71326ad853e2266d\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"b44b13cb93a7bd54\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"2e277e5faa7ef7ba\"]}",
   "stockCount": 116,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
   "sources": {
     "quote": {
       "source": "mixed",
-      "updatedAt": "2026-10-13T02:59:23.023Z",
+      "updatedAt": "2026-10-13T03:04:23.019Z",
       "status": "partial"
     },
     "actuals": {
@@ -21,7 +21,7 @@
     },
     "consensus": {
       "source": "ConsenDB.xlsx",
-      "updatedAt": "2026-10-12T23:00:02.183369Z",
+      "updatedAt": "2026-10-13T03:00:01.774137Z",
       "status": "partial"
     },
     "indicators": {
