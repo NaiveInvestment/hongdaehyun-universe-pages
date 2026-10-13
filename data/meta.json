@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-10-13T10:35:02.716Z",
+  "builtAt": "2026-10-13T10:40:02.973Z",
   "mode": "live",
-  "generatedAt": "2026-10-13T10:35:02.409Z",
-  "quotesGeneratedAt": "2026-10-13T10:35:02.409Z",
-  "heavyFingerprint": "{\"consensus\":\"2026-10-13T03:00:01.774137Z\",\"actuals\":\"2026-10-12T22:02:26.096369Z\",\"indicators\":\"2026-10-13T07:00:11.417Z\",\"holdcoNav\":\"2026-10-13T07:00:09.087Z\",\"sectorIndices\":\"2026-10-13T09:01:06.400Z\",\"sectorIndexDays\":250,\"rareEarth\":\"81653c0916ffcb499e9634fc17e2a6e3d06d66a7c2dece45603a70257f0bf04a\",\"stockCount\":116,\"mode\":\"live\",\"assets\":[\"4716d2b510eb2cc7\",\"bbb07cca9ebb72ee\",\"fc3f313bdc12f546\",\"71326ad853e2266d\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"b44b13cb93a7bd54\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"2e277e5faa7ef7ba\"]}",
+  "generatedAt": "2026-10-13T10:40:02.724Z",
+  "quotesGeneratedAt": "2026-10-13T10:40:02.724Z",
+  "heavyFingerprint": "{\"consensus\":\"2026-10-13T03:00:01.774137Z\",\"actuals\":\"2026-10-12T22:02:26.096369Z\",\"indicators\":\"2026-10-13T07:00:11.417Z\",\"holdcoNav\":\"2026-10-13T07:00:09.087Z\",\"sectorIndices\":\"2026-10-13T09:01:06.400Z\",\"sectorIndexDays\":250,\"rareEarth\":\"643fffc759342f476a27a7efdf4f97aaae96084b58eb49030d0e7d32fa6dd541\",\"stockCount\":116,\"mode\":\"live\",\"assets\":[\"4716d2b510eb2cc7\",\"bbb07cca9ebb72ee\",\"fc3f313bdc12f546\",\"71326ad853e2266d\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"b44b13cb93a7bd54\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"2e277e5faa7ef7ba\"]}",
   "stockCount": 116,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
   "sources": {
     "quote": {
       "source": "mixed",
-      "updatedAt": "2026-10-13T10:34:26.209Z",
+      "updatedAt": "2026-10-13T10:39:26.207Z",
       "status": "ok"
     },
     "actuals": {
