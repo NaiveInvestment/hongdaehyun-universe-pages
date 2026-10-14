@@ -1,5 +1,5 @@
 import { quoteVenue, combinedQuoteVenue, quoteSourceName, quoteFreshness, resolveDisplayPeriods, relativePeerSeries, rareMoneyValue, rareComparisonRow, kstSession, sectorCompanySeries } from "./view-model.js?v=574e61aabb08";
-import { chartControls } from "./chart-controls.js";
+import { chartControls } from "./chart-controls.js?v=ec0c5f5f754b";
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
@@ -845,7 +845,7 @@ function lineChart({ series, labels, width = 820, height = 250, rebase = true, c
   max += span * 0.06;
   const autoDomain = { min, max };
   const custom = chartKey ? chartControls.axis(chartKey) : null;
-  if (custom && Number.isFinite(custom.min) && Number.isFinite(custom.max) && custom.max > custom.min) {
+  if (custom && Number.isFinite(custom.min) && Number.isFinite(custom.max) && custom.max > custom.min && Number.isFinite(custom.max-custom.min)) {
     min = custom.min; max = custom.max;
   }
   if (chartKey) chartControls.metrics(chartKey, {
@@ -1482,6 +1482,7 @@ function loadCompanyHistories(stocks) {
     if (state.sector !== sector) return;
     const card = $("#sectorTrendCard");
     if (card) card.innerHTML = sectorCompanyChart(stocksInSector(sector));
+    if (chartControls.expandedKey === `sector:${sector}`) chartControls.renderExpanded();
   });
 }
 
@@ -1497,6 +1498,7 @@ function sectorCompanyChart(stocks) {
   const singleColumn = window.matchMedia('(max-width: 1024px)').matches
     || (window.matchMedia('(max-width: 1600px)').matches && document.querySelector('.main.has-drawer'));
   const box = chartBox({ width: 820, height: 340 }, { width: 340, height: 320 }, { ratio: singleColumn ? 1 : SECTOR_CHART_RATIO });
+  chartControls.register(`sector:${state.sector}`, { series, labels: dates, ...box, rebase: false, endLabels: false });
   const chart = series.some(item => Number.isFinite(item.last))
     ? lineChart({ series, labels: dates, ...box, rebase: false, endLabels: false, chartKey: `sector:${state.sector}`, description: `${dates[0]}~${dates.at(-1)}, 기간 시작 100. 일봉 종가, 당일 조회 시점. 출처 Kiwoom / NAVER. ${model.filter(item=>item.partial).map(item=>`${item.name} 첫 관측 ${item.baseDate}`).join(", ")}` })
     : `<p class="empty-state" role="status">${loading ? "기업별 주가를 불러오는 중입니다." : series.length ? "표시할 주가 이력이 없습니다." : "범례에서 비교할 기업을 선택하세요."}</p>`;
@@ -2051,6 +2053,7 @@ function renderView({ preserveScroll = false } = {}) {
     if (next) next.scrollLeft = state.tableScrollLeft;
     if (state.tableScrollTop) window.scrollTo({ top: state.tableScrollTop });
   }
+  if (chartControls.expandedKey) chartControls.renderExpanded();
 }
 
 // 넓은 화면에서는 표가 페이지와 같이 스크롤된다(열 이름이 화면 위에 붙어 있게 하려고).
