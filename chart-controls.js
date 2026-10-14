@@ -144,6 +144,8 @@ export const chartControls = {
   },
   initAxisGestures() {
     const hit=event=>event.target.closest?.('[data-chart-axis-hit]');
+    // SVG hit regions do not consistently suppress native touch scrolling.
+    document.addEventListener('touchstart',event=>{if(hit(event))event.preventDefault();},{passive:false});
     document.addEventListener('pointerdown',event=>{
       const axis=hit(event);if(!axis||event.button!==0||this.drag)return;
       const key=axis.closest('svg').dataset.chartKey,domain=this.axis(key)||this.models.get(key)?.domain;
