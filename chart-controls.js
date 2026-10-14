@@ -5,12 +5,13 @@ export function validAxis(min, max) {
 }
 
 // Keep the midpoint fixed while stretching the price scale vertically.
-export function scaleAxis(domain, factor) {
+export function scaleAxis(domain, factor, anchor = null) {
   if (!domain || !validAxis(domain.min, domain.max) || !Number.isFinite(factor) || factor <= 0) return null;
   const span = domain.max - domain.min;
-  const center = domain.min + span / 2;
+  const center = Number.isFinite(anchor) && anchor >= domain.min && anchor <= domain.max ? anchor : domain.min + span / 2;
   const nextSpan = Math.max(.000001, span * factor);
-  const result = {min: center - nextSpan / 2, max: center + nextSpan / 2};
+  const ratio = (center - domain.min) / span;
+  const result = {min: center - nextSpan * ratio, max: center + nextSpan * (1-ratio)};
   return validAxis(result.min, result.max) ? result : null;
 }
 
@@ -148,7 +149,9 @@ export const chartControls = {
       const key=axis.closest('svg').dataset.chartKey,domain=this.axis(key)||this.models.get(key)?.domain;
       if(!domain||!validAxis(domain.min,domain.max))return;
       event.preventDefault();event.stopPropagation();
-      this.drag={key,id:event.pointerId,startY:event.clientY,height:Math.max(1,axis.getBoundingClientRect().height),domain:{...domain},previous:this.axis(key)};
+      const box=axis.getBoundingClientRect(),height=Math.max(1,box.height);
+      const anchor=domain.max-Math.max(0,Math.min(1,(event.clientY-box.top)/height))*(domain.max-domain.min);
+      this.drag={key,id:event.pointerId,startY:event.clientY,height,anchor,domain:{...domain},previous:this.axis(key)};
       document.body.setPointerCapture(event.pointerId);
       document.body.classList.add('chart-axis-dragging');
     });
@@ -157,7 +160,7 @@ export const chartControls = {
       event.preventDefault();
       const delta=event.clientY-drag.startY;if(Math.abs(delta)<2&&!drag.moved)return;
       drag.moved=true;
-      const axis=scaleAxis(drag.domain,Math.exp(Math.max(-12,Math.min(12,delta/drag.height*3))));
+      const axis=scaleAxis(drag.domain,Math.exp(Math.max(-12,Math.min(12,delta/drag.height*3))),drag.anchor);
       if(axis){this.axes.set(drag.key,axis);this.refresh(drag.key,true);}
     });
     document.addEventListener('pointerup',event=>{if(event.pointerId===this.drag?.id)this.endDrag();});
@@ -172,7 +175,9 @@ export const chartControls = {
       const axis=hit(event);if(!axis||this.drag)return;
       const key=axis.closest('svg').dataset.chartKey,domain=this.axis(key)||this.models.get(key)?.domain;
       const delta=event.deltaY*(event.deltaMode===1?16:event.deltaMode===2?axis.getBoundingClientRect().height:1);
-      const next=scaleAxis(domain,Math.exp(Math.max(-1,Math.min(1,delta*.002))));
+      const box=axis.getBoundingClientRect();
+      const anchor=domain?domain.max-Math.max(0,Math.min(1,(event.clientY-box.top)/Math.max(1,box.height)))*(domain.max-domain.min):null;
+      const next=scaleAxis(domain,Math.exp(Math.max(-1,Math.min(1,delta*.002))),anchor);
       if(next){event.preventDefault();this.axes.set(key,next);this.refresh(key,true);}
     },{passive:false});
     document.addEventListener('dblclick',event=>{
