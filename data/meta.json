@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-10-14T00:45:04.274Z",
+  "builtAt": "2026-10-14T00:50:03.266Z",
   "mode": "live",
-  "generatedAt": "2026-10-14T00:45:03.919Z",
-  "quotesGeneratedAt": "2026-10-14T00:45:03.919Z",
-  "heavyFingerprint": "{\"consensus\":\"2026-10-13T23:00:03.754056Z\",\"actuals\":\"2026-10-13T22:02:27.283728Z\",\"indicators\":\"2026-10-13T22:00:11.077Z\",\"holdcoNav\":\"2026-10-13T22:00:09.091Z\",\"sectorIndices\":\"2026-10-13T09:01:06.400Z\",\"sectorIndexDays\":250,\"rareEarth\":\"e41fa964a42504bb51ebaf18142d647825246c00a0b3dd9e1a7ca3cfa5ef4a4b\",\"stockCount\":116,\"mode\":\"live\",\"assets\":[\"4716d2b510eb2cc7\",\"bbb07cca9ebb72ee\",\"fc3f313bdc12f546\",\"71326ad853e2266d\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"b44b13cb93a7bd54\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"2e277e5faa7ef7ba\"]}",
+  "generatedAt": "2026-10-14T00:50:02.962Z",
+  "quotesGeneratedAt": "2026-10-14T00:50:02.962Z",
+  "heavyFingerprint": "{\"consensus\":\"2026-10-13T23:00:03.754056Z\",\"actuals\":\"2026-10-13T22:02:27.283728Z\",\"indicators\":\"2026-10-13T22:00:11.077Z\",\"holdcoNav\":\"2026-10-13T22:00:09.091Z\",\"sectorIndices\":\"2026-10-13T09:01:06.400Z\",\"sectorIndexDays\":250,\"rareEarth\":\"5ebe9c0fe751547f09e772efdd38542e4d48363fcd09411e32b7eae739123368\",\"stockCount\":116,\"mode\":\"live\",\"assets\":[\"4716d2b510eb2cc7\",\"bbb07cca9ebb72ee\",\"fc3f313bdc12f546\",\"71326ad853e2266d\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"b44b13cb93a7bd54\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"2e277e5faa7ef7ba\"]}",
   "stockCount": 116,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
   "sources": {
     "quote": {
       "source": "mixed",
-      "updatedAt": "2026-10-14T00:44:33.830Z",
+      "updatedAt": "2026-10-14T00:49:33.927Z",
       "status": "partial"
     },
     "actuals": {
