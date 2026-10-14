@@ -1,5 +1,5 @@
 import { quoteVenue, combinedQuoteVenue, quoteSourceName, quoteFreshness, resolveDisplayPeriods, relativePeerSeries, rareMoneyValue, rareComparisonRow, kstSession, sectorCompanySeries } from "./view-model.js?v=574e61aabb08";
-import { chartControls } from "./chart-controls.js?v=db6b577aa40a";
+import { chartControls } from "./chart-controls.js?v=16afb350f7f3";
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
@@ -915,8 +915,9 @@ function lineChart({ series, labels, width = 820, height = 250, rebase = true, c
   const title = usable.map(({ name }) => name).join(" vs ");
   const clipId = `plot-${String(chartKey || "chart").replace(/[^a-zA-Z0-9_-]/g,"-")}-${expanded ? "expanded" : "normal"}`;
   const clippedPaths = custom ? `<defs><clipPath id="${clipId}"><rect x="${pad.left}" y="${pad.top}" width="${innerWidth}" height="${innerHeight}"/></clipPath></defs><g clip-path="url(#${clipId})">${paths}</g>` : paths;
+  const axisHit = chartKey ? `<rect class="chart-axis-hit" data-chart-axis-hit x="0" y="${pad.top}" width="${pad.left}" height="${innerHeight}" fill="transparent" tabindex="0" role="button" aria-label="Y축 범위 조절, 위아래로 드래그, 휠로 확대와 축소, 두 번 클릭하면 자동 복원"><title>Y축을 위아래로 드래그하거나 휠로 조절, 두 번 클릭하면 자동</title></rect>` : "";
   return `<svg class="chart"${chartKey ? ` data-chart-key="${escapeHtml(chartKey)}"` : ""} data-y-min="${min}" data-y-max="${max}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(title)} 상대주가 추이, 기간 시작 100">`
-    + `<title>${escapeHtml(title)}</title><desc>${escapeHtml(description)}</desc>${grid}${ticks}${clippedPaths}${ends}</svg>`;
+    + `<title>${escapeHtml(title)}</title><desc>${escapeHtml(description)}</desc>${grid}${ticks}${clippedPaths}${ends}${axisHit}</svg>`;
 }
 
 // 스파크라인. dates가 있으면 x를 실제 날짜에 비례해 놓는다(2026-09-03).

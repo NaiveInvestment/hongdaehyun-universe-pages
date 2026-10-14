@@ -343,6 +343,10 @@ svg.chart .axis { stroke: var(--line-strong); }
 svg.chart .end { fill: var(--ink); font-size: 12px; font-weight: 800; }
 svg.chart path.end-leader { stroke-width: 1; opacity: .8; stroke-dasharray: none; }
 .chart-actions { display: inline-flex; gap: 3px; flex-wrap: wrap; }
+.chart-axis-hit { cursor: ns-resize; touch-action: none; }
+.chart-axis-hit:hover, .chart-axis-hit:focus-visible { fill: var(--line); fill-opacity: .35; }
+.chart-axis-hit:focus-visible { outline: none; stroke: var(--accent); stroke-width: 1; }
+body.chart-axis-dragging, body.chart-axis-dragging * { cursor: ns-resize !important; user-select: none !important; }
 .chart-expand { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; }
 [data-chart-surface] > .card-head, [data-chart-surface] > .panel-head { flex-wrap: wrap; gap: 8px; }
 [data-chart-surface] .tools { flex-wrap: wrap; justify-content: flex-end; }
