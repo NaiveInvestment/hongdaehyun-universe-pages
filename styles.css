@@ -180,7 +180,7 @@ ul { padding: 0; list-style: none; }
 .ind li b { display: block; overflow: hidden; color: var(--ink); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .ind li i { display: block; overflow: hidden; color: var(--faint); font-size: 10.5px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
 .ind li .state { display: inline-block; margin-top: 3px; padding: 0 5px; border: 1px solid var(--line-strong); border-radius: 2px; font-size: 10px; font-weight: 800; }
-.ind li .state.paid { color: var(--accent); border-color: var(--accent); }
+.ind li .state.paid { color: var(--warning); border-color: var(--accent); }
 
 /* 원천이 확정돼 값이 실린 지표. 대기 카드(점선)와 달리 실선 타일로 띄운다.
    섹터 타일(.tile)과 같은 문법을 쓴다 — 이름 + 값 + 변화 + 스파크라인. */

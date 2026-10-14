@@ -803,20 +803,24 @@ function measuredChartWidth({ ratio = 1, fallback = 900 } = {}) {
   const content = document.querySelector(".content");
   const available = content?.clientWidth;
   if (!Number.isFinite(available) || available <= 0) return fallback;
-  const width = Math.round(available * ratio) - CHART_PADDING;
+  const style = window.getComputedStyle(content);
+  const contentPadding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+  const width = Math.round((available - contentPadding - (ratio < 1 ? 10 : 0)) * ratio) - CHART_PADDING - 2;
   // 너무 좁으면 축·끝점 라벨이 겹친다. 아래로는 막고, 위로는 열어 둔다.
-  return Math.max(360, width);
+  return Math.max(280, width);
 }
 
 function chartBox(wide, narrow, { ratio = 1 } = {}) {
-  if (typeof window !== "undefined" && window.matchMedia("(max-width: 640px)").matches) return narrow;
+  if (typeof window !== "undefined" && window.matchMedia("(max-width: 640px)").matches) {
+    return { ...narrow, width: measuredChartWidth({ fallback: narrow.width }) };
+  }
   return { ...wide, width: measuredChartWidth({ ratio, fallback: wide.width }) };
 }
 
 function lineChart({ series, labels, width = 820, height = 250, rebase = true, calendar = false, connectGaps = false, endLabels = true }) {
   const usable = series.filter((item) => (item.values || []).some((value) => Number.isFinite(value)));
   if (!usable.length || labels.length < 2) return '<p class="empty-state">표시할 시계열이 없습니다.</p>';
-  const labelGap = 18;
+  const labelGap = 22;
   if (endLabels) height = Math.max(height, (usable.length - 1) * labelGap + 48);
   const pad = { left: 38, right: endLabels ? 132 : 12, top: 12, bottom: 24 };
   const innerWidth = width - pad.left - pad.right;
@@ -1224,7 +1228,7 @@ function rareEarthPanel() {
   const chartSeries = model.series.filter(item => !state.rareHidden.has(item.symbol)).map(item => ({
     ...item, short: RARE_SHORT[item.symbol] || item.name, cls: `s-${colorIndex.get(item.symbol)}`,
   }));
-  const width = Math.max(320, measuredChartWidth({ fallback: 900 }));
+  const width = measuredChartWidth({ fallback: 900 });
   const chart = lineChart({ series: chartSeries, labels: model.dates, width, height: 400, rebase: false, calendar: true, connectGaps: true });
   const ranges = RARE_RANGES.map(([key, label]) => `<button type="button" class="btn tiny" data-rare-range="${key}" aria-pressed="${state.rareRange === key}">${label}</button>`).join("");
   const legend = packet.companies.map(company => {
@@ -1471,7 +1475,9 @@ function sectorCompanyChart(stocks) {
     return { ...item, cls: `s-${index % 11 + 1}${index >= 11 ? " company-dashed" : ""}` };
   });
   const loading = stocks.some(stock => state.companyHistories.get(stock.code)?.loading);
-  const box = chartBox({ width: 820, height: 340 }, { width: 340, height: 320 }, { ratio: SECTOR_CHART_RATIO });
+  const singleColumn = window.matchMedia('(max-width: 1024px)').matches
+    || (window.matchMedia('(max-width: 1600px)').matches && document.querySelector('.main.has-drawer'));
+  const box = chartBox({ width: 820, height: 340 }, { width: 340, height: 320 }, { ratio: singleColumn ? 1 : SECTOR_CHART_RATIO });
   const chart = series.some(item => Number.isFinite(item.last))
     ? lineChart({ series, labels: dates, ...box, rebase: false, endLabels: false })
     : `<p class="empty-state" role="status">${loading ? "기업별 주가를 불러오는 중입니다." : series.length ? "표시할 주가 이력이 없습니다." : "범례에서 비교할 기업을 선택하세요."}</p>`;
