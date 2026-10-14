@@ -15,6 +15,23 @@ export function scaleAxis(domain, factor, anchor = null) {
   return validAxis(result.min, result.max) ? result : null;
 }
 
+export function timeWindow(min, max) {
+  if (!validAxis(min,max)) return null;
+  const span=Math.max(.005,Math.min(1.5,max-min));
+  const start=Math.max(-.25,Math.min(1.25-span,min));
+  return {min:start,max:start+span};
+}
+
+export function transformView(view, start, current, factorX=1, factorY=1) {
+  if (!view || !validAxis(view.y.min,view.y.max) || !validAxis(view.x.min,view.x.max) || ![start.x,start.y,current.x,current.y,factorX,factorY].every(Number.isFinite) || factorX<=0 || factorY<=0) return null;
+  const xSpan=view.x.max-view.x.min,ySpan=view.y.max-view.y.min;
+  const xAnchor=view.x.min+start.x*xSpan,yAnchor=view.y.max-start.y*ySpan;
+  const nextYSpan=Math.max(.000001,ySpan*factorY);
+  const y={min:yAnchor-(1-current.y)*nextYSpan,max:yAnchor+current.y*nextYSpan};
+  const x=timeWindow(xAnchor-current.x*xSpan*factorX,xAnchor+(1-current.x)*xSpan*factorX);
+  return validAxis(y.min,y.max)&&x?{x,y}:null;
+}
+
 export function zoomAxis(domain, ends, direction) {
   if (!domain) return null;
   const span = domain.max - domain.min;
@@ -28,13 +45,16 @@ export function zoomAxis(domain, ends, direction) {
 }
 
 export const chartControls = {
-  models: new Map(), axes: new Map(), editors: new Set(), expandedKey: null,
+  models: new Map(), axes: new Map(), windows: new Map(), editors: new Set(), expandedKey: null,
   register(key, options) {
     const model={ ...this.models.get(key), options };
     if(!options.series.some(item=>(item.values||[]).some(Number.isFinite))){delete model.domain;delete model.autoDomain;model.ends=[];model.outside=0;}
     this.models.set(key,model);
   },
   axis(key) { return this.axes.get(key); },
+  window(key) { return this.windows.get(key); },
+  reset(key) { this.axes.delete(key);this.windows.delete(key); },
+  resetTime(mode) { for(const key of this.windows.keys())if(mode==='rare'?key==='rare':key!=='rare')this.windows.delete(key); },
   metrics(key, value) { Object.assign(this.models.get(key), value); },
   tools(key, label) {
     if (this.models.has(key)) this.models.get(key).label = label;
@@ -45,11 +65,11 @@ export const chartControls = {
   editor(key) {
     const model = this.models.get(key);
     const domain = this.axis(key) || model?.domain || {min:0,max:200};
-    const manual = this.axes.has(key);
+    const manual = this.axes.has(key)||this.windows.has(key);
     const digits=Math.min(10,Math.max(1,Math.ceil(-Math.log10((domain.max-domain.min)/4))+1));
     const bound=value=>Math.abs(value)>=1e6?value.toExponential(2):String(Number(value.toFixed(digits)));
-    const notice = manual ? `<span class="chart-axis-status">Y축 ${bound(domain.min)}–${bound(domain.max)}${model?.outside ? `, 범위 밖 ${model.outside}개 선` : ''}</span>` : '';
-    return `<div class="chart-axis-slot" data-chart-axis-slot="${escape(key)}">${notice}${manual?`<button class="btn tiny" type="button" data-chart-reset="${escape(key)}">자동</button>`:''}</div>`;
+    const notice = manual ? `Y축 ${bound(domain.min)}–${bound(domain.max)}${this.windows.has(key)?', 기간 확대와 이동':''}${model?.outside ? `, 범위 밖 ${model.outside}개 선` : ''}` : '';
+    return `<div class="chart-axis-slot" data-chart-axis-slot="${escape(key)}"><span class="chart-axis-status" title="${escape(notice)}">${notice}</span><button class="btn tiny" type="button" data-chart-reset="${escape(key)}" title="차트 확대와 이동 초기화">전체 보기</button></div>`;
   },
   normalSvg(key) {
     return [...document.querySelectorAll('svg[data-chart-key]')].find(el=>el.dataset.chartKey===key&&!el.closest('#chartDialog'));
@@ -80,6 +100,7 @@ export const chartControls = {
   },
   close() {
     this.endDrag();
+    this.endPlotGesture();
     const key=this.expandedKey;this.expandedKey=null;this.dialog.close();document.body.classList.remove('chart-dialog-open');
     document.querySelector(`[data-chart-expand="${CSS.escape(key||'')}"]`)?.focus();
   },
@@ -112,6 +133,7 @@ export const chartControls = {
     this.dialog.addEventListener('cancel',event=>{event.preventDefault();this.close();});
     this.dialog.addEventListener('close',()=>{if(!this.dialog.open)document.body.classList.remove('chart-dialog-open');});
     this.initAxisGestures();
+    this.initPlotGestures();
     this.dialog.addEventListener('click',event=>{if(event.target===this.dialog){const r=this.dialog.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)this.close();}});
     document.addEventListener('keydown',event=>{if(event.key==='Escape'&&this.dialog.open){event.preventDefault();event.stopImmediatePropagation();this.close();}});
     document.addEventListener('click',event=>{
@@ -119,13 +141,13 @@ export const chartControls = {
       if(button.hasAttribute('data-chart-expand')){this.open(button.dataset.chartExpand);return;}
       if(button.hasAttribute('data-chart-close')){this.close();return;}
       if(button.hasAttribute('data-chart-axis-toggle')){const key=button.dataset.chartAxisToggle;this.editors.has(key)?this.editors.delete(key):this.editors.add(key);this.refresh(key);return;}
-      if(button.hasAttribute('data-chart-reset')){const key=button.dataset.chartReset;this.axes.delete(key);this.refresh(key);return;}
+      if(button.hasAttribute('data-chart-reset')){const key=button.dataset.chartReset;this.reset(key);this.refresh(key);return;}
       if(button.hasAttribute('data-chart-zoom')){
         const key=button.dataset.chartTarget,model=this.models.get(key);if(!model)return;
         const axis=zoomAxis(this.axis(key)||model.domain,model.ends||[],button.dataset.chartZoom);if(axis)this.axes.set(key,axis);this.refresh(key);return;
       }
       if(!button.closest('#chartDialog'))return;
-      if(button.hasAttribute('data-range')||button.hasAttribute('data-rare-range')){this.onPeriod(button.hasAttribute('data-rare-range')?'rare':'common',button.dataset.rareRange||button.dataset.range);this.renderExpanded();return;}
+      if(button.hasAttribute('data-range')||button.hasAttribute('data-rare-range')){const mode=button.hasAttribute('data-rare-range')?'rare':'common';this.resetTime(mode);this.onPeriod(mode,button.dataset.rareRange||button.dataset.range);this.renderExpanded();return;}
       if(button.hasAttribute('data-home-chart-expand')){this.onHomeToggle();this.renderExpanded();return;}
       if(button.hasAttribute('data-company-line')||button.hasAttribute('data-rare-symbol')){this.onLegend(button.hasAttribute('data-company-line')?'company':'rare',button.dataset.companyLine||button.dataset.rareSymbol);this.renderExpanded();}
     });
@@ -147,7 +169,7 @@ export const chartControls = {
     // SVG hit regions do not consistently suppress native touch scrolling.
     document.addEventListener('touchstart',event=>{if(hit(event))event.preventDefault();},{passive:false});
     document.addEventListener('pointerdown',event=>{
-      const axis=hit(event);if(!axis||event.button!==0||this.drag)return;
+      const axis=hit(event);if(!axis||event.button!==0||this.drag||this.plotGesture)return;
       const key=axis.closest('svg').dataset.chartKey,domain=this.axis(key)||this.models.get(key)?.domain;
       if(!domain||!validAxis(domain.min,domain.max))return;
       event.preventDefault();event.stopPropagation();
@@ -171,7 +193,7 @@ export const chartControls = {
       drag.previous?this.axes.set(drag.key,drag.previous):this.axes.delete(drag.key);
       this.endDrag();this.refresh(drag.key,true);
     });
-    document.body.addEventListener('lostpointercapture',()=>this.endDrag());
+    document.body.addEventListener('lostpointercapture',event=>{if(event.pointerId===this.drag?.id)this.endDrag();});
     window.addEventListener('blur',()=>this.endDrag());
     document.addEventListener('wheel',event=>{
       const axis=hit(event);if(!axis||this.drag)return;
@@ -196,6 +218,88 @@ export const chartControls = {
       const expanded=!!axis.closest('#chartDialog');this.refresh(key,true);
       const svg=expanded?this.dialog.querySelector('svg[data-chart-key]'):this.normalSvg(key);
       svg?.querySelector('[data-chart-axis-hit]')?.focus({preventScroll:true});
+    });
+  },
+  currentView(key) {
+    const model=this.models.get(key);return model?.domain?{x:{...(this.window(key)||{min:0,max:1})},y:{...(this.axis(key)||model.domain)}}:null;
+  },
+  applyView(key,view) {
+    if(!view)return;this.axes.set(key,view.y);this.windows.set(key,view.x);this.refresh(key,true);
+  },
+  rebasePlotGesture() {
+    const gesture=this.plotGesture;if(!gesture)return;
+    gesture.view=this.currentView(gesture.key);
+    gesture.start=[...gesture.pointers.values()].map(p=>({...p}));
+  },
+  endPlotGesture(cancel=false) {
+    const gesture=this.plotGesture;if(!gesture)return;
+    this.plotGesture=null;document.body.classList.remove('chart-plot-dragging');
+    for(const id of gesture.pointers.keys())if(document.body.hasPointerCapture(id))document.body.releasePointerCapture(id);
+    if(cancel){
+      gesture.previousY?this.axes.set(gesture.key,gesture.previousY):this.axes.delete(gesture.key);
+      gesture.previousX?this.windows.set(gesture.key,gesture.previousX):this.windows.delete(gesture.key);
+      this.refresh(gesture.key,true);
+    }
+  },
+  initPlotGestures() {
+    const hit=event=>event.target.closest?.('[data-chart-plot-hit]');
+    const relative=(point,box)=>({x:(point.x-box.left)/Math.max(1,box.width),y:(point.y-box.top)/Math.max(1,box.height)});
+    const midpoint=points=>({x:(points[0].x+points[1].x)/2,y:(points[0].y+points[1].y)/2});
+    document.addEventListener('touchstart',event=>{if(hit(event))event.preventDefault();},{passive:false});
+    document.addEventListener('pointerdown',event=>{
+      const plot=hit(event);if(!plot||event.button!==0||this.drag)return;
+      const key=plot.closest('svg').dataset.chartKey;if(!this.currentView(key))return;
+      if(this.plotGesture&&(this.plotGesture.key!==key||this.plotGesture.pointers.size>=2))return;
+      event.preventDefault();
+      if(!this.plotGesture)this.plotGesture={key,box:plot.getBoundingClientRect(),pointers:new Map(),previousX:this.window(key),previousY:this.axis(key)};
+      this.plotGesture.pointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
+      this.rebasePlotGesture();document.body.setPointerCapture(event.pointerId);document.body.classList.add('chart-plot-dragging');
+    });
+    document.addEventListener('pointermove',event=>{
+      const gesture=this.plotGesture;if(!gesture?.pointers.has(event.pointerId))return;event.preventDefault();
+      gesture.pointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
+      const points=[...gesture.pointers.values()],start=gesture.start;
+      let from=start[0],to=points[0],factor=1;
+      if(points.length===2){
+        from=midpoint(start);to=midpoint(points);
+        factor=Math.hypot(start[1].x-start[0].x,start[1].y-start[0].y)/Math.max(8,Math.hypot(points[1].x-points[0].x,points[1].y-points[0].y));
+        factor=Math.max(.01,Math.min(100,factor));
+      }
+      if(Math.hypot(to.x-from.x,to.y-from.y)<2&&Math.abs(factor-1)<.005&&!gesture.moved)return;
+      gesture.moved=true;this.applyView(gesture.key,transformView(gesture.view,relative(from,gesture.box),relative(to,gesture.box),factor,factor));
+    });
+    document.addEventListener('pointerup',event=>{
+      const gesture=this.plotGesture;if(!gesture?.pointers.has(event.pointerId))return;
+      gesture.pointers.delete(event.pointerId);
+      if(document.body.hasPointerCapture(event.pointerId))document.body.releasePointerCapture(event.pointerId);
+      if(gesture.pointers.size){gesture.moved=false;this.rebasePlotGesture();}else this.endPlotGesture();
+    });
+    document.addEventListener('pointercancel',event=>{if(this.plotGesture?.pointers.has(event.pointerId))this.endPlotGesture(true);});
+    document.body.addEventListener('lostpointercapture',event=>{if(this.plotGesture?.pointers.has(event.pointerId))this.endPlotGesture();});
+    window.addEventListener('blur',()=>this.endPlotGesture());
+    document.addEventListener('wheel',event=>{
+      const plot=hit(event);if(!plot||this.plotGesture||this.drag)return;
+      const key=plot.closest('svg').dataset.chartKey,box=plot.getBoundingClientRect(),view=this.currentView(key);
+      const delta=event.deltaY*(event.deltaMode===1?16:event.deltaMode===2?box.height:1);
+      const factor=Math.exp(Math.max(-1,Math.min(1,delta*.002))),anchor=relative({x:event.clientX,y:event.clientY},box);
+      const next=transformView(view,anchor,anchor,factor,factor);if(next){event.preventDefault();this.applyView(key,next);}
+    },{passive:false});
+    document.addEventListener('dblclick',event=>{
+      const plot=hit(event)||document.elementFromPoint(event.clientX,event.clientY)?.closest('[data-chart-plot-hit]');
+      if(!plot)return;event.preventDefault();const key=plot.closest('svg').dataset.chartKey;this.reset(key);this.refresh(key,true);
+    });
+    document.addEventListener('keydown',event=>{
+      const plot=hit(event);if(!plot||!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','+','=','-','Home'].includes(event.key))return;
+      event.preventDefault();const key=plot.closest('svg').dataset.chartKey,expanded=!!plot.closest('#chartDialog'),view=this.currentView(key),start={x:.5,y:.5},current={...start};
+      if(event.key==='Home'){this.reset(key);this.refresh(key,true);}
+      else {
+        if(event.key==='ArrowUp')current.y-=.1;if(event.key==='ArrowDown')current.y+=.1;
+        if(event.key==='ArrowLeft')current.x-=.1;if(event.key==='ArrowRight')current.x+=.1;
+        const factor=['+','='].includes(event.key)?.85:event.key==='-'?1/.85:1;
+        this.applyView(key,transformView(view,start,current,factor,factor));
+      }
+      const svg=expanded?this.dialog.querySelector('svg[data-chart-key]'):this.normalSvg(key);
+      svg?.querySelector('[data-chart-plot-hit]')?.focus({preventScroll:true});
     });
   },
 };

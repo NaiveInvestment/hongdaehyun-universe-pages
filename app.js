@@ -1,5 +1,5 @@
 import { quoteVenue, combinedQuoteVenue, quoteSourceName, quoteFreshness, resolveDisplayPeriods, relativePeerSeries, rareMoneyValue, rareComparisonRow, kstSession, sectorCompanySeries } from "./view-model.js?v=574e61aabb08";
-import { chartControls } from "./chart-controls.js?v=15499ed1aa05";
+import { chartControls } from "./chart-controls.js?v=d65bdffeb6ea";
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
@@ -860,7 +860,11 @@ function lineChart({ series, labels, width = 820, height = 250, rebase = true, c
   });
   const count = labels.length;
   const firstTime = Date.parse(labels[0]), lastTime = Date.parse(labels.at(-1));
-  const x = (index) => pad.left + (calendar && lastTime > firstTime ? (Date.parse(labels[index]) - firstTime) / (lastTime - firstTime) : index / (count - 1)) * innerWidth;
+  const xWindow = chartKey ? chartControls.window(chartKey) : null;
+  const xRange = xWindow || {min:0,max:1};
+  const fraction = index => calendar && lastTime > firstTime ? (Date.parse(labels[index])-firstTime)/(lastTime-firstTime) : index/(count-1);
+  const x = index => pad.left + (fraction(index)-xRange.min)/(xRange.max-xRange.min)*innerWidth;
+  const visibleIndices = labels.map((_,index)=>index).filter(index=>fraction(index)>=xRange.min-1e-12&&fraction(index)<=xRange.max+1e-12);
   const y = (value) => pad.top + (1 - (value - min) / (max - min)) * innerHeight;
   let grid = "";
   for (let step = 0; step <= 4; step += 1) {
@@ -871,8 +875,9 @@ function lineChart({ series, labels, width = 820, height = 250, rebase = true, c
   if (rebase && min < 100 && max > 100) {
     grid += `<line class="axis" x1="${pad.left}" x2="${pad.left + innerWidth}" y1="${y(100).toFixed(1)}" y2="${y(100).toFixed(1)}" stroke-dasharray="2 3"/>`;
   }
-  const ticks = [0, Math.floor((count - 1) / 2), count - 1].map((index) => {
-    const anchor = index === 0 ? "start" : index === count - 1 ? "end" : "middle";
+  const tickIndices = xWindow ? [...new Set([visibleIndices[0],visibleIndices[Math.floor((visibleIndices.length-1)/2)],visibleIndices.at(-1)].filter(Number.isInteger))] : [0,Math.floor((count-1)/2),count-1];
+  const ticks = tickIndices.map((index) => {
+    const anchor = index === tickIndices[0] ? "start" : index === tickIndices.at(-1) ? "end" : "middle";
     const shortWindow = count <= 6;
     const label = shortWindow
       ? labels[index].slice(labels[0].slice(0, 4) === labels.at(-1).slice(0, 4) ? 5 : 2).replaceAll("-", ".")
@@ -892,7 +897,7 @@ function lineChart({ series, labels, width = 820, height = 250, rebase = true, c
   // 끝 라벨을 위아래 경계 안에서 배치하고 실제 끝점에 색상 연결선을 붙인다.
   const endPoints = data
     .map((item) => {
-      const lastIndex = item.scaled.findLastIndex(Number.isFinite);
+      const lastIndex = xWindow ? visibleIndices.findLast(index=>Number.isFinite(item.scaled[index])) : item.scaled.findLastIndex(Number.isFinite);
       return { item, lastIndex, last: item.scaled[lastIndex] };
     })
     .filter(({ last }) => Number.isFinite(last))
@@ -914,10 +919,11 @@ function lineChart({ series, labels, width = 820, height = 250, rebase = true, c
     + `<text class="end" x="${edgeX + 23}" y="${(labelY + 4).toFixed(1)}">${escapeHtml(item.short || item.name)} ${last.toFixed(1)}</text>`).join("");
   const title = usable.map(({ name }) => name).join(" vs ");
   const clipId = `plot-${String(chartKey || "chart").replace(/[^a-zA-Z0-9_-]/g,"-")}-${expanded ? "expanded" : "normal"}`;
-  const clippedPaths = custom ? `<defs><clipPath id="${clipId}"><rect x="${pad.left}" y="${pad.top}" width="${innerWidth}" height="${innerHeight}"/></clipPath></defs><g clip-path="url(#${clipId})">${paths}</g>` : paths;
+  const clippedPaths = custom || xWindow ? `<defs><clipPath id="${clipId}"><rect x="${pad.left}" y="${pad.top}" width="${innerWidth}" height="${innerHeight}"/></clipPath></defs><g clip-path="url(#${clipId})">${paths}</g>` : paths;
+  const plotHit = chartKey ? `<rect class="chart-plot-hit" data-chart-plot-hit x="${pad.left}" y="${pad.top}" width="${innerWidth}" height="${innerHeight}" fill="transparent" tabindex="0" role="button" aria-label="차트를 드래그하여 이동, 휠 또는 두 손가락으로 확대와 축소, 두 번 클릭하면 전체 보기"><title>드래그로 이동, 휠 또는 두 손가락으로 확대와 축소, 두 번 클릭하면 전체 보기</title></rect>` : "";
   const axisHit = chartKey ? `<rect class="chart-axis-hit" data-chart-axis-hit x="0" y="${pad.top}" width="${pad.left}" height="${innerHeight}" fill="transparent" tabindex="0" role="button" aria-label="Y축 범위 조절, 위아래로 드래그, 휠로 확대와 축소, 두 번 클릭하면 자동 복원"><title>Y축을 위아래로 드래그하거나 휠로 조절, 두 번 클릭하면 자동</title></rect>` : "";
-  return `<svg class="chart"${chartKey ? ` data-chart-key="${escapeHtml(chartKey)}"` : ""} data-y-min="${min}" data-y-max="${max}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(title)} 상대주가 추이, 기간 시작 100">`
-    + `<title>${escapeHtml(title)}</title><desc>${escapeHtml(description)}</desc>${grid}${ticks}${clippedPaths}${ends}${axisHit}</svg>`;
+  return `<svg class="chart"${chartKey ? ` data-chart-key="${escapeHtml(chartKey)}"` : ""} data-y-min="${min}" data-y-max="${max}" data-x-min="${xRange.min}" data-x-max="${xRange.max}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(title)} 상대주가 추이, 기간 시작 100">`
+    + `<title>${escapeHtml(title)}</title><desc>${escapeHtml(description)}</desc>${grid}${ticks}${clippedPaths}${ends}${plotHit}${axisHit}</svg>`;
 }
 
 // 스파크라인. dates가 있으면 x를 실제 날짜에 비례해 놓는다(2026-09-03).
@@ -2587,7 +2593,7 @@ function bindEvents() {
       return $(`[data-rare-metric="${state.rareMetric}"]`)?.focus({ preventScroll: true });
     }
     const rareRange = event.target.closest("[data-rare-range]");
-    if (rareRange) { state.rareRange = rareRange.dataset.rareRange; renderView({ preserveScroll: true }); return $(`[data-rare-range="${state.rareRange}"]`)?.focus(); }
+    if (rareRange) { chartControls.resetTime('rare'); state.rareRange = rareRange.dataset.rareRange; renderView({ preserveScroll: true }); return $(`[data-rare-range="${state.rareRange}"]`)?.focus(); }
     const rareSymbol = event.target.closest("[data-rare-symbol]");
     if (rareSymbol) {
       const symbol = rareSymbol.dataset.rareSymbol;
@@ -2619,7 +2625,7 @@ function bindEvents() {
       return $(`[data-company-line="${code}"]`)?.focus({ preventScroll: true });
     }
     const range = event.target.closest("[data-range]");
-    if (range) { state.range = parseRangeValue(range.dataset.range); return renderView({ preserveScroll: true }); }
+    if (range) { chartControls.resetTime('common'); state.range = parseRangeValue(range.dataset.range); return renderView({ preserveScroll: true }); }
     if (event.target.closest("a.stock-name")) return;
     const row = event.target.closest("tr[data-code]");
     if (row) location.hash = `#/stock/${row.dataset.code}`;
@@ -2640,6 +2646,7 @@ function bindEvents() {
     }
     const range = event.target.closest("[data-range]");
     if (range) {
+      chartControls.resetTime('common');
       state.range = parseRangeValue(range.dataset.range);
       renderDrawer();
       renderView({ preserveScroll: true });
