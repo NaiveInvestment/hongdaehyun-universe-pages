@@ -816,7 +816,9 @@ function chartBox(wide, narrow, { ratio = 1 } = {}) {
 function lineChart({ series, labels, width = 820, height = 250, rebase = true, calendar = false, connectGaps = false, endLabels = true }) {
   const usable = series.filter((item) => (item.values || []).some((value) => Number.isFinite(value)));
   if (!usable.length || labels.length < 2) return '<p class="empty-state">표시할 시계열이 없습니다.</p>';
-  const pad = { left: 38, right: endLabels ? 104 : 12, top: 12, bottom: 24 };
+  const labelGap = 18;
+  if (endLabels) height = Math.max(height, (usable.length - 1) * labelGap + 48);
+  const pad = { left: 38, right: endLabels ? 132 : 12, top: 12, bottom: 24 };
   const innerWidth = width - pad.left - pad.right;
   const innerHeight = height - pad.top - pad.bottom;
   const data = usable.map((item) => {
@@ -864,20 +866,28 @@ function lineChart({ series, labels, width = 820, height = 250, rebase = true, c
     });
     return `<path class="${item.cls}" d="${path.trim()}"><title>${escapeHtml(item.name)}</title></path>`;
   }).join("");
-  // 끝 라벨이 같은 높이에 몰리면 서로 덮어쓴다. 위에서부터 최소 간격을 확보해 밀어 내린다.
+  // 끝 라벨을 위아래 경계 안에서 배치하고 실제 끝점에 색상 연결선을 붙인다.
   const endPoints = data
-    .map((item) => ({ item, last: [...item.scaled].reverse().find((value) => Number.isFinite(value)) }))
+    .map((item) => {
+      const lastIndex = item.scaled.findLastIndex(Number.isFinite);
+      return { item, lastIndex, last: item.scaled[lastIndex] };
+    })
     .filter(({ last }) => Number.isFinite(last))
     .sort((left, right) => y(left.last) - y(right.last));
-  let previousY = -Infinity;
+  let previousY = pad.top - labelGap;
   for (const point of endPoints) {
-    point.labelY = Math.max(y(point.last), previousY + 13);
+    point.labelY = Math.max(y(point.last), previousY + labelGap);
     previousY = point.labelY;
   }
-  const overflow = previousY - (height - 6);
-  if (overflow > 0) for (const point of endPoints) point.labelY -= overflow;
-  const ends = (endLabels ? endPoints : []).map(({ item, last, labelY }) =>
-    `<text class="end" x="${pad.left + innerWidth + 5}" y="${(labelY + 4).toFixed(1)}">${escapeHtml(item.short || item.name)} ${last.toFixed(1)}</text>`).join("");
+  let nextY = height - pad.bottom + labelGap;
+  for (const point of [...endPoints].reverse()) {
+    point.labelY = Math.min(point.labelY, nextY - labelGap);
+    nextY = point.labelY;
+  }
+  const edgeX = pad.left + innerWidth;
+  const ends = (endLabels ? endPoints : []).map(({ item, last, lastIndex, labelY }) =>
+    `<path class="${item.cls} end-leader" d="M${x(lastIndex).toFixed(1)} ${y(last).toFixed(1)} L${edgeX + 8} ${y(last).toFixed(1)} L${edgeX + 18} ${labelY.toFixed(1)}"/>`
+    + `<text class="end" x="${edgeX + 23}" y="${(labelY + 4).toFixed(1)}">${escapeHtml(item.short || item.name)} ${last.toFixed(1)}</text>`).join("");
   const title = usable.map(({ name }) => name).join(" vs ");
   return `<svg class="chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(title)} 상대주가 추이, 기간 시작 100">`
     + `<title>${escapeHtml(title)}</title>${grid}${ticks}${paths}${ends}</svg>`;
@@ -1183,7 +1193,7 @@ function homeGroupChart() {
   const shownSeries = compact && compactNames.size > 1
     ? series.filter(({ name }) => compactNames.has(name))
     : series;
-  const box = chartBox({ width: 900, height: 300 }, { width: 430, height: 300 });
+  const box = chartBox({ width: 900, height: 380 }, { width: 430, height: 360 });
   const chart = lineChart({ series: [...shownSeries, ...benchmarkSeriesFor(dates)], labels: dates, ...box });
   const expandLabel = state.homeChartExpanded ? "핵심 4개" : `전체 ${SECTOR_ORDER.length + 2}개`;
   const expandAria = state.homeChartExpanded ? "기간 상위와 하위 섹터만 보기" : "모든 섹터와 벤치마크 보기";
@@ -1215,7 +1225,7 @@ function rareEarthPanel() {
     ...item, short: RARE_SHORT[item.symbol] || item.name, cls: `s-${colorIndex.get(item.symbol)}`,
   }));
   const width = Math.max(320, measuredChartWidth({ fallback: 900 }));
-  const chart = lineChart({ series: chartSeries, labels: model.dates, width, height: 255, rebase: false, calendar: true, connectGaps: true });
+  const chart = lineChart({ series: chartSeries, labels: model.dates, width, height: 400, rebase: false, calendar: true, connectGaps: true });
   const ranges = RARE_RANGES.map(([key, label]) => `<button type="button" class="btn tiny" data-rare-range="${key}" aria-pressed="${state.rareRange === key}">${label}</button>`).join("");
   const legend = packet.companies.map(company => {
     const line = model.series.find(item => item.symbol === company.symbol);
@@ -1461,7 +1471,7 @@ function sectorCompanyChart(stocks) {
     return { ...item, cls: `s-${index % 11 + 1}${index >= 11 ? " company-dashed" : ""}` };
   });
   const loading = stocks.some(stock => state.companyHistories.get(stock.code)?.loading);
-  const box = chartBox({ width: 820, height: 220 }, { width: 340, height: 240 }, { ratio: SECTOR_CHART_RATIO });
+  const box = chartBox({ width: 820, height: 340 }, { width: 340, height: 320 }, { ratio: SECTOR_CHART_RATIO });
   const chart = series.some(item => Number.isFinite(item.last))
     ? lineChart({ series, labels: dates, ...box, rebase: false, endLabels: false })
     : `<p class="empty-state" role="status">${loading ? "기업별 주가를 불러오는 중입니다." : series.length ? "표시할 주가 이력이 없습니다." : "범례에서 비교할 기업을 선택하세요."}</p>`;
@@ -2158,7 +2168,7 @@ function drawerHtml(stock) {
   const series = [{ name: stock.name, values: aligned, cls: "s-main" }];
   if (sector?.values?.length) series.push({ name: `${stock.sector} 섹터`, values: windowSlice(sector.values), cls: "s-sector" });
   const chart = dates.length >= 2
-    ? lineChart({ series: [...series, ...benchmarkSeriesFor(dates)], labels: dates, width: 430, height: 220 })
+    ? lineChart({ series: [...series, ...benchmarkSeriesFor(dates)], labels: dates, width: 430, height: 280 })
     : '<p class="empty-state">주가 이력이 아직 없습니다.</p>';
   // 금융·보험·증권·지주는 영업이익 대신 지배순이익이 주력 지표다(전체 화면 (C)안과 같은 규칙).
   const profitMetric = profitMetricFor(stock.sector);
