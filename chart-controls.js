@@ -10,9 +10,10 @@ export function zoomAxis(domain, ends, direction) {
   if (!validAxis(domain.min, domain.max)) return null;
   const values = ends.filter(value=>Number.isFinite(value)&&value>=domain.min&&value<=domain.max).sort((a,b)=>a-b);
   const center = direction === 'in' && values.length
-    ? values[Math.floor(values.length / 2)] : (domain.min + domain.max) / 2;
+    ? values[Math.floor(values.length / 2)] : domain.min + span / 2;
   const nextSpan = Math.max(0.01, span * (direction === 'in' ? .65 : 1 / .65));
-  return { min: center - nextSpan / 2, max: center + nextSpan / 2 };
+  const result = { min: center - nextSpan / 2, max: center + nextSpan / 2 };
+  return validAxis(result.min,result.max) ? result : null;
 }
 
 export const chartControls = {
@@ -37,11 +38,13 @@ export const chartControls = {
     const model = this.models.get(key);
     const domain = this.axis(key) || model?.domain || {min:0,max:200};
     const manual = this.axes.has(key);
-    const notice = manual ? `<span class="chart-axis-status">Y축 ${domain.min.toFixed(1)}–${domain.max.toFixed(1)}${model?.outside ? `, 범위 밖 ${model.outside}개 선` : ''}</span>` : '';
+    const digits=Math.min(10,Math.max(1,Math.ceil(-Math.log10((domain.max-domain.min)/4))+1));
+    const bound=value=>Math.abs(value)>=1e6?value.toExponential(2):String(Number(value.toFixed(digits)));
+    const notice = manual ? `<span class="chart-axis-status">Y축 ${bound(domain.min)}–${bound(domain.max)}${model?.outside ? `, 범위 밖 ${model.outside}개 선` : ''}</span>` : '';
     return `<div class="chart-axis-slot" data-chart-axis-slot="${escape(key)}">
       <form class="chart-axis-editor" data-chart-axis-form="${escape(key)}" ${this.editors.has(key)?'':'hidden'}>
-        <label>최소 <input name="min" type="number" step="any" required value="${Number(domain.min.toFixed(2))}" aria-label="Y축 최소값"></label>
-        <label>최대 <input name="max" type="number" step="any" required value="${Number(domain.max.toFixed(2))}" aria-label="Y축 최대값"></label>
+        <label>최소 <input name="min" type="number" step="any" required value="${manual?domain.min:Number(domain.min.toFixed(2))}" aria-label="Y축 최소값"></label>
+        <label>최대 <input name="max" type="number" step="any" required value="${manual?domain.max:Number(domain.max.toFixed(2))}" aria-label="Y축 최대값"></label>
         <button class="btn tiny" type="submit">적용</button>
         <button class="btn tiny" type="button" data-chart-reset="${escape(key)}">자동</button>
         <span class="chart-axis-error" role="alert"></span>
@@ -51,6 +54,7 @@ export const chartControls = {
   normalSvg(key) {
     return [...document.querySelectorAll('svg[data-chart-key]')].find(el=>el.dataset.chartKey===key&&!el.closest('#chartDialog'));
   },
+  surface(key) { return [...document.querySelectorAll('[data-chart-surface]')].find(el=>el.dataset.chartSurface===key); },
   refresh(key) {
     const svg=this.normalSvg(key), model=this.models.get(key);
     if(svg&&model){const width=svg.getBoundingClientRect().width;svg.outerHTML=this.draw({...model.options,width,chartKey:key});}
@@ -85,7 +89,7 @@ export const chartControls = {
       if(active.tagName==='INPUT')focusSelector=`input[name="${CSS.escape(active.name)}"]`;
       if(active.type==='submit')focusSelector='button[type="submit"]';
     }
-    const surface=this.normalSvg(key)?.closest('[data-chart-surface]');
+    const surface=this.surface(key);
     const periods=[...(surface?.querySelectorAll('[data-range],[data-rare-range],[data-home-chart-expand]')||[])].map(el=>el.outerHTML).join('');
     const legend=surface?.querySelector('.chart-legend')?.outerHTML||'';
     const width=Math.max(280,window.innerWidth-(window.innerWidth<=640?38:80));

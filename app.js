@@ -1,5 +1,5 @@
 import { quoteVenue, combinedQuoteVenue, quoteSourceName, quoteFreshness, resolveDisplayPeriods, relativePeerSeries, rareMoneyValue, rareComparisonRow, kstSession, sectorCompanySeries } from "./view-model.js?v=574e61aabb08";
-import { chartControls } from "./chart-controls.js?v=efcc0b5a1b9c";
+import { chartControls } from "./chart-controls.js?v=db6b577aa40a";
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
@@ -827,7 +827,7 @@ function lineChart({ series, labels, width = 820, height = 250, rebase = true, c
   const labelGap = 22;
   if (endLabels) height = Math.max(height, (usable.length - 1) * labelGap + 48);
   const pad = { left: 38, right: endLabels ? 132 : 12, top: 12, bottom: 24 };
-  const innerWidth = width - pad.left - pad.right;
+  let innerWidth = width - pad.left - pad.right;
   const innerHeight = height - pad.top - pad.bottom;
   const data = usable.map((item) => {
     const values = item.values;
@@ -848,6 +848,11 @@ function lineChart({ series, labels, width = 820, height = 250, rebase = true, c
   if (custom && Number.isFinite(custom.min) && Number.isFinite(custom.max) && custom.max > custom.min && Number.isFinite(custom.max-custom.min)) {
     min = custom.min; max = custom.max;
   }
+  const tickStep = (max - min) / 4;
+  const tickDigits = tickStep < 1 ? Math.min(12,Math.max(1,Math.ceil(-Math.log10(tickStep)))) : 0;
+  const tickText = value => Math.abs(value) >= 1e6 || (value !== 0 && Math.abs(value) < 1e-6) ? value.toExponential(2) : value.toFixed(tickDigits);
+  pad.left = Math.max(pad.left, Math.ceil(Math.max(tickText(min).length,tickText(max).length)*6.5+10));
+  innerWidth = width - pad.left - pad.right;
   if (chartKey) chartControls.metrics(chartKey, {
     autoDomain, domain: { min, max },
     ends: data.map(item => [...item.scaled].reverse().find(Number.isFinite)),
@@ -861,7 +866,7 @@ function lineChart({ series, labels, width = 820, height = 250, rebase = true, c
   for (let step = 0; step <= 4; step += 1) {
     const value = min + ((max - min) * step) / 4;
     grid += `<line class="grid" x1="${pad.left}" x2="${pad.left + innerWidth}" y1="${y(value).toFixed(1)}" y2="${y(value).toFixed(1)}"/>`
-      + `<text x="${pad.left - 5}" y="${(y(value) + 4).toFixed(1)}" text-anchor="end">${value.toFixed(0)}</text>`;
+      + `<text x="${pad.left - 5}" y="${(y(value) + 4).toFixed(1)}" text-anchor="end">${tickText(value)}</text>`;
   }
   if (rebase && min < 100 && max > 100) {
     grid += `<line class="axis" x1="${pad.left}" x2="${pad.left + innerWidth}" y1="${y(100).toFixed(1)}" y2="${y(100).toFixed(1)}" stroke-dasharray="2 3"/>`;
@@ -1221,7 +1226,7 @@ function homeGroupChart() {
   const mobileNote = state.homeChartExpanded
     ? `${SECTOR_ORDER.length}개 섹터와 KOSPI, KOSDAQ을 모두 표시합니다.`
     : "기간 수익률 상위와 하위 섹터, KOSPI, KOSDAQ을 표시합니다.";
-  return `<div class="card" id="homeGroupChart" data-chart-surface>
+  return `<div class="card" id="homeGroupChart" data-chart-surface="home">
     <div class="card-head"><h2>${SECTOR_ORDER.length}섹터 상대주가 vs 벤치마크</h2>
       <span class="tools">${rangeButtons()}<button class="btn tiny home-chart-toggle" type="button" data-home-chart-expand aria-expanded="${state.homeChartExpanded}" aria-label="${expandAria}">${expandLabel}</button>${chartControls.tools("home", "전체 섹터 상대주가")}</span></div>
     ${chartControls.editor("home")}
@@ -1255,7 +1260,7 @@ function rareEarthPanel() {
     return `<button type="button" data-rare-symbol="${escapeHtml(company.symbol)}" aria-pressed="${!state.rareHidden.has(company.symbol)}" ${line ? "" : "disabled"} title="${escapeHtml(title)}"><i class="s${colorIndex.get(company.symbol)}"></i>${escapeHtml(RARE_SHORT[company.symbol] || company.name)} <b class="${numberClass(line?.returnPct)}">${line ? formatPercent(line.returnPct, 1) : "제외"}</b></button>`;
   }).join("");
   const excludedNote = model.excluded.length ? `<p class="note re-excluded">제외: ${model.excluded.map(item => `${escapeHtml(item.name)} (${escapeHtml(item.reason)})`).join(", ")}. 기간을 줄이면 상장 이후 추이를 볼 수 있습니다.</p>` : "";
-  return `<section class="card re-panel" id="rareEarthComparison" aria-labelledby="rareEarthTitle" data-chart-surface>
+  return `<section class="card re-panel" id="rareEarthComparison" aria-labelledby="rareEarthTitle" data-chart-surface="rare">
     <div class="card-head"><h2 id="rareEarthTitle">희토류 ${packet.companies.length}개 기업 상대주가</h2><span class="tools">${ranges}${chartControls.tools("rare", "희토류 기업 상대주가")}</span></div>
     ${chartControls.editor("rare")}
     ${chart}<div class="chart-legend re-legend">${legend}</div>
@@ -1520,7 +1525,7 @@ function sectorCompanyChart(stocks) {
 function sectorTrend(sector, stocks) {
   loadCompanyHistories(stocks);
   return `<div class="sec-grid">
-    <div class="card" id="sectorTrendCard" data-chart-surface>${sectorCompanyChart(stocks)}</div>
+    <div class="card" id="sectorTrendCard" data-chart-surface="sector:${escapeHtml(state.sector)}">${sectorCompanyChart(stocks)}</div>
     <div class="card"><div class="card-head"><h2>섹터 내 예외</h2><span class="unit">${stocks.length}종목</span></div>${sectorExceptions(stocks)}</div>
   </div>`;
 }
@@ -2236,7 +2241,7 @@ function drawerHtml(stock) {
       <div><dt>목표가 괴리</dt><dd class="${numberClass(COMPUTED.targetGap(stock))}">${formatPercent(COMPUTED.targetGap(stock))}</dd>
         <small>TP ${formatPrice(targetPriceOf(stock))} (${targetPriceLabel()}), 배당 ${formatLevelPercent(COMPUTED.dividendYield(stock))}</small></div>
     </dl>
-    <section class="panel" data-chart-surface><div class="panel-head"><h3>주가 vs 섹터, 벤치마크</h3>
+    <section class="panel" data-chart-surface="stock:${stock.code}"><div class="panel-head"><h3>주가 vs 섹터, 벤치마크</h3>
         <span class="tools">${rangeButtons()}${chartControls.tools(`stock:${stock.code}`, `${stock.name} 주가 추이`)}</span></div>
       ${chartControls.editor(`stock:${stock.code}`)}
       ${chart}
