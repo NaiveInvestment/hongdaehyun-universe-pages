@@ -1663,7 +1663,7 @@ function foreignPeerTable(sector) {
     <div class="card-head"><h2>${escapeHtml(sector)} 해외 peer</h2>
       <span class="unit">Yahoo Finance, 일별 종가, ${escapeHtml(note)}${grouped ? ", 묶음을 누르면 종목이 펼쳐집니다" : ""}</span></div>
     <div class="fin-wrap"><table class="fin peer">
-      <thead><tr><th class="l">종목</th><th>주가</th>${PEER_COLUMNS.map(([, label]) => `<th>${label}</th>`).join("")}</tr></thead>
+      <thead><tr><th class="l">종목</th><th>주가</th>${PEER_COLUMNS.map(([key, label]) => `<th${key === "d5" ? ' title="최근 5거래일 가격 수익률"' : key === "d20" ? ' title="최근 20거래일 가격 수익률"' : ""}>${label}</th>`).join("")}</tr></thead>
       <tbody>${body}</tbody></table></div>
     <p class="note">${peers.some((peer) => peer.indexed !== false)
       ? "섹터 지수에 국내 종목과 같은 무게로 들어갑니다. 상장일이 기간 시작보다 늦은 종목은 그 기간 지수에서 빠집니다."
