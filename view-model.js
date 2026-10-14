@@ -233,6 +233,8 @@ export function rareComparisonRow(company, stock, fx, { target = "KRW", basis = 
     price: company.private ? null : company.domestic ? stock?.quote?.price : end?.close,
     priceDate: company.domestic ? stock?.quote?.observedAt : end?.date,
     d1: company.private ? null : company.domestic ? stock?.performance?.d1 : change(end?.close, prior?.close),
+    d5: company.private ? null : company.domestic ? stock?.performance?.d5 ?? null : change(end?.close, history.at(-6)?.close),
+    d20: company.private ? null : company.domestic ? stock?.performance?.d20 ?? null : change(end?.close, history.at(-21)?.close),
     ytd: company.private ? null : company.domestic ? stock?.performance?.ytd : change(end?.close, ytdBase?.close),
     mdd: company.private ? null : company.domestic ? stock?.performance?.ytdDrawdown : change(end?.close, ytdHigh) };
 }

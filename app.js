@@ -1,4 +1,4 @@
-import { quoteVenue, combinedQuoteVenue, quoteSourceName, quoteFreshness, resolveDisplayPeriods, relativePeerSeries, rareMoneyValue, rareComparisonRow, kstSession, sectorCompanySeries } from "./view-model.js?v=fc3f313bdc12";
+import { quoteVenue, combinedQuoteVenue, quoteSourceName, quoteFreshness, resolveDisplayPeriods, relativePeerSeries, rareMoneyValue, rareComparisonRow, kstSession, sectorCompanySeries } from "./view-model.js?v=574e61aabb08";
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
@@ -542,6 +542,8 @@ function buildColumnSections(sector = state.sector) {
       columns: [
         { key: "price", label: "현재가", sort: "quote.price", className: "base-col price-col", kind: "price" },
         { key: "d1", label: "1D", sort: "performance.d1", className: "base-col return-col", kind: "return", period: "d1" },
+        { key: "d5", label: "1W", sort: "performance.d5", className: "base-col return-col", kind: "return", period: "d5" },
+        { key: "d20", label: "1M", sort: "performance.d20", className: "base-col return-col", kind: "return", period: "d20" },
         { key: "ytd", label: "YTD", sort: "performance.ytd", className: "base-col return-col", kind: "return", period: "ytd" },
         { key: "ytdDrawdown", label: "MDD", sort: "performance.ytdDrawdown", className: "base-col return-col", kind: "return", period: "ytdDrawdown" },
         { key: "marketCap", label: "시총", sort: "quote.marketCap", className: "base-col market-cap-col", kind: "marketCap", field: "marketCap" },
@@ -1259,7 +1261,8 @@ function rareCompareColumns() {
   return [
     { label: "시세, 수익률", columns: [
       { key: "price", label: "현재가", sub: "현지통화" },
-      { key: "d1", label: "1D" }, { key: "ytd", label: "YTD" }, { key: "mdd", label: "MDD" },
+      { key: "d1", label: "1D" }, { key: "d5", label: "1W" }, { key: "d20", label: "1M" },
+      { key: "ytd", label: "YTD" }, { key: "mdd", label: "MDD" },
     ] },
     { label: `기업가치 (${money})`, columns: [{ key: "cap", label: "시총 / 지분가치" }, { key: "ev", label: "EV", sub: "현재 기업가치" }] },
     ...RARE_FORWARD_YEARS.map(year => ({
@@ -1294,11 +1297,12 @@ function rareCompareCell(row, column, index) {
     text = record.status === "nm" ? "N/M" : record.status === "ok" ? `${formatNumber(value, 2)}x` : "-";
     const formula = { ps: "시총 / 매출", pe: `시총 / ${company.domestic ? "지배순이익" : "GAAP 순이익"}`, evEbitda: "현재 EV / TIKR EBITDA", evEbit: "현재 EV / TIKR EBIT" }[column.ratio];
     title = `${column.year} ${column.ratioLabel}, ${formula}, ${record.kind === "actual" ? "결산 실적" : "연간 전망"}. 분자와 분모에 같은 2026-09-04 환율 적용. N/M은 분모가 0 이하, -는 미제공. 비상장 배수는 산출하지 않습니다.${column.ratio.startsWith("ev") ? ` 원본 EV ${formatNumber(record.numerator, 2)} ${record.numeratorCurrency || ""} 백만 / ${formatNumber(record.denominator, 2)} ${record.denominatorCurrency || ""} 백만.` : ""}`;
-  } else if (["d1", "ytd", "mdd"].includes(column.key)) {
+  } else if (["d1", "d5", "d20", "ytd", "mdd"].includes(column.key)) {
     text = formatPercent(value, 1);
     const heat = returnHeatMeta(value, column.key === "mdd" ? "ytdDrawdown" : column.key);
     extra += ` ${numberClass(value)} ${heat.className}`;
-    title = column.key === "mdd" ? "올해 최고 종가 대비 현재가, 기존 홈페이지 MDD 정의" : `현지통화 가격 수익률, ${row.priceDate || "미제공"}`;
+    title = column.key === "mdd" ? "올해 최고 종가 대비 현재가, 기존 홈페이지 MDD 정의"
+      : `현지통화 가격 수익률${column.key === "d5" ? ", 최근 5거래일" : column.key === "d20" ? ", 최근 20거래일" : ""}, ${row.priceDate || "미제공"}`;
   } else if (column.key === "price") {
     text = formatNumber(value, company.domestic ? 0 : 2);
     title = `${company.currency || "KRW"}, ${company.domestic ? "현재가" : "최근 일별 종가"}, ${row.priceDate || "미제공"}`;
@@ -1586,7 +1590,7 @@ ${tile.sources.join(", ")}`
 // 해외 peer 표 (2026-08-30). 전체 종목표에는 넣지 않고 해당 섹터 페이지에서만 보여 준다.
 // 컨센서스·실적이 국내 전용이라 매출·OP·P/E를 채울 수 없어, 주가·1D·YTD만 담는다.
 // 해외 peer 비교 구간. 1D만으로는 흐름이 안 보인다는 지적으로 2026-08-30에 넓혔다.
-const PEER_COLUMNS = [["changePercent", "1D"], ["m1", "1M"], ["m3", "3M"], ["m6", "6M"], ["ytd", "YTD"], ["y1", "1Y"]];
+const PEER_COLUMNS = [["changePercent", "1D"], ["d5", "1W"], ["d20", "1M"], ["m3", "3M"], ["m6", "6M"], ["ytd", "YTD"], ["y1", "1Y"]];
 // universe.js의 PEER_GROUP_LABELS와 같은 목록. 화면 코드는 universe.js를 import하지 않아 여기에 둔다.
 const PEER_GROUP_LABELS = { neocloud: "Neocloud", colocation: "Colocation" };
 
@@ -1818,7 +1822,8 @@ function performanceCell(stock, key, extraClass = "") {
   const value = stock.performance?.[key];
   const heat = returnHeatMeta(value, key);
   const heatAttributes = heat.weight ? ` data-heat-value="${value}" data-heat-strength="${heat.weight}" data-heat-bucket="${heat.bucket}"` : "";
-  return `<td data-live-field="performance.${key}" class="${numberClass(value)} ${heat.className} ${extraClass}"${heatAttributes}>${formatPercent(value)}</td>`;
+  const title = key === "d5" ? ' title="최근 5거래일 가격 수익률"' : key === "d20" ? ' title="최근 20거래일 가격 수익률"' : "";
+  return `<td data-live-field="performance.${key}" class="${numberClass(value)} ${heat.className} ${extraClass}"${heatAttributes}${title}>${formatPercent(value)}</td>`;
 }
 
 function revisionCell(stock, period, metric, extraClass = "") {
