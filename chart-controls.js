@@ -67,14 +67,24 @@ export const chartControls = {
     this.expandedKey=key;
     this.renderExpanded();
     if(!this.dialog.open)this.dialog.showModal();
+    document.body.classList.add('chart-dialog-open');
     this.dialog.querySelector('[data-chart-close]')?.focus();
   },
   close() {
-    const key=this.expandedKey;this.expandedKey=null;this.dialog.close();
+    const key=this.expandedKey;this.expandedKey=null;this.dialog.close();document.body.classList.remove('chart-dialog-open');
     document.querySelector(`[data-chart-expand="${CSS.escape(key||'')}"]`)?.focus();
   },
   renderExpanded() {
     const key=this.expandedKey,model=this.models.get(key);if(!key||!model)return;
+    const active=document.activeElement;
+    let focusSelector=null;
+    if(this.dialog.contains(active)){
+      for(const attribute of ['data-chart-zoom','data-chart-axis-toggle','data-chart-reset','data-chart-close','data-range','data-rare-range','data-home-chart-expand','data-company-line','data-rare-symbol']){
+        if(active.hasAttribute(attribute)){focusSelector=`[${attribute}="${CSS.escape(active.getAttribute(attribute))}"]`;break;}
+      }
+      if(active.tagName==='INPUT')focusSelector=`input[name="${CSS.escape(active.name)}"]`;
+      if(active.type==='submit')focusSelector='button[type="submit"]';
+    }
     const surface=this.normalSvg(key)?.closest('[data-chart-surface]');
     const periods=[...(surface?.querySelectorAll('[data-range],[data-rare-range],[data-home-chart-expand]')||[])].map(el=>el.outerHTML).join('');
     const legend=surface?.querySelector('.chart-legend')?.outerHTML||'';
@@ -84,12 +94,14 @@ export const chartControls = {
       <div class="chart-dialog-toolbar"><span class="tools">${periods}</span>${this.tools(key,model.label||'주가 추이')}</div>
       ${this.editor(key)}${this.draw({...model.options,width,height,chartKey:key,expanded:true})}${legend}`;
     this.dialog.querySelector('[data-chart-expand]')?.remove();
+    if(focusSelector)this.dialog.querySelector(focusSelector)?.focus({preventScroll:true});
   },
   init({draw,onPeriod,onLegend,onHomeToggle}) {
     if(this.dialog)return;
     Object.assign(this,{draw,onPeriod,onLegend,onHomeToggle});
     this.dialog=document.createElement('dialog');this.dialog.id='chartDialog';this.dialog.className='chart-dialog';this.dialog.setAttribute('aria-labelledby','chartDialogTitle');document.body.append(this.dialog);
     this.dialog.addEventListener('cancel',event=>{event.preventDefault();this.close();});
+    this.dialog.addEventListener('close',()=>{if(!this.dialog.open)document.body.classList.remove('chart-dialog-open');});
     this.dialog.addEventListener('click',event=>{if(event.target===this.dialog){const r=this.dialog.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)this.close();}});
     document.addEventListener('keydown',event=>{if(event.key==='Escape'&&this.dialog.open){event.preventDefault();event.stopImmediatePropagation();this.close();}});
     document.addEventListener('click',event=>{

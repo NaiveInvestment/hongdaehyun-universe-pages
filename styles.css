@@ -356,6 +356,8 @@ svg.chart path.end-leader { stroke-width: 1; opacity: .8; stroke-dasharray: none
 .chart-axis-status { color: var(--muted); font-size: 12px; }
 .chart-dialog { width: calc(100vw - 40px); max-width: none; max-height: calc(100dvh - 24px); padding: 18px; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--ink); background: var(--surface); overflow: auto; }
 .chart-dialog::backdrop { background: rgba(0,0,0,.7); }
+body.chart-dialog-open { overflow: hidden; }
+.chart-dialog { overscroll-behavior: contain; }
 .chart-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .chart-dialog-head h2 { margin: 0; font-size: 17px; }
 .chart-dialog-close { font-size: 22px; min-width: 34px; }

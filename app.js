@@ -1,5 +1,5 @@
 import { quoteVenue, combinedQuoteVenue, quoteSourceName, quoteFreshness, resolveDisplayPeriods, relativePeerSeries, rareMoneyValue, rareComparisonRow, kstSession, sectorCompanySeries } from "./view-model.js?v=574e61aabb08";
-import { chartControls } from "./chart-controls.js?v=ec0c5f5f754b";
+import { chartControls } from "./chart-controls.js?v=efcc0b5a1b9c";
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
@@ -2193,8 +2193,9 @@ function drawerHtml(stock) {
   const sector = sectorSeries(stock.sector);
   const series = [{ name: stock.name, values: aligned, cls: "s-main" }];
   if (sector?.values?.length) series.push({ name: `${stock.sector} 섹터`, values: windowSlice(sector.values), cls: "s-sector" });
+  const drawerWidth = Math.max(280, ($("#drawer")?.clientWidth || (window.matchMedia("(max-width: 1024px)").matches ? window.innerWidth : parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--drawer")))) - 36);
   const chart = dates.length >= 2
-    ? lineChart({ series: [...series, ...benchmarkSeriesFor(dates)], labels: dates, width: 430, height: 280, chartKey: `stock:${stock.code}`, description: `${dates[0]}~${dates.at(-1)}, 기간 시작 100, 일봉 종가, Kiwoom / NAVER / Yahoo Finance.` })
+    ? lineChart({ series: [...series, ...benchmarkSeriesFor(dates)], labels: dates, width: drawerWidth, height: 280, chartKey: `stock:${stock.code}`, description: `${dates[0]}~${dates.at(-1)}, 기간 시작 100, 일봉 종가, Kiwoom / NAVER / Yahoo Finance.` })
     : '<p class="empty-state">주가 이력이 아직 없습니다.</p>';
   // 금융·보험·증권·지주는 영업이익 대신 지배순이익이 주력 지표다(전체 화면 (C)안과 같은 규칙).
   const profitMetric = profitMetricFor(stock.sector);
