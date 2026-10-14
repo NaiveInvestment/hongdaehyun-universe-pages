@@ -1,4 +1,5 @@
 import { quoteVenue, combinedQuoteVenue, quoteSourceName, quoteFreshness, resolveDisplayPeriods, relativePeerSeries, rareMoneyValue, rareComparisonRow, kstSession, sectorCompanySeries } from "./view-model.js?v=574e61aabb08";
+import { chartControls } from "./chart-controls.js";
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
@@ -819,7 +820,8 @@ function chartBox(wide, narrow, { ratio = 1 } = {}) {
   return { ...wide, width: measuredChartWidth({ ratio, fallback: wide.width }) };
 }
 
-function lineChart({ series, labels, width = 820, height = 250, rebase = true, calendar = false, connectGaps = false, endLabels = true }) {
+function lineChart({ series, labels, width = 820, height = 250, rebase = true, calendar = false, connectGaps = false, endLabels = true, chartKey = null, expanded = false, description = "" }) {
+  if (chartKey && !expanded) chartControls.register(chartKey, { series, labels, width, height, rebase, calendar, connectGaps, endLabels, description });
   const usable = series.filter((item) => (item.values || []).some((value) => Number.isFinite(value)));
   if (!usable.length || labels.length < 2) return '<p class="empty-state">표시할 시계열이 없습니다.</p>';
   const labelGap = 22;
@@ -841,6 +843,16 @@ function lineChart({ series, labels, width = 820, height = 250, rebase = true, c
   const span = (max - min) || 1;
   min -= span * 0.06;
   max += span * 0.06;
+  const autoDomain = { min, max };
+  const custom = chartKey ? chartControls.axis(chartKey) : null;
+  if (custom && Number.isFinite(custom.min) && Number.isFinite(custom.max) && custom.max > custom.min) {
+    min = custom.min; max = custom.max;
+  }
+  if (chartKey) chartControls.metrics(chartKey, {
+    autoDomain, domain: { min, max },
+    ends: data.map(item => [...item.scaled].reverse().find(Number.isFinite)),
+    outside: data.filter(item => item.scaled.some(value => Number.isFinite(value) && (value < min || value > max))).length,
+  });
   const count = labels.length;
   const firstTime = Date.parse(labels[0]), lastTime = Date.parse(labels.at(-1));
   const x = (index) => pad.left + (calendar && lastTime > firstTime ? (Date.parse(labels[index]) - firstTime) / (lastTime - firstTime) : index / (count - 1)) * innerWidth;
@@ -879,6 +891,7 @@ function lineChart({ series, labels, width = 820, height = 250, rebase = true, c
       return { item, lastIndex, last: item.scaled[lastIndex] };
     })
     .filter(({ last }) => Number.isFinite(last))
+    .filter(({ last }) => !custom || (last >= min && last <= max))
     .sort((left, right) => y(left.last) - y(right.last));
   let previousY = pad.top - labelGap;
   for (const point of endPoints) {
@@ -895,8 +908,10 @@ function lineChart({ series, labels, width = 820, height = 250, rebase = true, c
     `<path class="${item.cls} end-leader" d="M${x(lastIndex).toFixed(1)} ${y(last).toFixed(1)} L${edgeX + 8} ${y(last).toFixed(1)} L${edgeX + 18} ${labelY.toFixed(1)}"/>`
     + `<text class="end" x="${edgeX + 23}" y="${(labelY + 4).toFixed(1)}">${escapeHtml(item.short || item.name)} ${last.toFixed(1)}</text>`).join("");
   const title = usable.map(({ name }) => name).join(" vs ");
-  return `<svg class="chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(title)} 상대주가 추이, 기간 시작 100">`
-    + `<title>${escapeHtml(title)}</title>${grid}${ticks}${paths}${ends}</svg>`;
+  const clipId = `plot-${String(chartKey || "chart").replace(/[^a-zA-Z0-9_-]/g,"-")}-${expanded ? "expanded" : "normal"}`;
+  const clippedPaths = custom ? `<defs><clipPath id="${clipId}"><rect x="${pad.left}" y="${pad.top}" width="${innerWidth}" height="${innerHeight}"/></clipPath></defs><g clip-path="url(#${clipId})">${paths}</g>` : paths;
+  return `<svg class="chart"${chartKey ? ` data-chart-key="${escapeHtml(chartKey)}"` : ""} data-y-min="${min}" data-y-max="${max}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(title)} 상대주가 추이, 기간 시작 100">`
+    + `<title>${escapeHtml(title)}</title><desc>${escapeHtml(description)}</desc>${grid}${ticks}${clippedPaths}${ends}</svg>`;
 }
 
 // 스파크라인. dates가 있으면 x를 실제 날짜에 비례해 놓는다(2026-09-03).
@@ -1200,20 +1215,20 @@ function homeGroupChart() {
     ? series.filter(({ name }) => compactNames.has(name))
     : series;
   const box = chartBox({ width: 900, height: 380 }, { width: 430, height: 360 });
-  const chart = lineChart({ series: [...shownSeries, ...benchmarkSeriesFor(dates)], labels: dates, ...box });
+  const chart = lineChart({ series: [...shownSeries, ...benchmarkSeriesFor(dates)], labels: dates, ...box, chartKey: "home", description: `${dates[0]}~${dates.at(-1)}, 기간 시작 100, 동일가중, 일별 종가. Kiwoom / NAVER / Yahoo Finance. 모바일 기본은 상위와 하위 섹터, KOSPI와 KOSDAQ.` });
   const expandLabel = state.homeChartExpanded ? "핵심 4개" : `전체 ${SECTOR_ORDER.length + 2}개`;
   const expandAria = state.homeChartExpanded ? "기간 상위와 하위 섹터만 보기" : "모든 섹터와 벤치마크 보기";
   const mobileNote = state.homeChartExpanded
     ? `${SECTOR_ORDER.length}개 섹터와 KOSPI, KOSDAQ을 모두 표시합니다.`
     : "기간 수익률 상위와 하위 섹터, KOSPI, KOSDAQ을 표시합니다.";
-  return `<div class="card" id="homeGroupChart">
+  return `<div class="card" id="homeGroupChart" data-chart-surface>
     <div class="card-head"><h2>${SECTOR_ORDER.length}섹터 상대주가 vs 벤치마크</h2>
-      <span class="tools">${rangeButtons()}<button class="btn tiny home-chart-toggle" type="button" data-home-chart-expand aria-expanded="${state.homeChartExpanded}" aria-label="${expandAria}">${expandLabel}</button></span></div>
-    <p class="home-chart-mobile-note">${mobileNote}</p>
+      <span class="tools">${rangeButtons()}<button class="btn tiny home-chart-toggle" type="button" data-home-chart-expand aria-expanded="${state.homeChartExpanded}" aria-label="${expandAria}">${expandLabel}</button>${chartControls.tools("home", "전체 섹터 상대주가")}</span></div>
+    ${chartControls.editor("home")}
     ${chart}
     <div class="chart-legend">${shownSeries.map((item) => `<span><i class="${item.legendClass}"></i>${escapeHtml(item.name)}</span>`).join("")}
       <span><i class="ctx"></i>KOSPI</span><span><i class="ctx2"></i>KOSDAQ</span>
-      <span class="unit">기간 시작 = 100, 동일가중, 일별 종가</span></div>
+      </div>
   </div>`;
 }
 
@@ -1231,7 +1246,7 @@ function rareEarthPanel() {
     ...item, short: RARE_SHORT[item.symbol] || item.name, cls: `s-${colorIndex.get(item.symbol)}`,
   }));
   const width = measuredChartWidth({ fallback: 900 });
-  const chart = lineChart({ series: chartSeries, labels: model.dates, width, height: 400, rebase: false, calendar: true, connectGaps: true });
+  const chart = lineChart({ series: chartSeries, labels: model.dates, width, height: 400, rebase: false, calendar: true, connectGaps: true, chartKey: "rare", description: `${model.baseDate} 기준 100, ${model.endDate}까지. 현지 통화 종가, 환율과 배당 제외. 기준일 휴장은 직전 종가. 국내 Kiwoom / NAVER, 해외 Yahoo Finance. ${model.excluded.map(item => `${item.name}: ${item.reason}`).join(", ")}` });
   const ranges = RARE_RANGES.map(([key, label]) => `<button type="button" class="btn tiny" data-rare-range="${key}" aria-pressed="${state.rareRange === key}">${label}</button>`).join("");
   const legend = packet.companies.map(company => {
     const line = model.series.find(item => item.symbol === company.symbol);
@@ -1240,10 +1255,10 @@ function rareEarthPanel() {
     return `<button type="button" data-rare-symbol="${escapeHtml(company.symbol)}" aria-pressed="${!state.rareHidden.has(company.symbol)}" ${line ? "" : "disabled"} title="${escapeHtml(title)}"><i class="s${colorIndex.get(company.symbol)}"></i>${escapeHtml(RARE_SHORT[company.symbol] || company.name)} <b class="${numberClass(line?.returnPct)}">${line ? formatPercent(line.returnPct, 1) : "제외"}</b></button>`;
   }).join("");
   const excludedNote = model.excluded.length ? `<p class="note re-excluded">제외: ${model.excluded.map(item => `${escapeHtml(item.name)} (${escapeHtml(item.reason)})`).join(", ")}. 기간을 줄이면 상장 이후 추이를 볼 수 있습니다.</p>` : "";
-  return `<section class="card re-panel" id="rareEarthComparison" aria-labelledby="rareEarthTitle">
-    <div class="card-head"><h2 id="rareEarthTitle">희토류 ${packet.companies.length}개 기업 상대주가</h2><span class="tools">${ranges}</span></div>
+  return `<section class="card re-panel" id="rareEarthComparison" aria-labelledby="rareEarthTitle" data-chart-surface>
+    <div class="card-head"><h2 id="rareEarthTitle">희토류 ${packet.companies.length}개 기업 상대주가</h2><span class="tools">${ranges}${chartControls.tools("rare", "희토류 기업 상대주가")}</span></div>
+    ${chartControls.editor("rare")}
     ${chart}<div class="chart-legend re-legend">${legend}</div>
-    <p class="note re-basis">${escapeHtml(model.baseDate || "-")} 기준 = 100, ${escapeHtml(model.endDate || "-")}까지. 현지 통화 종가, 환율과 배당 제외. 기준일 휴장은 직전 종가 사용. 일봉: 국내 Kiwoom / Naver, 해외 Yahoo Finance. 범례로 개별 선 선택.</p>${excludedNote}
   </section>`;
 }
 
@@ -1483,7 +1498,7 @@ function sectorCompanyChart(stocks) {
     || (window.matchMedia('(max-width: 1600px)').matches && document.querySelector('.main.has-drawer'));
   const box = chartBox({ width: 820, height: 340 }, { width: 340, height: 320 }, { ratio: singleColumn ? 1 : SECTOR_CHART_RATIO });
   const chart = series.some(item => Number.isFinite(item.last))
-    ? lineChart({ series, labels: dates, ...box, rebase: false, endLabels: false })
+    ? lineChart({ series, labels: dates, ...box, rebase: false, endLabels: false, chartKey: `sector:${state.sector}`, description: `${dates[0]}~${dates.at(-1)}, 기간 시작 100. 일봉 종가, 당일 조회 시점. 출처 Kiwoom / NAVER. ${model.filter(item=>item.partial).map(item=>`${item.name} 첫 관측 ${item.baseDate}`).join(", ")}` })
     : `<p class="empty-state" role="status">${loading ? "기업별 주가를 불러오는 중입니다." : series.length ? "표시할 주가 이력이 없습니다." : "범례에서 비교할 기업을 선택하세요."}</p>`;
   const legend = model.map((item, index) => {
     const entry = state.companyHistories.get(item.code);
@@ -1495,18 +1510,15 @@ function sectorCompanyChart(stocks) {
   }).join("");
   const partials = model.filter(item => item.partial).map(item => `${item.name} ${item.baseDate}`);
   const ended = model.filter(item => item.lastDate && item.lastDate !== dates.at(-1)).map(item => `${item.name} ${item.lastDate}`);
-  return `<div class="card-head"><h2>${escapeHtml(state.sector)} 기업별 주가 추이</h2><span class="tools">${rangeButtons()}</span></div>
-    ${chart}<div class="chart-legend company-legend">${legend}</div>
-    <p class="company-chart-note">기간 시작 = 100, 일봉 종가(당일은 조회 시점), 범례를 눌러 표시 전환</p>
-    ${partials.length ? `<p class="company-chart-note">* 첫 주가 기준: ${escapeHtml(partials.join(", "))}</p>` : ""}
-    ${ended.length ? `<p class="company-chart-note">마지막 주가: ${escapeHtml(ended.join(", "))}</p>` : ""}
-    <p class="company-chart-note">출처: Kiwoom / NAVER, ${escapeHtml(dates[0] || "-")}~${escapeHtml(dates.at(-1) || "-")}</p>`;
+  const key = `sector:${state.sector}`;
+  return `<div class="card-head"><h2>${escapeHtml(state.sector)} 기업별 주가 추이</h2><span class="tools">${rangeButtons()}${chartControls.tools(key, `${state.sector} 기업별 주가 추이`)}</span></div>
+    ${chartControls.editor(key)}${chart}<div class="chart-legend company-legend">${legend}</div>`;
 }
 
 function sectorTrend(sector, stocks) {
   loadCompanyHistories(stocks);
   return `<div class="sec-grid">
-    <div class="card" id="sectorTrendCard">${sectorCompanyChart(stocks)}</div>
+    <div class="card" id="sectorTrendCard" data-chart-surface>${sectorCompanyChart(stocks)}</div>
     <div class="card"><div class="card-head"><h2>섹터 내 예외</h2><span class="unit">${stocks.length}종목</span></div>${sectorExceptions(stocks)}</div>
   </div>`;
 }
@@ -2179,7 +2191,7 @@ function drawerHtml(stock) {
   const series = [{ name: stock.name, values: aligned, cls: "s-main" }];
   if (sector?.values?.length) series.push({ name: `${stock.sector} 섹터`, values: windowSlice(sector.values), cls: "s-sector" });
   const chart = dates.length >= 2
-    ? lineChart({ series: [...series, ...benchmarkSeriesFor(dates)], labels: dates, width: 430, height: 280 })
+    ? lineChart({ series: [...series, ...benchmarkSeriesFor(dates)], labels: dates, width: 430, height: 280, chartKey: `stock:${stock.code}`, description: `${dates[0]}~${dates.at(-1)}, 기간 시작 100, 일봉 종가, Kiwoom / NAVER / Yahoo Finance.` })
     : '<p class="empty-state">주가 이력이 아직 없습니다.</p>';
   // 금융·보험·증권·지주는 영업이익 대신 지배순이익이 주력 지표다(전체 화면 (C)안과 같은 규칙).
   const profitMetric = profitMetricFor(stock.sector);
@@ -2220,11 +2232,12 @@ function drawerHtml(stock) {
       <div><dt>목표가 괴리</dt><dd class="${numberClass(COMPUTED.targetGap(stock))}">${formatPercent(COMPUTED.targetGap(stock))}</dd>
         <small>TP ${formatPrice(targetPriceOf(stock))} (${targetPriceLabel()}), 배당 ${formatLevelPercent(COMPUTED.dividendYield(stock))}</small></div>
     </dl>
-    <section class="panel"><div class="panel-head"><h3>주가 vs 섹터, 벤치마크</h3>
-        <span class="tools">${rangeButtons()}</span></div>
+    <section class="panel" data-chart-surface><div class="panel-head"><h3>주가 vs 섹터, 벤치마크</h3>
+        <span class="tools">${rangeButtons()}${chartControls.tools(`stock:${stock.code}`, `${stock.name} 주가 추이`)}</span></div>
+      ${chartControls.editor(`stock:${stock.code}`)}
       ${chart}
       <div class="chart-legend"><span><i></i>${escapeHtml(stock.name)}</span><span><i class="sector"></i>${escapeHtml(stock.sector)} 섹터</span>
-        <span><i class="ctx"></i>KOSPI</span><span><i class="ctx2"></i>KOSDAQ</span><span class="unit">기간 시작 = 100</span></div></section>
+        <span><i class="ctx"></i>KOSPI</span><span><i class="ctx2"></i>KOSDAQ</span></div></section>
     <section class="panel"><div class="panel-head"><h3>컨센서스, 연간</h3><span class="unit">억원, 3M 평균</span></div>
       ${drawerConsensusTable(stock)}</section>
     <section class="panel"><div class="panel-head"><h3>분기 ${profitName} — 실적 ${quarters.filter((row) => !row.estimate).length} + 추정 ${quarters.filter((row) => row.estimate).length}</h3><span class="unit">억원</span></div>
@@ -2730,6 +2743,11 @@ async function refreshSnapshot() {
 }
 
 async function initialize() {
+  chartControls.init({ draw: lineChart,
+    onPeriod: (kind, value) => { if (kind === "rare") state.rareRange = value; else state.range = value === "ytd" ? value : Number(value); renderView({ preserveScroll: true }); if (state.detailCode) renderDrawer(); },
+    onLegend: (kind, value) => { const hidden = kind === "rare" ? state.rareHidden : state.companyHidden; hidden.has(value) ? hidden.delete(value) : hidden.add(value); renderView({ preserveScroll: true }); },
+    onHomeToggle: () => { state.homeChartExpanded = !state.homeChartExpanded; renderView({ preserveScroll: true }); },
+  });
   loadPreferences();
   applyTheme();
   bindEvents();

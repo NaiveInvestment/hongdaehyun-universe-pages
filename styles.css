@@ -342,6 +342,33 @@ svg.chart .grid { stroke: var(--line); }
 svg.chart .axis { stroke: var(--line-strong); }
 svg.chart .end { fill: var(--ink); font-size: 12px; font-weight: 800; }
 svg.chart path.end-leader { stroke-width: 1; opacity: .8; stroke-dasharray: none; }
+.chart-actions { display: inline-flex; gap: 3px; flex-wrap: wrap; }
+.chart-expand { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; }
+[data-chart-surface] > .card-head, [data-chart-surface] > .panel-head { flex-wrap: wrap; gap: 8px; }
+[data-chart-surface] .tools { flex-wrap: wrap; justify-content: flex-end; }
+.chart-axis-slot:empty { display: none; }
+.chart-axis-slot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 6px; }
+.chart-axis-editor { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.chart-axis-editor[hidden] { display: none; }
+.chart-axis-editor label { display: flex; align-items: center; gap: 5px; font-size: 12px; }
+.chart-axis-editor input { width: 90px; min-height: 30px; border: 1px solid var(--line-strong); border-radius: 3px; padding: 3px 6px; background: var(--surface); color: var(--ink); font: inherit; }
+.chart-axis-error { color: var(--up); font-size: 12px; }
+.chart-axis-status { color: var(--muted); font-size: 12px; }
+.chart-dialog { width: calc(100vw - 40px); max-width: none; max-height: calc(100dvh - 24px); padding: 18px; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--ink); background: var(--surface); overflow: auto; }
+.chart-dialog::backdrop { background: rgba(0,0,0,.7); }
+.chart-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.chart-dialog-head h2 { margin: 0; font-size: 17px; }
+.chart-dialog-close { font-size: 22px; min-width: 34px; }
+.chart-dialog-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.chart-dialog .tools { display: flex; flex-wrap: wrap; gap: 3px; }
+.chart-dialog .home-chart-toggle { display: inline-flex; }
+.chart-dialog .chart-legend { font-size: 12px; gap: 8px 16px; }
+@media(max-width:640px) {
+  .chart-dialog { width: calc(100vw - 12px); padding: 12px; }
+  .chart-dialog-head h2 { font-size: 15px; }
+  .chart-axis-editor input { min-height: 40px; width: 80px; }
+  [data-chart-surface] .tools { justify-content: flex-start; }
+}
 svg.chart .lbl { fill: var(--ink); font-weight: 700; }
 svg.chart .s-main { fill: none; stroke: var(--brand); stroke-width: 2; }
 svg.chart .s-sector { fill: none; stroke: var(--series-3); stroke-width: 1.6; }
