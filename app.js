@@ -24,7 +24,7 @@ const SECTOR_ORDER = ["금융", "보험", "증권", "지주", "AI/SW", "K-DC 운
 // universe.js의 HOME_SECTOR_GROUPS와 같은 묶음. 홈 비교 차트에서만 4그룹으로 압축한다.
 const HOME_GROUPS = [
   { label: "금융, 지주, 보험, 증권", short: "금융권", sectors: ["금융", "지주", "보험", "증권"] },
-  { label: "AI/SW, K-DC", short: "AI/DC", sectors: ["AI/SW", "K-DC 운영사", "K-DC 스몰캡"] },
+  { label: "AI/SW, K-DC", short: "AI DC", sectors: ["AI/SW", "K-DC 운영사", "K-DC 스몰캡"] },
   { label: "스테이블코인", short: "결제", sectors: ["스테이블코인"] },
   { label: "정유, 화학", short: "정유화학", sectors: ["정유", "화학"] },
   { label: "희토류", short: "희토류", sectors: ["희토류"] },
@@ -144,6 +144,7 @@ const state = {
   detail: null,
   detailCode: null,
   detailLoading: false,
+  detailRequestId: 0,
   companyHistories: new Map(),
   companyHidden: new Set(),
   columnGroups: new Set(),
@@ -1358,7 +1359,7 @@ function rareCompareRowHtml(row, sections) {
 function rareComparisonTable(packet) {
   const sections = rareCompareColumns();
   const columns = sections.flatMap(s => s.columns);
-  let rows = rareCompareModels().filter(row => !state.search || `${row.company.name} ${row.symbol}`.toLowerCase().includes(state.search.toLowerCase()));
+  let rows = filteredRareRows();
   const sort = columns.find(c => c.key === state.rareSort.key);
   if (sort) rows.sort((a,b) => {
     if (Boolean(a.company.private) !== Boolean(b.company.private)) return a.company.private ? 1 : -1;
@@ -1929,10 +1930,25 @@ function compareStocks(left, right) {
   return (Number(a) - Number(b)) * direction || left.code.localeCompare(right.code);
 }
 
+function searchQuery() {
+  return state.search.trim().toLocaleLowerCase("ko");
+}
+
+function filteredRareRows() {
+  const query = searchQuery();
+  return rareCompareModels().filter(row => !query || `${row.company.name} ${row.symbol}`.toLocaleLowerCase("ko").includes(query));
+}
+
 function filteredStocks() {
-  const query = state.search.trim().toLocaleLowerCase("ko");
+  const query = searchQuery();
   return stocksInSector(state.sector).filter((stock) =>
     !query || stock.name.toLocaleLowerCase("ko").includes(query) || stock.code.includes(query));
+}
+
+function renderSearchHint() {
+  const matches = state.sector === "희토류" && state.snapshot?.rareEarth?.companies?.length
+    ? filteredRareRows().length : filteredStocks().length;
+  $("#searchHint").textContent = searchQuery() ? String(matches) : "";
 }
 
 // 2026-08-30 사용자 결정: 전체 화면은 76종목을 하나의 목록으로 세운다.
@@ -2051,6 +2067,7 @@ function viewHtml() {
 
 function renderView({ preserveScroll = false } = {}) {
   if (!state.snapshot) return;
+  renderSearchHint();
   // 표가 더 이상 따로 스크롤되지 않는다(2026-08-27). 세로 위치는 페이지 스크롤에서 지킨다.
   // 실시간 체결이 1초마다 다시 그리므로 이걸 놓치면 화면이 계속 맨 위로 튄다.
   const scroller = $("#tableScroller");
@@ -2279,9 +2296,14 @@ function drawerHtml(stock) {
   </div>`;
 }
 
-function renderDrawer() {
+function renderDrawer({ preserveInteraction = false } = {}) {
   const drawer = $("#drawer");
   const main = $("#main");
+  const scrollTop = drawer.scrollTop;
+  const active = preserveInteraction && drawer.contains(document.activeElement) ? document.activeElement : null;
+  const focusAttribute = active && ["id", "data-range", "data-chart-expand", "data-chart-reset", "data-chart-plot-hit", "data-chart-axis-hit", "href"]
+    .find(attribute => active.hasAttribute(attribute));
+  const focusSelector = focusAttribute ? `[${focusAttribute}="${CSS.escape(active.getAttribute(focusAttribute))}"]` : null;
   if (!state.detailCode) {
     drawer.hidden = true;
     drawer.innerHTML = "";
@@ -2300,16 +2322,30 @@ function renderDrawer() {
   drawer.innerHTML = drawerHtml(state.detail);
   drawer.setAttribute("aria-labelledby", "drawerName");
   document.title = `${state.detail.name}, 홍대현 Universe`;
+  if (preserveInteraction) {
+    drawer.scrollTop = scrollTop;
+    if (focusSelector) drawer.querySelector(focusSelector)?.focus({ preventScroll: true });
+  }
 }
 
-async function loadDetail(code) {
-  state.detailLoading = true;
-  renderDrawer();
+async function loadDetail(code, { background = false } = {}) {
+  if (background && state.detailLoading) return;
+  const requestId = ++state.detailRequestId;
+  const currentRequest = () => state.detailRequestId === requestId && state.detailCode === code;
+  const preserveDetail = background && state.detail?.code === code;
+  state.detailLoading = !preserveDetail;
+  if (!preserveDetail) renderDrawer();
+  const focusClose = () => {
+    if (!background) requestAnimationFrame(() => {
+      if (currentRequest()) $("#closeDrawer")?.focus({ preventScroll: true });
+    });
+  };
   try {
-    const response = await fetch(RUNTIME.stockUrl(code), { cache: "no-store" });
+    const response = await fetch(RUNTIME.stockUrl(code), { cache: "no-store", signal: AbortSignal.timeout(10_000) });
     if (!response.ok) throw new Error(response.status === 404 ? "Universe에 없는 종목입니다." : "상세 API 오류");
     const stock = await response.json();
-    if (state.detailCode !== code) return;
+    if (!currentRequest()) return;
+    if (stock?.code !== code) throw new Error("종목 상세 형식 오류");
     if (state.snapshot && stock.sources) {
       const currentQuote = state.snapshot.sources?.quote;
       const detailQuote = stock.sources.quote;
@@ -2321,16 +2357,19 @@ async function loadDetail(code) {
     const latest = state.snapshot?.stocks?.find((item) => item.code === code);
     state.detail = mergeLatestMarketData(stock, latest);
     state.detailLoading = false;
-    renderDrawer();
-    requestAnimationFrame(() => $("#closeDrawer")?.focus({ preventScroll: true }));
+    renderDrawer({ preserveInteraction: background });
+    focusClose();
   } catch (error) {
+    if (!currentRequest()) return;
     state.detailLoading = false;
+    if (preserveDetail) return;
     state.detail = null;
     $("#drawer").setAttribute("aria-labelledby", "drawerErrorTitle");
     $("#drawer").innerHTML = `<div class="drawer-inner"><div class="drawer-head"><div><h2 id="drawerErrorTitle">불러오지 못했습니다</h2></div>`
       + `<button class="close" id="closeDrawer" type="button" aria-label="종목 상세 닫기">×</button></div>`
-      + `<p class="empty-state">${escapeHtml(error.message)}</p></div>`;
-    requestAnimationFrame(() => $("#closeDrawer")?.focus({ preventScroll: true }));
+      + `<p class="empty-state">${escapeHtml(error.name === "TimeoutError" ? "응답이 지연되고 있습니다. 다시 시도해 주세요." : error.message)}</p>`
+      + '<button class="btn" type="button" data-detail-retry>다시 불러오기</button></div>';
+    focusClose();
   }
 }
 
@@ -2497,6 +2536,7 @@ function route() {
   }
 
   if (previousCode !== state.detailCode) {
+    state.detailRequestId += 1;
     state.detail = null;
     state.detailLoading = false;
   }
@@ -2557,12 +2597,11 @@ function bindEvents() {
   $("#themeToggle").addEventListener("click", toggleTheme);
   $("#searchInput").addEventListener("input", (event) => {
     state.search = event.target.value;
-    const matches = filteredStocks().length;
-    $("#searchHint").textContent = state.search.trim() ? String(matches) : "";
     renderView({ preserveScroll: true });
   });
 
   $("#view").addEventListener("click", (event) => {
+    if (event.target.closest("[data-reload]")) return location.reload();
     const rareSort = event.target.closest("[data-rare-sort]");
     if (rareSort) {
       const key = rareSort.dataset.rareSort;
@@ -2625,7 +2664,13 @@ function bindEvents() {
       return $(`[data-company-line="${code}"]`)?.focus({ preventScroll: true });
     }
     const range = event.target.closest("[data-range]");
-    if (range) { chartControls.resetTime('common'); state.range = parseRangeValue(range.dataset.range); return renderView({ preserveScroll: true }); }
+    if (range) {
+      chartControls.resetTime('common');
+      state.range = parseRangeValue(range.dataset.range);
+      renderView({ preserveScroll: true });
+      if (state.detailCode) renderDrawer({ preserveInteraction: true });
+      return $(`#view [data-range="${state.range}"]`)?.focus({ preventScroll: true });
+    }
     if (event.target.closest("a.stock-name")) return;
     const row = event.target.closest("tr[data-code]");
     if (row) location.hash = `#/stock/${row.dataset.code}`;
@@ -2640,6 +2685,7 @@ function bindEvents() {
   });
 
   $("#drawer").addEventListener("click", (event) => {
+    if (event.target.closest("[data-detail-retry]") && state.detailCode) return loadDetail(state.detailCode);
     if (event.target.closest("#closeDrawer")) {
       location.hash = state.sector === "all" ? "#/" : `#/sector/${encodeURIComponent(state.sector)}`;
       return;
@@ -2703,7 +2749,7 @@ function connectQuoteSocket() {
       state.snapshot = payload.snapshot;
       renderSidebar();
       renderView({ preserveScroll: true });
-      if (state.detailCode) loadDetail(state.detailCode);
+      if (state.detailCode) loadDetail(state.detailCode, { background: true });
       return;
     }
     if (payload.type !== "quote") return;
@@ -2748,7 +2794,7 @@ async function refreshSnapshot() {
       state.liveUpdates.clear();
       state.snapshot = next;
       renderView({ preserveScroll: true });
-      if (state.detailCode) loadDetail(state.detailCode);
+      if (state.detailCode) loadDetail(state.detailCode, { background: true });
     }
     state.pollError = null;
   } catch (error) {
@@ -2887,5 +2933,6 @@ function applyQuotesDelta(quotes, { render = true } = {}) {
 
 initialize().catch((error) => {
   setConnection("offline", "로드 실패");
-  $("#view").innerHTML = `<p class="empty-state">${escapeHtml(error.message)}</p>`;
+  $("#view").innerHTML = `<div class="empty-state" role="status"><p>${escapeHtml(error.message)}</p>`
+    + '<button class="btn" type="button" data-reload>다시 불러오기</button></div>';
 });
