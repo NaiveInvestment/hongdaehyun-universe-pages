@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-10-15T07:25:02.527Z",
+  "builtAt": "2026-10-15T07:30:03.883Z",
   "mode": "live",
-  "generatedAt": "2026-10-15T07:25:02.194Z",
-  "quotesGeneratedAt": "2026-10-15T07:25:02.194Z",
-  "heavyFingerprint": "{\"consensus\":\"2026-10-15T06:43:34.557573Z\",\"actuals\":\"2026-10-15T06:43:52.983023Z\",\"indicators\":\"2026-10-15T07:00:10.957Z\",\"holdcoNav\":\"2026-10-15T07:00:08.540Z\",\"sectorIndices\":\"2026-10-15T06:43:32.705Z\",\"sectorIndexDays\":250,\"rareEarth\":\"42b7b5f566ed063e3e0c5e34fe97326059a1b873db39009e32b9f83474b90a54\",\"stockCount\":116,\"mode\":\"live\",\"assets\":[\"2ee63afb064bd5bf\",\"252b8b25f5536dea\",\"574e61aabb088b4d\",\"d65bdffeb6eab459\",\"7dcd6989625e8224\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"5e0cf6a6c53ed514\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"2e277e5faa7ef7ba\"]}",
+  "generatedAt": "2026-10-15T07:30:03.556Z",
+  "quotesGeneratedAt": "2026-10-15T07:30:03.556Z",
+  "heavyFingerprint": "{\"consensus\":\"2026-10-15T06:43:34.557573Z\",\"actuals\":\"2026-10-15T06:43:52.983023Z\",\"indicators\":\"2026-10-15T07:00:10.957Z\",\"holdcoNav\":\"2026-10-15T07:00:08.540Z\",\"sectorIndices\":\"2026-10-15T06:43:32.705Z\",\"sectorIndexDays\":250,\"rareEarth\":\"4f5e37d884b7ce4a654843fd7fa40d0627e9b488bb65f8372e6b1058dc829883\",\"stockCount\":116,\"mode\":\"live\",\"assets\":[\"2ee63afb064bd5bf\",\"252b8b25f5536dea\",\"574e61aabb088b4d\",\"d65bdffeb6eab459\",\"7dcd6989625e8224\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"5e0cf6a6c53ed514\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"2e277e5faa7ef7ba\"]}",
   "stockCount": 116,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
   "sources": {
     "quote": {
       "source": "mixed",
-      "updatedAt": "2026-10-15T07:24:32.137Z",
+      "updatedAt": "2026-10-15T07:29:32.031Z",
       "status": "ok"
     },
     "actuals": {
