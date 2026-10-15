@@ -1942,7 +1942,7 @@ function filteredRareRows() {
 function filteredStocks() {
   const query = searchQuery();
   return stocksInSector(state.sector).filter((stock) =>
-    !query || stock.name.toLocaleLowerCase("ko").includes(query) || stock.code.includes(query));
+    !query || stock.name.toLocaleLowerCase("ko").includes(query) || stock.code.toLocaleLowerCase("ko").includes(query));
 }
 
 function renderSearchHint() {
@@ -2368,7 +2368,7 @@ async function loadDetail(code, { background = false } = {}) {
     $("#drawer").innerHTML = `<div class="drawer-inner"><div class="drawer-head"><div><h2 id="drawerErrorTitle">불러오지 못했습니다</h2></div>`
       + `<button class="close" id="closeDrawer" type="button" aria-label="종목 상세 닫기">×</button></div>`
       + `<p class="empty-state">${escapeHtml(error.name === "TimeoutError" ? "응답이 지연되고 있습니다. 다시 시도해 주세요." : error.message)}</p>`
-      + '<button class="btn" type="button" data-detail-retry>다시 불러오기</button></div>';
+      + '<button class="btn" id="retryDetail" type="button" data-detail-retry>다시 불러오기</button></div>';
     focusClose();
   }
 }
@@ -2934,5 +2934,5 @@ function applyQuotesDelta(quotes, { render = true } = {}) {
 initialize().catch((error) => {
   setConnection("offline", "로드 실패");
   $("#view").innerHTML = `<div class="empty-state" role="status"><p>${escapeHtml(error.message)}</p>`
-    + '<button class="btn" type="button" data-reload>다시 불러오기</button></div>';
+    + '<button class="btn" id="reloadApp" type="button" data-reload>다시 불러오기</button></div>';
 });
