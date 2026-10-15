@@ -16,6 +16,7 @@ const RUNTIME = (() => {
     stockUrl: (code) => (staticMode ? `data/stocks/${code}.json` : `/api/stocks/${code}`),
   };
 })();
+let reportLibrary = null;
 
 // ---------------------------------------------------------------------------
 // 정본 상수
@@ -1055,12 +1056,18 @@ function sectorNavItems() {
 }
 
 function renderSidebar() {
+  const reportView = reportLibrary && /^#\/reports(?:\/|$)/.test(location.hash);
   // 2026-08-30 사용자 결정: KOSPI·KOSDAQ은 KPI 첫 칸으로 옮기고 사이드바에서는 뺐다(중복).
   const items = sectorNavItems();
-  $("#sectorNav").innerHTML = items.map((item) => `<li><a href="${item.href}"${state.sector === item.key ? ' aria-current="page"' : ""}>`
+  $("#sectorNav").innerHTML = items.map((item) => `<li><a href="${item.href}"${!reportView && state.sector === item.key ? ' aria-current="page"' : ""}>`
     + `<span>${escapeHtml(item.label)}</span><small>${item.count}</small>`
     + `<span class="chg ${numberClass(item.d1)}">${formatPercent(item.d1, 1)}</span></a></li>`).join("");
-  $("#mobileNav").innerHTML = items.map((item) => `<a href="${item.href}"${state.sector === item.key ? ' aria-current="page"' : ""}>${escapeHtml(item.label)}</a>`).join("");
+  $("#mobileNav").innerHTML = items.map((item) => `<a href="${item.href}"${!reportView && state.sector === item.key ? ' aria-current="page"' : ""}>${escapeHtml(item.label)}</a>`).join("");
+  if (reportLibrary) {
+    $("#reportNav").hidden = false;
+    $("#reportNav").innerHTML = reportLibrary.navHtml();
+    $("#mobileNav").insertAdjacentHTML("afterbegin", reportLibrary.navHtml());
+  }
 
   // 핵심 원천은 "정상 / 일부 / 갱신 지연"을 분리해 보여 준다. partial을 stale로 뭉치면
   // 방금 갱신됐지만 커버리지만 낮은 데이터와 실제로 오래된 데이터를 구분할 수 없다.
@@ -2046,6 +2053,7 @@ function tableHtml() {
 // 화면 렌더
 // ---------------------------------------------------------------------------
 function viewHtml() {
+  if (reportLibrary && /^#\/reports(?:\/|$)/.test(location.hash)) return reportLibrary.pageHtml();
   const stocks = stocksInSector(state.sector);
   const title = state.sector === "all"
     ? `전체 유니버스 — ${SECTOR_ORDER.length}섹터 ${state.snapshot?.stocks?.length || 0}종목`
@@ -2059,7 +2067,7 @@ function viewHtml() {
     : state.sector === "희토류" && state.snapshot?.rareEarth?.companies?.length
       ? `${rareEarthPanel()}<details class="re-secondary"><summary>국내 기업별 주가와 기간별 수익률</summary>${sectorTrend(state.sector, stocks)}${foreignPeerTable(state.sector)}</details>${indicatorTiles(state.sector)}`
       : `${sectorTrend(state.sector, stocks)}${foreignPeerTable(state.sector)}${holdcoNavTable(state.sector)}${indicatorTiles(state.sector)}`;
-  return `<div class="topbar"><h1 id="viewTitle">${escapeHtml(title)}</h1></div>
+  return `<div class="topbar"><h1 id="viewTitle">${escapeHtml(title)}</h1>${state.sector === "all" ? reportLibrary?.homeHtml() || "" : ""}</div>
     ${kpiStripHtml()}
     ${middle}
     ${tableHtml()}`;
@@ -2067,6 +2075,10 @@ function viewHtml() {
 
 function renderView({ preserveScroll = false } = {}) {
   if (!state.snapshot) return;
+  if (reportLibrary && $("#reportPage")?.dataset.reportRoute === location.hash) {
+    reportLibrary.mounted();
+    return;
+  }
   renderSearchHint();
   // 표가 더 이상 따로 스크롤되지 않는다(2026-08-27). 세로 위치는 페이지 스크롤에서 지킨다.
   // 실시간 체결이 1초마다 다시 그리므로 이걸 놓치면 화면이 계속 맨 위로 튄다.
@@ -2076,6 +2088,7 @@ function renderView({ preserveScroll = false } = {}) {
     state.tableScrollTop = window.scrollY;
   }
   $("#view").innerHTML = viewHtml();
+  reportLibrary?.mounted();
   const next = $("#tableScroller");
   syncTableOverflow(next);
   if (preserveScroll) {
@@ -2271,6 +2284,7 @@ function drawerHtml(stock) {
       ${chart}
       <div class="chart-legend"><span><i></i>${escapeHtml(stock.name)}</span><span><i class="sector"></i>${escapeHtml(stock.sector)} 섹터</span>
         <span><i class="ctx"></i>KOSPI</span><span><i class="ctx2"></i>KOSDAQ</span></div></section>
+    ${reportLibrary?.drawerHtml(stock.code) || ""}
     <section class="panel"><div class="panel-head"><h3>컨센서스, 연간</h3><span class="unit">억원, 3M 평균</span></div>
       ${drawerConsensusTable(stock)}</section>
     <section class="panel"><div class="panel-head"><h3>분기 ${profitName} — 실적 ${quarters.filter((row) => !row.estimate).length} + 추정 ${quarters.filter((row) => row.estimate).length}</h3><span class="unit">억원</span></div>
@@ -2300,8 +2314,9 @@ function renderDrawer({ preserveInteraction = false } = {}) {
   const drawer = $("#drawer");
   const main = $("#main");
   const scrollTop = drawer.scrollTop;
+  const openReports = preserveInteraction ? Array.from(drawer.querySelectorAll?.("[data-report-evidence][open]") || []).map(item => item.dataset.reportEvidence) : [];
   const active = preserveInteraction && drawer.contains(document.activeElement) ? document.activeElement : null;
-  const focusAttribute = active && ["id", "data-range", "data-chart-expand", "data-chart-reset", "data-chart-plot-hit", "data-chart-axis-hit", "href"]
+  const focusAttribute = active && ["id", "data-range", "data-chart-expand", "data-chart-reset", "data-chart-plot-hit", "data-chart-axis-hit", "data-report-read", "data-report-summary", "href"]
     .find(attribute => active.hasAttribute(attribute));
   const focusSelector = focusAttribute ? `[${focusAttribute}="${CSS.escape(active.getAttribute(focusAttribute))}"]` : null;
   if (!state.detailCode) {
@@ -2323,6 +2338,7 @@ function renderDrawer({ preserveInteraction = false } = {}) {
   drawer.setAttribute("aria-labelledby", "drawerName");
   document.title = `${state.detail.name}, 홍대현 Universe`;
   if (preserveInteraction) {
+    for (const id of openReports) drawer.querySelector(`[data-report-evidence="${CSS.escape(id)}"]`)?.setAttribute("open", "");
     drawer.scrollTop = scrollTop;
     if (focusSelector) drawer.querySelector(focusSelector)?.focus({ preventScroll: true });
   }
@@ -2521,6 +2537,9 @@ function route() {
   const sectorMatch = /^#\/sector\/(.+)$/.exec(hash);
   const previousSector = state.sector;
   const previousCode = state.detailCode;
+  const reportRoute = $("#reportPage")?.dataset.reportRoute;
+  if (stockMatch && reportRoute) state.reportReturnHash = reportRoute;
+  else if (!stockMatch) state.reportReturnHash = null;
 
   if (stockMatch) {
     state.detailCode = stockMatch[1];
@@ -2687,7 +2706,7 @@ function bindEvents() {
   $("#drawer").addEventListener("click", (event) => {
     if (event.target.closest("[data-detail-retry]") && state.detailCode) return loadDetail(state.detailCode);
     if (event.target.closest("#closeDrawer")) {
-      location.hash = state.sector === "all" ? "#/" : `#/sector/${encodeURIComponent(state.sector)}`;
+      location.hash = state.reportReturnHash || (state.sector === "all" ? "#/" : `#/sector/${encodeURIComponent(state.sector)}`);
       return;
     }
     const range = event.target.closest("[data-range]");
@@ -2701,7 +2720,7 @@ function bindEvents() {
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && state.detailCode) {
-      location.hash = state.sector === "all" ? "#/" : `#/sector/${encodeURIComponent(state.sector)}`;
+      location.hash = state.reportReturnHash || (state.sector === "all" ? "#/" : `#/sector/${encodeURIComponent(state.sector)}`);
     }
   });
   window.addEventListener("hashchange", route);
@@ -2816,6 +2835,10 @@ async function initialize() {
   bindEvents();
   state.snapshot = await fetchJson(RUNTIME.snapshotUrl);
   if (!Array.isArray(state.snapshot?.stocks)) throw new Error("스냅샷 형식 오류");
+  if (!RUNTIME.staticMode) {
+    const { createReportLibrary } = await import("./reports.js?v=20261015");
+    reportLibrary = createReportLibrary({ getStocks: () => state.snapshot?.stocks || [], onUpdate: renderSidebar });
+  }
   if (RUNTIME.staticMode) {
     state.staticSnapshotGeneratedAt = state.snapshot.generatedAt || null;
     try { await refreshStaticQuotes({ render: false }); }
