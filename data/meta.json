@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-11-02T07:45:02.114Z",
+  "builtAt": "2026-11-02T07:50:02.886Z",
   "mode": "live",
-  "generatedAt": "2026-11-02T07:45:01.739Z",
-  "quotesGeneratedAt": "2026-11-02T07:45:01.739Z",
-  "heavyFingerprint": "{\"consensus\":\"2026-11-02T06:37:49.430783Z\",\"actuals\":\"2026-11-02T06:43:11.387382Z\",\"indicators\":\"2026-11-02T07:00:09.156Z\",\"holdcoNav\":\"2026-11-02T07:00:06.695Z\",\"sectorIndices\":\"2026-11-02T06:37:46.939Z\",\"sectorIndexDays\":250,\"rareEarth\":\"6bba1e892857e97a5768333fc2951eb727aa38fcd1a53b012ed12b12b4930326\",\"stockCount\":152,\"mode\":\"live\",\"assets\":[\"2ee63afb064bd5bf\",\"10d27fa8427b4bbd\",\"574e61aabb088b4d\",\"d65bdffeb6eab459\",\"aae868675610d238\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"abd7cf0967eb83c9\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"81bc5bf1a1da0fa2\"]}",
+  "generatedAt": "2026-11-02T07:50:02.446Z",
+  "quotesGeneratedAt": "2026-11-02T07:50:02.446Z",
+  "heavyFingerprint": "{\"consensus\":\"2026-11-02T06:37:49.430783Z\",\"actuals\":\"2026-11-02T06:43:11.387382Z\",\"indicators\":\"2026-11-02T07:00:09.156Z\",\"holdcoNav\":\"2026-11-02T07:00:06.695Z\",\"sectorIndices\":\"2026-11-02T06:37:46.939Z\",\"sectorIndexDays\":250,\"rareEarth\":\"a8e3a4fb1004aef48acdff0c3d0af09398847cb120841fc03fc245e7f72ab955\",\"stockCount\":152,\"mode\":\"live\",\"assets\":[\"2ee63afb064bd5bf\",\"10d27fa8427b4bbd\",\"574e61aabb088b4d\",\"d65bdffeb6eab459\",\"aae868675610d238\"],\"outputLogic\":[\"0b75b08513db3bb3\",\"523f8640829facf5\",\"abd7cf0967eb83c9\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"81bc5bf1a1da0fa2\"]}",
   "stockCount": 152,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
   "sources": {
     "quote": {
       "source": "mixed",
-      "updatedAt": "2026-11-02T07:44:46.453Z",
+      "updatedAt": "2026-11-02T07:49:47.245Z",
       "status": "partial"
     },
     "actuals": {
