@@ -2776,16 +2776,20 @@ function connectQuoteSocket() {
       if (state.detailCode) loadDetail(state.detailCode, { background: true });
       return;
     }
-    if (payload.type !== "quote") return;
+    if (payload.type !== "quote" && payload.type !== "quotes") return;
     state.pollError = null;
-    const stock = state.snapshot?.stocks.find(({ code }) => code === payload.quote?.code);
-    if (!stock) return;
-    stock.quote = { ...stock.quote, ...payload.quote };
-    stock.performance = payload.performance || stock.performance;
-    stock.valuation = payload.valuation || stock.valuation;
+    const updates = payload.type === "quote" ? [payload] : payload.updates ?? [];
+    for (const delta of updates) {
+      const stock = state.snapshot?.stocks.find(({ code }) => code === delta.quote?.code);
+      if (!stock) continue;
+      stock.quote = { ...stock.quote, ...delta.quote };
+      stock.performance = delta.performance || stock.performance;
+      stock.valuation = delta.valuation || stock.valuation;
+      state.liveUpdates.set(stock.code, delta);
+    }
+    if (!state.snapshot) return;
     if (payload.source) state.snapshot.sources.quote = payload.source;
-    state.snapshot.generatedAt = payload.quote?.observedAt || state.snapshot.generatedAt;
-    state.liveUpdates.set(stock.code, payload);
+    state.snapshot.generatedAt = payload.generatedAt || payload.quote?.observedAt || state.snapshot.generatedAt;
   });
   socket.addEventListener("close", () => {
     setConnection("offline", "재연결 대기");
