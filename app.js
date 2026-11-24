@@ -31,7 +31,7 @@ const HOME_GROUPS = [
   { label: "정유, 화학", short: "정유화학", sectors: ["정유", "화학"] },
   { label: "희토류", short: "희토류", sectors: ["희토류"] },
 ];
-const KOSDAQ_CODES = new Set(["0007C0", "0015S0", "0158S0", "020180", "025770", "030520", "033230", "035600", "036800", "038680", "041460", "042000", "042500", "042510", "046440", "047560", "049480", "050960", "052400", "052460", "053300", "053350", "053580", "053800", "054920", "060250", "064260", "067160", "067920", "075130", "078020", "079940", "086960", "093320", "094480", "124500", "127120", "131090", "136540", "150900", "158430", "163730", "170790", "173130", "184230", "189330", "192250", "197140", "203650", "208350", "214180", "232830", "234340", "242040", "258790", "263800", "263860", "275630", "290270", "294570", "328380", "331740", "356680", "356890", "411080", "430690", "434480", "456010", "462860", "465480", "488280"]);
+const KOSDAQ_CODES = new Set(["0007C0", "0015S0", "0158S0", "020180", "025770", "030520", "033230", "035600", "036800", "038680", "041460", "042000", "042500", "042510", "046440", "047560", "049480", "050960", "052400", "052460", "053300", "053350", "053580", "053800", "054920", "060250", "064260", "067160", "067920", "075130", "078020", "079940", "086960", "093320", "094480", "112040", "124500", "127120", "131090", "136540", "150900", "158430", "163730", "170790", "173130", "184230", "189330", "192250", "197140", "199480", "201490", "203650", "208350", "214180", "232830", "234340", "242040", "258790", "263800", "263860", "275630", "290270", "294570", "328380", "331740", "356680", "356890", "411080", "430690", "434480", "456010", "462860", "465480", "488280"]);
 // 2026-08-26 확정: 연간 컨센서스는 3개(26E·27E·28E)까지 보여준다. 2025는 확정 실적 비교용이다.
 
 // 분기는 확정 실적 8개 + 추정 4개.
@@ -677,7 +677,7 @@ function columnValue(stock, column) {
 // 둘 다 보간하지 않는다. 커버리지가 개시되면 다음 ConsenDB Refresh에서 코드 수정 없이 채워진다.
 function hiddenColumnsForSector() {
   if (state.sector === "all") return new Map();
-  const stocks = (state.snapshot?.stocks || []).filter((stock) => stock.sector === state.sector);
+  const stocks = stocksInSector(state.sector);
   const hidden = new Map();
   if (!stocks.length) return hidden;
   for (const section of activeSections()) {
@@ -709,9 +709,13 @@ function visibleColumnCount(sections = visibleSections()) {
 // ---------------------------------------------------------------------------
 // 집계
 // ---------------------------------------------------------------------------
+function stockInSector(stock, sector) {
+  return stock.sector === sector || stock.additionalSectors?.includes(sector);
+}
+
 function stocksInSector(sector) {
   const stocks = state.snapshot?.stocks || [];
-  return sector === "all" ? stocks : stocks.filter((stock) => stock.sector === sector);
+  return sector === "all" ? stocks : stocks.filter((stock) => stockInSector(stock, sector));
 }
 
 // 동일가중 평균 수익률(2026-08-30 결정). 수익률이 없는 종목은 분모에서도 뺀다.
@@ -1051,7 +1055,7 @@ function sectorNavItems() {
   const stocks = state.snapshot?.stocks || [];
   return [{ href: "#/", key: "all", label: "전체", count: stocks.length, d1: weightedPerformance(stocks, "d1") }]
     .concat(SECTOR_ORDER.map((sector) => {
-      const members = stocks.filter((stock) => stock.sector === sector);
+      const members = stocksInSector(sector);
       return { href: `#/sector/${encodeURIComponent(sector)}`, key: sector, label: sector, count: members.length, d1: weightedPerformance(members, "d1") };
     }));
 }
@@ -1970,7 +1974,7 @@ function sortedBySector(stocks) {
 
 // 섹터 경계선은 섹터로 묶여 있을 때만 뜻이 있다. 섞여 있으면 거의 매 행에 걸려 잡음이 된다.
 function isSectorGrouped() {
-  return state.sortKey === "sector" || state.sector !== "all";
+  return state.sortKey === "sector";
 }
 
 // 그룹 첫 칸에는 굵은 세로선, 그룹 안에서 성격이 바뀌는 칸(분기 → 연간)에는 같은 선을 한 번 더 긋는다.
@@ -2545,7 +2549,7 @@ function route() {
   if (stockMatch) {
     state.detailCode = stockMatch[1];
     const stock = state.snapshot?.stocks.find(({ code }) => code === state.detailCode);
-    if (stock && state.sector !== "all" && state.sector !== stock.sector) state.sector = stock.sector;
+    if (stock && state.sector !== "all" && !stockInSector(stock, state.sector)) state.sector = stock.sector;
   } else if (sectorMatch) {
     const sector = decodeURIComponent(sectorMatch[1]);
     state.sector = SECTOR_ORDER.includes(sector) ? sector : "all";
