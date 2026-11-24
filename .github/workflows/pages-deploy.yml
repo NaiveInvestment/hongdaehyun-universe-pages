@@ -11,6 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
   pages: write
   id-token: write
@@ -48,5 +49,27 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .
+          name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Wait for Pages artifact visibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_NAME: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          node --input-type=module <<'NODE'
+          const url = `${process.env.GITHUB_API_URL}/repos/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}/artifacts`;
+          for (let attempt = 0; attempt < 20; attempt++) {
+            const response = await fetch(url, {headers: {Authorization: `Bearer ${process.env.GH_TOKEN}`, Accept: 'application/vnd.github+json'}});
+            if (!response.ok) throw new Error(`Artifact lookup failed: HTTP ${response.status}`);
+            const {artifacts} = await response.json();
+            if (artifacts.filter(a => a.name === process.env.ARTIFACT_NAME && !a.expired).length === 1) {
+              console.log('Pages artifact is visible');
+              process.exit(0);
+            }
+            await new Promise(resolve => setTimeout(resolve, 3000));
+          }
+          throw new Error('Pages artifact was not visible within 60 seconds');
+          NODE
       - id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
