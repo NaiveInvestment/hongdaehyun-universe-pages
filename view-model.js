@@ -36,8 +36,8 @@ function age(timestamp, now) {
 }
 
 export function quoteVenue(quote = {}) {
-  // A fallback merge may retain the prior stream's venue. Naver's adapter is KRX-only.
-  if (String(quote.source).toLowerCase() === "naver") return "KRX";
+  // Legacy fallback rows can retain the prior stream's `venue` field.
+  if (String(quote.source).toLowerCase() === "naver") return quote.exchange === "NXT" ? "NXT" : "KRX";
   const raw = String(quote.venue || quote.exchange || "").toUpperCase();
   if (["KRX", "NXT", "KRX/NXT"].includes(raw)) return raw;
   if (String(quote.source).toLowerCase() === "toss") return "KRX+NXT";
