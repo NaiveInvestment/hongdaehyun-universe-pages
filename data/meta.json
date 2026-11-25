@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-11-25T03:00:02.147Z",
+  "builtAt": "2026-11-25T03:05:01.974Z",
   "mode": "live",
-  "generatedAt": "2026-11-25T03:00:01.739Z",
-  "quotesGeneratedAt": "2026-11-25T03:00:01.739Z",
-  "heavyFingerprint": "{\"consensus\":\"2026-11-24T23:00:02.242234Z\",\"actuals\":\"2026-11-24T22:48:37.811760Z\",\"indicators\":\"2026-11-24T22:48:41.540Z\",\"holdcoNav\":\"2026-11-24T22:48:39.623Z\",\"sectorIndices\":\"2026-11-24T22:45:51.827Z\",\"sectorIndexDays\":250,\"rareEarth\":\"b24a6a095713f1a787712afb76cf3d59f33be27627ff49b241da88ab7312e639\",\"stockCount\":149,\"mode\":\"live\",\"assets\":[\"2ee63afb064bd5bf\",\"5f97789dc6bbb116\",\"d85dab727a2f3492\",\"d65bdffeb6eab459\",\"aae868675610d238\"],\"outputLogic\":[\"9d449725ca8020a2\",\"523f8640829facf5\",\"44385d95a3f91ba0\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"76ad2e7d5e745b7a\"]}",
+  "generatedAt": "2026-11-25T03:05:01.639Z",
+  "quotesGeneratedAt": "2026-11-25T03:05:01.639Z",
+  "heavyFingerprint": "{\"consensus\":\"2026-11-25T03:00:02.244527Z\",\"actuals\":\"2026-11-24T22:48:37.811760Z\",\"indicators\":\"2026-11-24T22:48:41.540Z\",\"holdcoNav\":\"2026-11-24T22:48:39.623Z\",\"sectorIndices\":\"2026-11-24T22:45:51.827Z\",\"sectorIndexDays\":250,\"rareEarth\":\"31fcc597e0da105eaf64589dea6529fdf11fc7e2d5e573644f8c6dbb12813dcb\",\"stockCount\":149,\"mode\":\"live\",\"assets\":[\"2ee63afb064bd5bf\",\"5f97789dc6bbb116\",\"d85dab727a2f3492\",\"d65bdffeb6eab459\",\"aae868675610d238\"],\"outputLogic\":[\"9d449725ca8020a2\",\"523f8640829facf5\",\"44385d95a3f91ba0\",\"e5af8939119304a6\",\"cb088fbf21ab4691\",\"1f644e46281e4fc8\",\"10188dd04ff35364\",\"4ee0116cb7572b03\",\"76ad2e7d5e745b7a\"]}",
   "stockCount": 149,
   "realtime": false,
   "note": "공개 정적 스냅샷입니다. 실시간 시세가 아니며 장중에도 빌드 시각 기준 지연 데이터입니다.",
   "sources": {
     "quote": {
       "source": "kiwoom",
-      "updatedAt": "2026-11-25T02:59:53.615Z",
+      "updatedAt": "2026-11-25T03:04:53.614Z",
       "status": "ok"
     },
     "actuals": {
@@ -21,7 +21,7 @@
     },
     "consensus": {
       "source": "ConsenDB.xlsx",
-      "updatedAt": "2026-11-24T23:00:02.242234Z",
+      "updatedAt": "2026-11-25T03:00:02.244527Z",
       "status": "partial"
     },
     "indicators": {
